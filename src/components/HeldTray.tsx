@@ -1,0 +1,58 @@
+import { usePos } from '../state/store';
+import { TAX } from '../data/demo';
+import { dur, itemById, itemsSub, money, tableName } from '../state/calc';
+import { Icon } from './Icon';
+import { css } from './css';
+
+const MONO = "font-family:'JetBrains Mono',monospace;";
+
+export function HeldTray() {
+  const s = usePos();
+  if (!s.heldOpen) return null;
+
+  return (
+    <>
+      <div onClick={s.closeHeld} style={css('position:absolute;inset:0;z-index:210;background:rgba(10,10,15,.5);animation:pos-scrim .2s ease;')} />
+      <div style={css('position:absolute;top:0;right:0;bottom:0;z-index:211;width:min(440px,88%);background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;box-shadow:-12px 0 40px rgba(10,10,20,.2);animation:pos-slidein .28s cubic-bezier(.2,.8,.2,1);')}>
+        <div style={css('flex-shrink:0;display:flex;align-items:center;gap:12px;padding:20px 22px;border-bottom:1px solid var(--border);')}>
+          <div style={css('font-size:19px;font-weight:800;letter-spacing:-.02em;')}>Held tickets</div>
+          <span style={css('font-size:13px;font-weight:800;' + MONO + 'padding:3px 10px;border-radius:20px;background:var(--surface-3);color:var(--fg-muted);')}>{s.held.length}</span>
+          <button className="pos-press" onClick={s.closeHeld} style={css('margin-left:auto;width:44px;height:44px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;')}>
+            <Icon name="x" size={20} />
+          </button>
+        </div>
+        <div className="pos-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;')}>
+          {s.held.length === 0 && (
+            <div style={css('text-align:center;padding:50px 20px;color:var(--fg-muted);')}>
+              <div style={css('font-size:15px;font-weight:700;')}>No held tickets</div>
+              <div style={css('font-size:13px;margin-top:5px;')}>Hold a ticket to park it here.</div>
+            </div>
+          )}
+          {s.held.map((h) => {
+            const names = h.items.map((x) => (x.qty > 1 ? x.qty + '× ' : '') + (itemById(x.id)?.name ?? x.id));
+            return (
+              <div key={h.number} style={css('border:1px solid var(--border);border-radius:16px;padding:16px;background:var(--surface);')}>
+                <div style={css('display:flex;align-items:center;gap:10px;')}>
+                  <span style={css('font-size:16px;font-weight:800;')}>{tableName(h.table, s.mode)}</span>
+                  <span style={css('font-size:12.5px;' + MONO + 'color:var(--fg-muted);')}>#{h.number}</span>
+                  <span style={css('margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--fg-muted);')}>
+                    <Icon name="clock" size={13} />
+                    held {dur(Date.now() - h.at)}
+                  </span>
+                </div>
+                <div style={css('font-size:13px;color:var(--fg-muted);margin-top:8px;')}>{names.join(', ')}</div>
+                <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:14px;')}>
+                  <span style={css('font-size:22px;font-weight:800;' + MONO)}>{money(itemsSub(h.items) * (1 + TAX))}</span>
+                  <button className="pos-press" onClick={() => s.resumeHeld(h.number)} style={css('height:48px;padding:0 22px;border-radius:13px;border:none;background:var(--accent);color:var(--accent-fg);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;')}>
+                    <Icon name="corner-down-left" size={17} />
+                    Resume
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}

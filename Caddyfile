@@ -1,0 +1,8 @@
+# Serve the built SPA. View routing is state-based (no client router), so the
+# only real document is index.html; try_files keeps any path resolving to it.
+:80 {
+	root * /srv
+	encode gzip
+	try_files {path} /index.html
+	file_server
+}
