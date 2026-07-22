@@ -40,32 +40,37 @@ export const STAFF: Staff[] = [
   { id: 'jordan', name: 'Jordan Diaz', initials: 'JD', role: 'Barista', pin: '1357' },
 ];
 
+/** Real product photography (Unsplash). Same catalogue as db/seed.sql. */
+const IMG = 'https://images.unsplash.com/photo-';
+const IMG_Q = '?w=600&q=75&auto=format&fit=crop';
+const img = (id: string): string => IMG + id + IMG_Q;
+
 export const MENU: MenuItem[] = [
-  { id: 'espresso', name: 'Espresso', price: 3.2, cat: 'coffee', icon: 'coffee', mods: 'coffee' },
-  { id: 'flatwhite', name: 'Flat White', price: 4.5, cat: 'coffee', icon: 'coffee', mods: 'coffee' },
-  { id: 'cappuccino', name: 'Cappuccino', price: 4.2, cat: 'coffee', icon: 'coffee', mods: 'coffee' },
-  { id: 'latte', name: 'Latte', price: 4.8, cat: 'coffee', icon: 'coffee', mods: 'coffee' },
-  { id: 'americano', name: 'Americano', price: 3.6, cat: 'coffee', icon: 'coffee', mods: 'coffee' },
-  { id: 'mocha', name: 'Mocha', price: 5.2, cat: 'coffee', icon: 'coffee', mods: 'coffee' },
-  { id: 'chai', name: 'Chai Latte', price: 4.6, cat: 'tea', icon: 'cup-soda', mods: 'tea' },
-  { id: 'earlgrey', name: 'Earl Grey', price: 3.4, cat: 'tea', icon: 'cup-soda', mods: 'tea' },
-  { id: 'greentea', name: 'Green Tea', price: 3.4, cat: 'tea', icon: 'cup-soda', mods: 'tea' },
-  { id: 'matcha', name: 'Matcha Latte', price: 5.4, cat: 'tea', icon: 'cup-soda', mods: 'tea' },
-  { id: 'avotoast', name: 'Avocado Toast', price: 9.5, cat: 'food', icon: 'sandwich', mods: null },
-  { id: 'bowl', name: 'Breakfast Bowl', price: 12.0, cat: 'food', icon: 'salad', mods: null },
-  { id: 'wrap', name: 'Halloumi Wrap', price: 10.5, cat: 'food', icon: 'sandwich', mods: null },
-  { id: 'soup', name: 'Soup of the Day', price: 7.5, cat: 'food', icon: 'soup', mods: null },
-  { id: 'quiche', name: 'Quiche Lorraine', price: 8.5, cat: 'food', icon: 'egg', mods: null },
-  { id: 'croissant', name: 'Croissant', price: 3.8, cat: 'bakery', icon: 'croissant', mods: null },
-  { id: 'almond', name: 'Almond Croissant', price: 4.6, cat: 'bakery', icon: 'croissant', available: false, mods: null },
-  { id: 'banana', name: 'Banana Bread', price: 4.2, cat: 'bakery', icon: 'cake-slice', mods: null },
-  { id: 'muffin', name: 'Blueberry Muffin', price: 3.9, cat: 'bakery', icon: 'cookie', mods: null },
-  { id: 'cinnamon', name: 'Cinnamon Roll', price: 4.4, cat: 'bakery', icon: 'cookie', mods: null },
-  { id: 'coldbrew', name: 'Cold Brew', price: 5.0, cat: 'cold', icon: 'glass-water', mods: 'cold' },
-  { id: 'icedlatte', name: 'Iced Latte', price: 5.2, cat: 'cold', icon: 'glass-water', mods: 'cold' },
-  { id: 'oj', name: 'Fresh OJ', price: 5.5, cat: 'cold', icon: 'glass-water', mods: null },
-  { id: 'sparkling', name: 'Sparkling Water', price: 3.0, cat: 'cold', icon: 'glass-water', mods: null },
-  { id: 'lemonade', name: 'Lemonade', price: 4.5, cat: 'cold', icon: 'glass-water', mods: 'cold' },
+  { id: 'espresso', name: 'Espresso', price: 3.2, cat: 'coffee', icon: 'coffee', image: img('1510707577719-ae7c14805e3a'), mods: 'coffee' },
+  { id: 'flatwhite', name: 'Flat White', price: 4.5, cat: 'coffee', icon: 'coffee', image: img('1509042239860-f550ce710b93'), mods: 'coffee' },
+  { id: 'cappuccino', name: 'Cappuccino', price: 4.2, cat: 'coffee', icon: 'coffee', image: img('1541167760496-1628856ab772'), mods: 'coffee' },
+  { id: 'latte', name: 'Latte', price: 4.8, cat: 'coffee', icon: 'coffee', image: img('1541167760496-1628856ab772'), mods: 'coffee' },
+  { id: 'americano', name: 'Americano', price: 3.6, cat: 'coffee', icon: 'coffee', image: img('1510707577719-ae7c14805e3a'), mods: 'coffee' },
+  { id: 'mocha', name: 'Mocha', price: 5.2, cat: 'coffee', icon: 'coffee', image: img('1509042239860-f550ce710b93'), mods: 'coffee' },
+  { id: 'chai', name: 'Chai Latte', price: 4.6, cat: 'tea', icon: 'cup-soda', image: img('1544787219-7f47ccb76574'), mods: 'tea' },
+  { id: 'earlgrey', name: 'Earl Grey', price: 3.4, cat: 'tea', icon: 'cup-soda', image: img('1544787219-7f47ccb76574'), mods: 'tea' },
+  { id: 'greentea', name: 'Green Tea', price: 3.4, cat: 'tea', icon: 'cup-soda', image: img('1544787219-7f47ccb76574'), mods: 'tea' },
+  { id: 'matcha', name: 'Matcha Latte', price: 5.4, cat: 'tea', icon: 'cup-soda', image: img('1536256263959-770b48d82b0a'), mods: 'tea' },
+  { id: 'avotoast', name: 'Avocado Toast', price: 9.5, cat: 'food', icon: 'sandwich', image: img('1541519227354-08fa5d50c44d'), mods: null },
+  { id: 'bowl', name: 'Breakfast Bowl', price: 12.0, cat: 'food', icon: 'salad', image: img('1512621776951-a57141f2eefd'), mods: null },
+  { id: 'wrap', name: 'Halloumi Wrap', price: 10.5, cat: 'food', icon: 'sandwich', image: img('1528735602780-2552fd46c7af'), mods: null },
+  { id: 'soup', name: 'Soup of the Day', price: 7.5, cat: 'food', icon: 'soup', image: img('1547592166-23ac45744acd'), mods: null },
+  { id: 'quiche', name: 'Quiche Lorraine', price: 8.5, cat: 'food', icon: 'egg', image: img('1525351484163-7529414344d8'), mods: null },
+  { id: 'croissant', name: 'Croissant', price: 3.8, cat: 'bakery', icon: 'croissant', image: img('1555507036-ab1f4038808a'), mods: null },
+  { id: 'almond', name: 'Almond Croissant', price: 4.6, cat: 'bakery', icon: 'croissant', image: img('1555507036-ab1f4038808a'), available: false, mods: null },
+  { id: 'banana', name: 'Banana Bread', price: 4.2, cat: 'bakery', icon: 'cake-slice', image: img('1509440159596-0249088772ff'), mods: null },
+  { id: 'muffin', name: 'Blueberry Muffin', price: 3.9, cat: 'bakery', icon: 'cookie', image: img('1607958996333-41aef7caefaa'), mods: null },
+  { id: 'cinnamon', name: 'Cinnamon Roll', price: 4.4, cat: 'bakery', icon: 'cookie', image: img('1558961363-fa8fdf82db35'), mods: null },
+  { id: 'coldbrew', name: 'Cold Brew', price: 5.0, cat: 'cold', icon: 'glass-water', image: img('1461023058943-07fcbe16d735'), mods: 'cold' },
+  { id: 'icedlatte', name: 'Iced Latte', price: 5.2, cat: 'cold', icon: 'glass-water', image: img('1517701550927-30cf4ba1dba5'), mods: 'cold' },
+  { id: 'oj', name: 'Fresh OJ', price: 5.5, cat: 'cold', icon: 'glass-water', image: img('1621263764928-df1444c5e859'), mods: null },
+  { id: 'sparkling', name: 'Sparkling Water', price: 3.0, cat: 'cold', icon: 'glass-water', image: img('1621263764928-df1444c5e859'), mods: null },
+  { id: 'lemonade', name: 'Lemonade', price: 4.5, cat: 'cold', icon: 'glass-water', image: img('1621263764928-df1444c5e859'), mods: 'cold' },
 ];
 
 export const CATS: Category[] = [

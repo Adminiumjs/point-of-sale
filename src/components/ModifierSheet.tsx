@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import { usePos } from '../state/store';
 import { EXTRAS, MILKS, SIZES } from '../data/demo';
-import { catTint, extraDelta, itemById, milkDelta, money, phBg, phIco, sizeDelta } from '../state/calc';
+import { extraDelta, itemById, milkDelta, money, sizeDelta } from '../state/calc';
 import { Icon } from './Icon';
+import { MenuThumb } from './MenuThumb';
 import { css } from './css';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
@@ -32,7 +33,6 @@ export function ModifierSheet() {
   if (!m) return null;
   const dark = s.theme === 'dark';
   const ms = m.mods;
-  const tint = catTint(m.cat);
   const hasSize = ms === 'coffee' || ms === 'tea' || ms === 'cold';
   const hasMilk = ms === 'coffee' || ms === 'tea';
   const hasExtras = ms === 'coffee' || ms === 'cold';
@@ -62,9 +62,7 @@ export function ModifierSheet() {
           <div style={css('width:44px;height:5px;border-radius:3px;background:var(--border-strong);')} />
         </div>
         <div style={css('flex-shrink:0;display:flex;align-items:center;gap:14px;padding:10px 24px 18px;border-bottom:1px solid var(--border);')}>
-          <div style={css('width:60px;height:60px;border-radius:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:' + phBg(tint, dark) + ';')}>
-            <Icon name={m.icon} size={30} color={phIco(tint, dark)} />
-          </div>
+          <MenuThumb item={m} dark={dark} radius="16px" box="width:60px;height:60px;flex-shrink:0;" />
           <div style={css('flex:1;min-width:0;')}>
             <div style={css('font-size:21px;font-weight:800;letter-spacing:-.02em;')}>{m.name}</div>
             <div style={css('font-size:14px;color:var(--fg-muted);' + MONO + 'margin-top:2px;')}>Base {money(m.price)}</div>

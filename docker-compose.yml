@@ -1,0 +1,68 @@
+# Martin's POS — full self-host stack ("the full implementation").
+#
+#   POS terminal (SPA)   →  http://localhost:8080
+#   Adminium back-office →  http://localhost:4600
+#
+# `docker compose up` brings up:
+#   • pos-db   — Postgres 16, initialised with db/schema.sql + db/seed.sql
+#                (the real 25-item menu with real product images).
+#   • adminium — an Adminium instance pre-pointed at the seeded `pos` database;
+#                it imports that connection and AUTO-GENERATES the admin
+#                dashboard. Finish the ~1-minute setup wizard the first time.
+#   • web      — the POS terminal SPA (this repo, built + served by Caddy).
+#
+# The same menu (same items / prices / images) shows in the POS terminal and in
+# the auto-generated Adminium back-office, because both read the one `pos` DB.
+
+services:
+  pos-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: adminium
+      POSTGRES_PASSWORD: adminium
+      POSTGRES_DB: pos
+    volumes:
+      # Postgres runs *.sql in /docker-entrypoint-initdb.d in name order on an
+      # empty data dir — 01 creates the schema, 02 seeds it.
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - pos-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adminium -d pos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  adminium:
+    image: ghcr.io/mosofi/adminium:latest
+    depends_on:
+      pos-db:
+        condition: service_healthy
+    environment:
+      # !!! PRODUCTION MUST OVERRIDE THIS. Set ADMINIUM_SECRET to a real 32-byte
+      # !!! hex string (e.g. `openssl rand -hex 32`) in your .env — see
+      # !!! .env.example. The default below is a throwaway for LOCAL DEV ONLY and
+      # !!! must never be shipped to a real deployment.
+      ADMINIUM_SECRET: ${ADMINIUM_SECRET:-devsecret-change-me-0000000000000000000000000000000000000000000000000000}
+      # Adminium imports this as its first source connection and auto-generates
+      # the admin dashboard from the seeded `pos` schema.
+      DATABASE_URL: postgres://adminium:adminium@pos-db:5432/pos
+      ADMINIUM_DATA_DIR: /data
+    volumes:
+      - adminium-data:/data
+    ports:
+      - "4600:4600"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  pos-db-data:
+  adminium-data:

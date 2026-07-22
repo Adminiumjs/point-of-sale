@@ -1,7 +1,8 @@
 import { usePos } from '../state/store';
 import { CATS, FAVOURITES, MENU } from '../data/demo';
-import { catTint, itemById, money, phBg, phIco } from '../state/calc';
+import { itemById, money } from '../state/calc';
 import { Icon } from '../components/Icon';
+import { MenuThumb } from '../components/MenuThumb';
 import { css } from '../components/css';
 import { TicketPane } from '../components/TicketPane';
 
@@ -37,7 +38,6 @@ export function Register() {
           {FAVOURITES.map((id) => {
             const m = itemById(id);
             if (!m) return null;
-            const tint = catTint(m.cat);
             return (
               <button
                 key={id}
@@ -45,9 +45,7 @@ export function Register() {
                 onClick={() => s.tapTile(id)}
                 style={css('display:flex;align-items:center;gap:10px;height:54px;padding:0 16px 0 8px;border-radius:15px;border:1px solid var(--border);background:var(--surface);cursor:pointer;flex-shrink:0;box-shadow:var(--shadow);')}
               >
-                <span style={css('width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:' + phBg(tint, dark) + ';')}>
-                  <Icon name={m.icon} size={19} color={phIco(tint, dark)} />
-                </span>
+                <MenuThumb item={m} dark={dark} radius="11px" box="width:38px;height:38px;flex-shrink:0;" />
                 <span>
                   <span style={css('display:block;font-size:14px;font-weight:700;line-height:1.15;')}>{m.name}</span>
                   <span style={css('display:block;font-size:12px;font-weight:700;' + MONO + 'color:var(--fg-muted);')}>{money(m.price)}</span>
@@ -101,7 +99,6 @@ export function Register() {
         <div className="pos-scroll" style={css('flex:1;overflow-y:auto;padding:18px;')}>
           <div style={css('display:grid;grid-template-columns:repeat(auto-fill, minmax(' + (dense ? '120px' : '166px') + ', 1fr));gap:' + (dense ? '10px' : '14px') + ';')}>
             {list.map((m) => {
-              const tint = catTint(m.cat);
               const sold = m.available === false || s.unavail.indexOf(m.id) >= 0;
               return (
                 <button
@@ -110,21 +107,28 @@ export function Register() {
                   onClick={() => s.tapTile(m.id)}
                   style={css('display:flex;flex-direction:column;text-align:left;padding:0;border:1px solid var(--border);border-radius:' + rad + ';background:var(--surface);cursor:' + (sold ? 'default' : 'pointer') + ';overflow:hidden;box-shadow:var(--shadow);opacity:' + (sold ? '.6' : '1') + ';')}
                 >
-                  <div style={css('height:' + imgH + ';position:relative;display:flex;align-items:center;justify-content:center;background:' + phBg(tint, dark) + ';')}>
-                    <Icon name={m.icon} size={dense ? 26 : 34} color={phIco(tint, dark)} />
-                    {sold && (
-                      <div style={css('position:absolute;inset:0;background:color-mix(in srgb, var(--surface) 62%, transparent);display:flex;align-items:center;justify-content:center;')}>
-                        <span style={css('font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);background:var(--surface);padding:5px 11px;border-radius:9px;box-shadow:var(--shadow);')}>
-                          Sold out
-                        </span>
-                      </div>
-                    )}
-                    {!!m.mods && (
-                      <span style={css('position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);')}>
-                        <Icon name="sliders-horizontal" size={13} color="var(--fg-muted)" />
-                      </span>
-                    )}
-                  </div>
+                  <MenuThumb
+                    item={m}
+                    dark={dark}
+                    radius="0"
+                    box={'height:' + imgH + ';'}
+                    overlay={
+                      <>
+                        {sold && (
+                          <div style={css('position:absolute;inset:0;background:color-mix(in srgb, var(--surface) 62%, transparent);display:flex;align-items:center;justify-content:center;')}>
+                            <span style={css('font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);background:var(--surface);padding:5px 11px;border-radius:9px;box-shadow:var(--shadow);')}>
+                              Sold out
+                            </span>
+                          </div>
+                        )}
+                        {!!m.mods && (
+                          <span style={css('position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);')}>
+                            <Icon name="sliders-horizontal" size={13} color="var(--fg-muted)" />
+                          </span>
+                        )}
+                      </>
+                    }
+                  />
                   <div style={css('padding:' + (dense ? '8px 10px 9px' : '11px 12px 12px') + ';text-align:left;')}>
                     <div style={css('font-size:' + (dense ? '13px' : '15px') + ';font-weight:700;letter-spacing:-.01em;line-height:1.2;margin-bottom:' + (dense ? '3px' : '5px') + ';')}>{m.name}</div>
                     <div style={css('font-size:' + (dense ? '13px' : '15px') + ';font-weight:700;' + MONO + 'color:var(--fg-muted);')}>{money(m.price)}</div>

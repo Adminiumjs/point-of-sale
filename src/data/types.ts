@@ -28,6 +28,7 @@ export interface MenuItem {
   price: number;
   cat: string;
   icon: string;
+  image: string;
   mods: ModScheme;
   available?: boolean;
 }

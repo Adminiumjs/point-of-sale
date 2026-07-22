@@ -39,20 +39,6 @@ export const tintOf = (id: string): string => {
   return m ? catTint(m.cat) : 'var(--accent)';
 };
 
-// Layered procedural tile background from a category tint (comp's phBg/phIco).
-export const phBg = (tint: string, dark: boolean): string => {
-  const hi = dark
-    ? 'radial-gradient(120% 82% at 50% 0%, rgba(255,255,255,.06), transparent 55%)'
-    : 'radial-gradient(120% 82% at 50% 0%, rgba(255,255,255,.6), transparent 58%)';
-  const ped = 'radial-gradient(52% 22% at 50% 82%, ' + hexToRgba(tint, dark ? 0.34 : 0.22) + ', transparent 72%)';
-  const b = dark
-    ? 'linear-gradient(158deg, ' + hexToRgba(tint, 0.34) + ', ' + hexToRgba(tint, 0.15) + ')'
-    : 'linear-gradient(158deg, ' + hexToRgba(tint, 0.2) + ', ' + hexToRgba(tint, 0.08) + ')';
-  return hi + ', ' + ped + ', ' + b;
-};
-
-export const phIco = (tint: string, dark: boolean): string => hexToRgba(tint, dark ? 0.7 : 0.58);
-
 // ---- Time labels ----
 export const mins = (ts: number): number => Math.max(0, Math.round((Date.now() - ts) / 60000));
 export const agoLabel = (ts: number): string => {

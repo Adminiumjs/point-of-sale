@@ -49,6 +49,34 @@ docker run -p 8080:80 martins-pos   # → http://localhost:8080
 
 ---
 
+## Full implementation (self-host)
+
+There are two ways to run Martin's POS:
+
+**1 · One-click frontend (Vercel / DigitalOcean).** The deploy buttons above ship the **POS terminal only**, running on the bundled demo catalogue — which now uses **real product photography**. No database, no backend: a static SPA you can hand to a café to try in a minute.
+
+**2 · Full self-host (Docker Compose).** [`docker-compose.yml`](docker-compose.yml) brings up the whole product — a seeded Postgres database, an auto-generated Adminium admin dashboard, and the POS terminal:
+
+```bash
+cp .env.example .env      # optional for local; REQUIRED beyond your laptop
+docker compose up
+```
+
+- **`pos-db`** — Postgres 16, initialised from [`db/schema.sql`](db/schema.sql) + [`db/seed.sql`](db/seed.sql): the same 25-item menu, prices, and **real images** the terminal ships.
+- **`adminium`** — an Adminium instance pre-pointed at the seeded `pos` database. It imports that connection and **auto-generates the back-office** (menu, tickets, payments, shifts) — see [`manifest.json`](manifest.json). Finish the ~1-minute setup wizard the first time.
+- **`web`** — the POS terminal SPA, built and served by Caddy.
+
+| Surface | URL |
+| --- | --- |
+| POS terminal | <http://localhost:8080> |
+| Adminium back-office | <http://localhost:4600> |
+
+The **same menu** appears in both, because both read the one `pos` database. Set a real `ADMINIUM_SECRET` (a 32-byte hex string — `openssl rand -hex 32`; see [`.env.example`](.env.example)) for any deployment beyond local dev.
+
+> **Live data:** the terminal renders through a thin `DataSource` seam ([`src/data/source.ts`](src/data/source.ts)). Once the **browser-safe publishable key** ships, an HTTP source will read the same rows through the Adminium **records API** — the UI never changes. Today the terminal uses the built-in demo catalogue (now with real images).
+
+---
+
 ## Local development
 
 Requires **Node 22**. Uses **npm** (a `package-lock.json` is committed).
