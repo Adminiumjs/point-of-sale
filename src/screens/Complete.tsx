@@ -41,7 +41,7 @@ export function Complete() {
           <div style={css('flex:1;min-width:280px;display:flex;justify-content:center;')}>
             <div style={css('width:300px;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 22px 24px;box-shadow:var(--shadow-lg);')}>
               <div style={css('text-align:center;margin-bottom:6px;')}>
-                <div style={css('font-size:20px;font-weight:800;letter-spacing:.04em;')}>MARTIN'S</div>
+                <div style={css('font-size:20px;font-weight:800;letter-spacing:.04em;')}>DAYBREAK COFFEE</div>
                 <div style={css('font-size:11px;color:var(--fg-muted);margin-top:3px;')}>128 Alder Lane · (415) 555-0148</div>
               </div>
               <div style={css('border-top:1px dashed var(--border-strong);margin:13px 0;')} />

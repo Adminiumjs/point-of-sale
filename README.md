@@ -1,8 +1,8 @@
-# Martin's POS
+# Point of Sale
 
 A complete, open-source **point-of-sale** example for cafes and restaurants — staff login, floor plan, order building with modifiers, split payments, a simulated card reader, receipts, and a kitchen display. Built with Vite + React + TypeScript, no backend required: it runs entirely on built-in demo data.
 
-**Live demo → [adminium.dev/demo/martins-pos](https://adminium.dev/demo/martins-pos)**
+**Live demo → [adminium.dev/demo/point-of-sale](https://adminium.dev/demo/point-of-sale)**
 
 Use the **Demo controls** dock at the top to switch screens, flip between **Restaurant** and **Retail** service modes, toggle **online/offline**, and change the **theme**.
 
@@ -26,15 +26,15 @@ Money math is exact: tax is **8.25%**, tip presets are **0 / 10 / 15 / 20%**, an
 
 ### Deploy to Vercel
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/MoSofi/martins-pos&project-name=martins-pos&repository-name=martins-pos)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Adminiumjs/point-of-sale&project-name=point-of-sale&repository-name=point-of-sale)
 
-`https://vercel.com/new/clone?repository-url=https://github.com/MoSofi/martins-pos&project-name=martins-pos&repository-name=martins-pos`
+`https://vercel.com/new/clone?repository-url=https://github.com/Adminiumjs/point-of-sale&project-name=point-of-sale&repository-name=point-of-sale`
 
 ### Deploy to DigitalOcean
 
-[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/MoSofi/martins-pos/tree/main)
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/Adminiumjs/point-of-sale/tree/main)
 
-`https://cloud.digitalocean.com/apps/new?repo=https://github.com/MoSofi/martins-pos/tree/main`
+`https://cloud.digitalocean.com/apps/new?repo=https://github.com/Adminiumjs/point-of-sale/tree/main`
 
 A DigitalOcean App Platform spec is included at [`.do/deploy.template.yaml`](.do/deploy.template.yaml).
 
@@ -43,15 +43,15 @@ A DigitalOcean App Platform spec is included at [`.do/deploy.template.yaml`](.do
 It's a static single-page app — `npm run build` produces a plain `dist/` you can serve from any static host (Netlify, Cloudflare Pages, S3 + CloudFront, GitHub Pages, nginx, …). A multi-stage **Docker** image is provided that builds the app and serves it with Caddy:
 
 ```bash
-docker build -t martins-pos .
-docker run -p 8080:80 martins-pos   # → http://localhost:8080
+docker build -t point-of-sale .
+docker run -p 8080:80 point-of-sale   # → http://localhost:8080
 ```
 
 ---
 
 ## Full implementation (self-host)
 
-There are two ways to run Martin's POS:
+There are two ways to run Point of Sale:
 
 **1 · One-click frontend (Vercel / DigitalOcean).** The deploy buttons above ship the **POS terminal only**, running on the bundled demo catalogue — which now uses **real product photography**. No database, no backend: a static SPA you can hand to a café to try in a minute.
 
@@ -85,7 +85,7 @@ Requires **Node 22**. Uses **npm** (a `package-lock.json` is committed).
 npm install
 npm run dev          # start the dev server
 npm run build        # production build (base "/")  → dist/
-npm run build:demo   # production build for the hosted demo (base "/demo/martins-pos/")
+npm run build:demo   # production build for the hosted demo (base "/demo/point-of-sale/")
 npm run preview      # preview a production build locally
 npm run typecheck    # type-check without emitting
 ```
@@ -109,4 +109,4 @@ This example runs on built-in demo data today (see [`src/data/demo.ts`](src/data
 
 ## License
 
-[AGPL-3.0](LICENSE) © Martin's POS contributors.
+[AGPL-3.0](LICENSE) © 2026 Point of Sale. A demo shipped with Adminium.

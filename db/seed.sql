@@ -1,4 +1,4 @@
--- Martin's POS — seed data.
+-- Point of Sale — seed data.
 --
 -- The 25 menu items below are byte-for-byte the same catalogue as MENU in
 -- src/data/demo.ts (name, price, category, image URL, availability), so the POS

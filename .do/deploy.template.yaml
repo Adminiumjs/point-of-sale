@@ -1,9 +1,9 @@
 spec:
-  name: martins-pos
+  name: point-of-sale
   static_sites:
     - name: web
       github:
-        repo: MoSofi/martins-pos
+        repo: Adminiumjs/point-of-sale
         branch: main
         deploy_on_push: true
       build_command: npm run build

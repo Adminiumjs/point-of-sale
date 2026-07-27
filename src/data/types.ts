@@ -1,4 +1,4 @@
-// Domain types for Martin's POS. Ported from the design comp's implied data
+// Domain types for Point of Sale. Ported from the design comp's implied data
 // model — see src/data/demo.ts for the seed data these describe.
 
 export type ServiceMode = 'restaurant' | 'retail';

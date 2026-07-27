@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "key": "pos",
-  "name": "Martin's POS",
+  "name": "Point of Sale",
   "version": "1.0.0",
   "publisher": {
     "id": "adminium",
@@ -233,7 +233,7 @@
     "receipt_header": {
       "type": "string",
       "label": { "key": "mft.pos.setting.receiptHeader", "fallback": "Receipt header" },
-      "default": "Martin's"
+      "default": "Daybreak Coffee"
     },
     "printer_target": {
       "type": "string",

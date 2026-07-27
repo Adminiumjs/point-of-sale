@@ -1,14 +1,14 @@
 {
-  "name": "martins-pos",
+  "name": "point-of-sale",
   "private": false,
   "version": "1.0.0",
-  "description": "Martin's POS — an open-source point-of-sale example app for cafes & restaurants, built with Vite + React + TypeScript.",
+  "description": "Point of Sale — an open-source point-of-sale example app for cafes & restaurants, built with Vite + React + TypeScript.",
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:demo": "vite build --base=/demo/martins-pos/",
+    "build:demo": "vite build --base=/demo/point-of-sale/",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },

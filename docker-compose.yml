@@ -1,4 +1,4 @@
-# Martin's POS — full self-host stack ("the full implementation").
+# Point of Sale — full self-host stack ("the full implementation").
 #
 #   POS terminal (SPA)   →  http://localhost:8080
 #   Adminium back-office →  http://localhost:4600

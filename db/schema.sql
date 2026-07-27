@@ -1,4 +1,4 @@
--- Martin's POS — PostgreSQL schema (marketplace §10.2 contract).
+-- Point of Sale — PostgreSQL schema (marketplace §10.2 contract).
 --
 -- This is the source of truth for the back-office database. Adminium imports a
 -- connection to a database with this shape and auto-generates the admin

@@ -31,9 +31,9 @@ export function Login() {
     <div className="pos-scroll" style={css('flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;padding:28px;')}>
       <div style={css('width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;')}>
         <div style={css('width:64px;height:64px;border-radius:19px;background:var(--accent);color:var(--accent-fg);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:32px;letter-spacing:-.03em;box-shadow:0 8px 24px color-mix(in srgb, var(--accent) 42%, transparent);margin-bottom:18px;')}>
-          M
+          D
         </div>
-        <div style={css('font-size:26px;font-weight:800;letter-spacing:-.03em;')}>Martin's</div>
+        <div style={css('font-size:26px;font-weight:800;letter-spacing:-.03em;')}>Daybreak Coffee</div>
         <div style={css('font-size:14.5px;color:var(--fg-muted);margin-top:4px;font-weight:500;')}>{greet} — tap in to start your shift</div>
 
         {s.loginStep === 'pin' && (

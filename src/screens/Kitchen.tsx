@@ -30,7 +30,7 @@ export function Kitchen() {
         </div>
         <div>
           <div style={css('font-size:18px;font-weight:800;letter-spacing:-.02em;')}>Kitchen display</div>
-          <div style={css('font-size:12.5px;color:var(--fg-muted);')}>Martin's · live order tickets</div>
+          <div style={css('font-size:12.5px;color:var(--fg-muted);')}>Daybreak Coffee · live order tickets</div>
         </div>
         <button className="pos-press" onClick={() => usePos.setState({ view: 'register' })} style={css('margin-left:auto;height:46px;padding:0 16px;border-radius:13px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;')}>
           <Icon name="arrow-left" size={17} />
