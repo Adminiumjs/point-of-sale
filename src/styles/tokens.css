@@ -34,12 +34,19 @@
   --fg-subtle: #5a5a65;
   --accent-fg: #ffffff;
 
-  /* Semantic tones */
+  /* Semantic tones.
+   *
+   * `--pos-fg` / `--danger-fg` are the text colour to use ON those fills. They
+   * exist because the fills invert between themes: --pos is a deep green in
+   * light and a bright mint in dark, so the white that reads correctly on one
+   * is close to unreadable on the other. Three call sites hard-coded #fff. */
   --pos: #0b7d59;
+  --pos-fg: #ffffff;
   --pos-soft: #e6f5ee;
   --warn: #a95800;
   --warn-soft: #fbf0e2;
   --danger: #cf273c;
+  --danger-fg: #ffffff;
   --danger-soft: #fdecec;
   --info: #1c59e0;
   --info-soft: #e7edfd;
@@ -82,10 +89,12 @@
     --fg-subtle: #a1a1ad;
     --accent-fg: #0f0f14;
     --pos: #3ecf8e;
+    --pos-fg: #08130e;
     --pos-soft: rgba(62, 207, 142, 0.14);
     --warn: #e0a458;
     --warn-soft: rgba(224, 164, 88, 0.14);
     --danger: #ff6b6b;
+    --danger-fg: #2b0d10;
     --danger-soft: rgba(255, 107, 107, 0.14);
     --info: #6ea8ff;
     --info-soft: rgba(110, 168, 255, 0.14);
@@ -111,10 +120,12 @@
   --fg-subtle: #a1a1ad;
   --accent-fg: #0f0f14;
   --pos: #3ecf8e;
+  --pos-fg: #08130e;
   --pos-soft: rgba(62, 207, 142, 0.14);
   --warn: #e0a458;
   --warn-soft: rgba(224, 164, 88, 0.14);
   --danger: #ff6b6b;
+  --danger-fg: #2b0d10;
   --danger-soft: rgba(255, 107, 107, 0.14);
   --info: #6ea8ff;
   --info-soft: rgba(110, 168, 255, 0.14);

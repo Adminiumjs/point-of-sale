@@ -58,7 +58,13 @@ export function Floor() {
             </div>
             <div style={css('display:grid;grid-template-columns:repeat(auto-fill, minmax(172px, 1fr));gap:14px;')}>
               {all.map((t) => (
-                <TableTile key={t.label} t={t} total={t.current ? regTotal(s) : t.total || 0} onClick={() => s.openTable(t)} />
+                <TableTile
+                  key={t.label}
+                  t={t}
+                  cur={t.label === s.ticket.table}
+                  total={t.label === s.ticket.table ? regTotal(s) : t.total || 0}
+                  onClick={() => s.openTable(t)}
+                />
               ))}
             </div>
           </div>
@@ -77,8 +83,14 @@ function Legend({ dot, label }: { dot: string; label: string }) {
   );
 }
 
-function TableTile({ t, total, onClick }: { t: TableInfo; total: number; onClick: () => void }) {
-  const cur = !!t.current;
+/*
+ * `cur` is passed in, derived from where the open ticket actually is. It used
+ * to read `t.current` — a flag baked into the TABLES seed and pinned to T12
+ * forever, so moving the ticket to another table left the floor badging T12
+ * "Current" (with the live running total on it) and made T12 impossible to
+ * seat again.
+ */
+function TableTile({ t, cur, total, onClick }: { t: TableInfo; cur: boolean; total: number; onClick: () => void }) {
   const occ = t.status === 'occupied' || t.status === 'attention';
   const bStatus = cur ? 'current' : t.status;
   const tileBase = 'display:flex;flex-direction:column;text-align:left;padding:15px 15px 16px;border-radius:17px;cursor:pointer;min-height:118px;';

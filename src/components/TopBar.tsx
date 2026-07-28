@@ -1,5 +1,5 @@
 import { usePos, curStaffOf } from '../state/store';
-import { SHIFT_START } from '../data/demo';
+import { BRAND_INITIAL, SHIFT_START } from '../data/demo';
 import { dur, tableName } from '../state/calc';
 import { Icon } from './Icon';
 import { css } from './css';
@@ -33,7 +33,7 @@ export function TopBar() {
         style={css('display:flex;align-items:center;gap:12px;min-width:0;flex-shrink:1;background:none;border:none;cursor:pointer;padding:8px 10px 8px 6px;border-radius:14px;')}
       >
         <div style={css('width:42px;height:42px;border-radius:13px;background:var(--accent);color:var(--accent-fg);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;letter-spacing:-.03em;box-shadow:0 3px 10px color-mix(in srgb, var(--accent) 40%, transparent);flex-shrink:0;')}>
-          M
+          {BRAND_INITIAL}
         </div>
         <div style={css('text-align:left;min-width:0;')}>
           <div style={css('font-size:18px;font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap;')}>{title}</div>

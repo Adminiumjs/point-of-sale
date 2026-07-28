@@ -14,7 +14,7 @@ export function VoidModal() {
   const can = s.voidText.trim().toUpperCase() === 'VOID';
 
   return (
-    <div onClick={s.closeVoid} style={css('position:absolute;inset:0;z-index:220;background:rgba(10,10,15,.55);display:flex;align-items:center;justify-content:center;padding:26px;animation:pos-scrim .18s ease;')}>
+    <div onClick={s.closeVoid} style={css('position:absolute;inset:0;z-index:220;background:var(--scrim);display:flex;align-items:center;justify-content:center;padding:26px;animation:pos-scrim .18s ease;')}>
       <div onClick={(e) => e.stopPropagation()} style={css('width:100%;max-width:430px;background:var(--surface);border-radius:22px;padding:26px;box-shadow:0 24px 60px rgba(10,10,20,.32);animation:pos-pop .22s cubic-bezier(.2,.8,.2,1);')}>
         <div style={css('display:flex;align-items:center;gap:12px;margin-bottom:14px;')}>
           <div style={css('width:46px;height:46px;border-radius:13px;background:var(--danger-soft);color:var(--danger);display:flex;align-items:center;justify-content:center;')}>
@@ -39,7 +39,7 @@ export function VoidModal() {
           <button
             className="pos-press"
             onClick={s.confirmVoid}
-            style={css('flex:1;height:58px;border-radius:14px;border:none;background:' + (can ? 'var(--danger)' : 'var(--surface-3)') + ';color:' + (can ? '#fff' : 'var(--fg-subtle)') + ';font-size:16px;font-weight:800;cursor:' + (can ? 'pointer' : 'not-allowed') + ';display:flex;align-items:center;justify-content:center;gap:8px;')}
+            style={css('flex:1;height:58px;border-radius:14px;border:none;background:' + (can ? 'var(--danger)' : 'var(--surface-3)') + ';color:' + (can ? 'var(--danger-fg)' : 'var(--fg-subtle)') + ';font-size:16px;font-weight:800;cursor:' + (can ? 'pointer' : 'not-allowed') + ';display:flex;align-items:center;justify-content:center;gap:8px;')}
           >
             <Icon name="trash-2" size={18} />
             Void item

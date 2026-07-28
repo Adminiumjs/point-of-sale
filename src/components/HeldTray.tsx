@@ -1,6 +1,5 @@
 import { usePos } from '../state/store';
-import { TAX } from '../data/demo';
-import { dur, itemById, itemsSub, money, tableName } from '../state/calc';
+import { dur, itemById, linesTotal, money, tableName } from '../state/calc';
 import { Icon } from './Icon';
 import { css } from './css';
 
@@ -12,8 +11,8 @@ export function HeldTray() {
 
   return (
     <>
-      <div onClick={s.closeHeld} style={css('position:absolute;inset:0;z-index:210;background:rgba(10,10,15,.5);animation:pos-scrim .2s ease;')} />
-      <div style={css('position:absolute;top:0;right:0;bottom:0;z-index:211;width:min(440px,88%);background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;box-shadow:-12px 0 40px rgba(10,10,20,.2);animation:pos-slidein .28s cubic-bezier(.2,.8,.2,1);')}>
+      <div onClick={s.closeHeld} style={css('position:absolute;inset:0;z-index:210;background:var(--scrim);animation:pos-scrim .2s ease;')} />
+      <div className="pos-drawer">
         <div style={css('flex-shrink:0;display:flex;align-items:center;gap:12px;padding:20px 22px;border-bottom:1px solid var(--border);')}>
           <div style={css('font-size:19px;font-weight:800;letter-spacing:-.02em;')}>Held tickets</div>
           <span style={css('font-size:13px;font-weight:800;' + MONO + 'padding:3px 10px;border-radius:20px;background:var(--surface-3);color:var(--fg-muted);')}>{s.held.length}</span>
@@ -42,7 +41,7 @@ export function HeldTray() {
                 </div>
                 <div style={css('font-size:13px;color:var(--fg-muted);margin-top:8px;')}>{names.join(', ')}</div>
                 <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:14px;')}>
-                  <span style={css('font-size:22px;font-weight:800;' + MONO)}>{money(itemsSub(h.items) * (1 + TAX))}</span>
+                  <span style={css('font-size:22px;font-weight:800;' + MONO)}>{money(linesTotal(h.items))}</span>
                   <button className="pos-press" onClick={() => s.resumeHeld(h.number)} style={css('height:48px;padding:0 22px;border-radius:13px;border:none;background:var(--accent);color:var(--accent-fg);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;')}>
                     <Icon name="corner-down-left" size={17} />
                     Resume

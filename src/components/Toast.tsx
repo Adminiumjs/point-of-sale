@@ -7,9 +7,9 @@ export function Toast() {
   if (!toast) return null;
   const tone =
     toast.kind === 'error'
-      ? 'background:var(--danger);color:#fff;'
+      ? 'background:var(--danger);color:var(--danger-fg);'
       : toast.kind === 'success'
-        ? 'background:var(--pos);color:#fff;'
+        ? 'background:var(--pos);color:var(--pos-fg);'
         : 'background:var(--fg);color:var(--bg);';
   const icon = toast.kind === 'error' ? 'x-circle' : toast.kind === 'success' ? 'check-circle-2' : 'bell';
   return (

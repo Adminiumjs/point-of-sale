@@ -1,4 +1,5 @@
 import { usePos } from '../state/store';
+import { BRAND } from '../data/demo';
 import type { KdsStatus } from '../data/types';
 import { mins, tableName } from '../state/calc';
 import { Icon } from '../components/Icon';
@@ -30,7 +31,7 @@ export function Kitchen() {
         </div>
         <div>
           <div style={css('font-size:18px;font-weight:800;letter-spacing:-.02em;')}>Kitchen display</div>
-          <div style={css('font-size:12.5px;color:var(--fg-muted);')}>Daybreak Coffee · live order tickets</div>
+          <div style={css('font-size:12.5px;color:var(--fg-muted);')}>{BRAND} · live order tickets</div>
         </div>
         <button className="pos-press" onClick={() => usePos.setState({ view: 'register' })} style={css('margin-left:auto;height:46px;padding:0 16px;border-radius:13px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;')}>
           <Icon name="arrow-left" size={17} />
@@ -83,7 +84,7 @@ export function Kitchen() {
                           </div>
                         ))}
                       </div>
-                      <button className="pos-press" onClick={() => s.bumpK(o.number)} style={css('width:100%;height:48px;border-radius:12px;border:none;background:' + (c.k === 'ready' ? 'var(--pos)' : 'var(--accent)') + ';color:#fff;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
+                      <button className="pos-press" onClick={() => s.bumpK(o.number)} style={css('width:100%;height:48px;border-radius:12px;border:none;background:' + (c.k === 'ready' ? 'var(--pos)' : 'var(--accent)') + ';color:' + (c.k === 'ready' ? 'var(--pos-fg)' : 'var(--accent-fg)') + ';font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
                         <Icon name={c.k === 'ready' ? 'check' : 'arrow-right'} size={17} />
                         {c.k === 'ready' ? 'Clear ticket' : 'Bump'}
                       </button>

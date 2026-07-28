@@ -72,9 +72,22 @@ a:hover {
     transform: translateY(0);
   }
 }
+/*
+ * The held-tray drawer slides in from the inline-end edge. `102%` is hard-coded
+ * to the *right*, so under `dir="rtl"` — where the drawer is anchored to the
+ * left — it flew in from off-screen on the far side and crossed the whole
+ * terminal. The offset is a custom property so the direction flips with the
+ * document.
+ */
+:root {
+  --pos-slide-from: 102%;
+}
+[dir='rtl'] {
+  --pos-slide-from: -102%;
+}
 @keyframes pos-slidein {
   from {
-    transform: translateX(102%);
+    transform: translateX(var(--pos-slide-from));
   }
   to {
     transform: translateX(0);
@@ -127,13 +140,18 @@ a:hover {
     transform: translateX(-6px);
   }
 }
+/*
+ * Derived from --accent, not the literal indigo it happens to be in light mode.
+ * `rgba(79, 70, 229, …)` is #4f46e5 — the LIGHT accent — so the glow around the
+ * card reader stayed indigo in dark mode, where --accent is #99a5ff.
+ */
 @keyframes pos-cardglow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+    box-shadow: 0 0 0 0 transparent;
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(79, 70, 229, 0.14);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 14%, transparent);
   }
 }
 
@@ -197,9 +215,32 @@ a:hover {
   width: 404px;
   flex-shrink: 0;
   background: var(--surface);
-  border-left: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+}
+
+/*
+ * The held-tray drawer. Was an inline style on the element with `right: 0`, a
+ * physical `border-left` and a leftward shadow, all of which pointed the wrong
+ * way under RTL. Logical properties handle the edge and the border; the shadow
+ * offset needs a custom property because `box-shadow` has no logical form.
+ */
+.pos-drawer {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: 211;
+  width: min(440px, 88%);
+  background: var(--surface);
+  border-inline-start: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--pos-drawer-shadow-x, -12px) 0 40px rgb(10 10 20 / 20%);
+  animation: pos-slidein 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+[dir='rtl'] .pos-drawer {
+  --pos-drawer-shadow-x: 12px;
 }
 .pay-body {
   flex: 1;
@@ -211,7 +252,7 @@ a:hover {
   min-width: 328px;
   overflow-y: auto;
   padding: 24px;
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
 }
 .kds-board {
   flex: 1;
@@ -246,8 +287,8 @@ a:hover {
   .ticket-aside {
     width: 100%;
     flex: 0 0 47%;
-    border-left: none;
-    border-top: 1px solid var(--border);
+    border-inline-start: none;
+    border-block-start: 1px solid var(--border);
   }
   .pay-body {
     flex-direction: column;
@@ -257,8 +298,8 @@ a:hover {
     min-width: 0;
     flex: 0 0 auto;
     max-height: 46%;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
+    border-inline-end: none;
+    border-block-end: 1px solid var(--border);
     padding: 18px;
   }
   .kds-board {

@@ -56,7 +56,7 @@ export function ModifierSheet() {
 
   return (
     <>
-      <div onClick={s.closeSheet} style={css('position:absolute;inset:0;z-index:200;background:rgba(10,10,15,.5);animation:pos-scrim .2s ease;')} />
+      <div onClick={s.closeSheet} style={css('position:absolute;inset:0;z-index:200;background:var(--scrim);animation:pos-scrim .2s ease;')} />
       <div style={css('position:absolute;left:0;right:0;bottom:0;z-index:201;background:var(--surface);border-radius:26px 26px 0 0;max-height:90%;display:flex;flex-direction:column;box-shadow:0 -12px 40px rgba(10,10,20,.24);animation:pos-sheet .3s cubic-bezier(.2,.8,.2,1);')}>
         <div style={css('display:flex;justify-content:center;padding:12px 0 4px;')}>
           <div style={css('width:44px;height:5px;border-radius:3px;background:var(--border-strong);')} />
@@ -110,9 +110,8 @@ export function ModifierSheet() {
             <>
               <SectionLabel>Milk</SectionLabel>
               <div style={css('display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;')}>
-                {MILKS.map((v) => {
+                {MILKS.map(({ v, delta: d }) => {
                   const on = s.sheetMilk === v;
-                  const d = milkDelta(v);
                   return (
                     <button key={v} className="pos-press" onClick={() => s.setSheetMilk(v)} style={css(chipBox(on))}>
                       {v}

@@ -1,6 +1,6 @@
 import { usePos } from '../state/store';
-import { TABLES, TAX } from '../data/demo';
-import { itemsSub, money, tableName } from '../state/calc';
+import { TABLES } from '../data/demo';
+import { linesTotal, money, tableName } from '../state/calc';
 import { Icon } from './Icon';
 import { css } from './css';
 
@@ -12,7 +12,7 @@ export function MoveModal() {
   const openTables = TABLES.filter((t) => t.status === 'open' && t.label !== s.ticket.table);
 
   return (
-    <div onClick={s.closeMove} style={css('position:absolute;inset:0;z-index:214;background:rgba(10,10,15,.5);display:flex;align-items:center;justify-content:center;padding:26px;animation:pos-scrim .18s ease;')}>
+    <div onClick={s.closeMove} style={css('position:absolute;inset:0;z-index:214;background:var(--scrim);display:flex;align-items:center;justify-content:center;padding:26px;animation:pos-scrim .18s ease;')}>
       <div onClick={(e) => e.stopPropagation()} className="pos-scroll" style={css('width:100%;max-width:560px;max-height:86%;overflow-y:auto;background:var(--surface);border-radius:22px;padding:24px;box-shadow:0 24px 60px rgba(10,10,20,.32);animation:pos-pop .22s cubic-bezier(.2,.8,.2,1);')}>
         <div style={css('display:flex;align-items:center;gap:12px;margin-bottom:6px;')}>
           <div style={css('font-size:20px;font-weight:800;letter-spacing:-.02em;')}>Move or merge</div>
@@ -43,7 +43,7 @@ export function MoveModal() {
                     <span style={css('display:block;font-size:15px;font-weight:700;')}>{tableName(h.table, s.mode)} · #{h.number}</span>
                     <span style={css('display:block;font-size:12.5px;color:var(--fg-muted);')}>{h.items.reduce((a, x) => a + x.qty, 0)} items</span>
                   </span>
-                  <span style={css(MONO + 'font-weight:800;')}>{money(itemsSub(h.items) * (1 + TAX))}</span>
+                  <span style={css(MONO + 'font-weight:800;')}>{money(linesTotal(h.items))}</span>
                 </button>
               ))}
             </div>
