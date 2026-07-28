@@ -1,4 +1,5 @@
 import { usePos, curStaffOf } from '../state/store';
+import { BRAND } from '../data/demo';
 import { demoSale, money, tableName } from '../state/calc';
 import { Icon } from '../components/Icon';
 import { css } from '../components/css';
@@ -41,7 +42,7 @@ export function Complete() {
           <div style={css('flex:1;min-width:280px;display:flex;justify-content:center;')}>
             <div style={css('width:300px;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 22px 24px;box-shadow:var(--shadow-lg);')}>
               <div style={css('text-align:center;margin-bottom:6px;')}>
-                <div style={css('font-size:20px;font-weight:800;letter-spacing:.04em;')}>DAYBREAK COFFEE</div>
+                <div style={css('font-size:20px;font-weight:800;letter-spacing:.04em;')}>{BRAND.toUpperCase()}</div>
                 <div style={css('font-size:11px;color:var(--fg-muted);margin-top:3px;')}>128 Alder Lane · (415) 555-0148</div>
               </div>
               <div style={css('border-top:1px dashed var(--border-strong);margin:13px 0;')} />
@@ -63,6 +64,12 @@ export function Complete() {
               })}
               <div style={css('border-top:1px dashed var(--border-strong);margin:13px 0;')} />
               <ReceiptRow label="Subtotal" value={money(sale.subtotal)} />
+              {/* A discounted sale used to print Subtotal / Tax / Tip over a
+                  Total that had the discount removed — a receipt whose own rows
+                  contradicted its total. */}
+              {sale.discount > 0 && (
+                <ReceiptRow label={sale.discountLabel || 'Discount'} value={'−' + money(sale.discount)} />
+              )}
               <ReceiptRow label="Tax" value={money(sale.tax)} />
               <ReceiptRow label="Tip" value={money(sale.tip)} />
               <div style={css('display:flex;justify-content:space-between;font-size:15px;font-weight:800;padding-top:9px;border-top:1px solid var(--border);margin-top:4px;')}>

@@ -79,7 +79,6 @@ export interface TableInfo {
   since?: number;
   server?: string;
   note?: string;
-  current?: boolean;
 }
 
 export type DiscountKind = 'pct' | 'amt' | 'comp';
@@ -113,6 +112,11 @@ export interface Sale {
   table: string | null;
   items: SaleLine[];
   subtotal: number;
+  /** Amount taken off the goods. Recorded so the receipt's rows add up to its
+   * total — without it a comped or discounted sale printed a subtotal, a tax
+   * and a tip that summed to more than the total beneath them. */
+  discount: number;
+  discountLabel: string;
   tax: number;
   tip: number;
   total: number;

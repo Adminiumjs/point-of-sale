@@ -2,7 +2,7 @@
 // rounding is deliberately identical to the comp — do not "simplify" the
 // epsilons (0.005) or the last-payer remainder logic; the ledger depends on it.
 
-import { CATS, MENU, TAX, TIP_PRESETS, seedTicket } from '../data/demo';
+import { CATS, MENU, MILKS, TAX, TIP_PRESETS, seedTicket } from '../data/demo';
 import type { Discount, LineItem, MenuItem, Sale, Size, Split, ServiceMode } from '../data/types';
 
 /** The slice of store state the pricing helpers read. */
@@ -60,7 +60,7 @@ export const tableName = (l: string | null | undefined, mode: ServiceMode): stri
 
 // ---- Pricing deltas ----
 export const sizeDelta = (s?: Size | null): number => (s === 'S' ? -0.4 : s === 'L' ? 0.7 : 0);
-export const milkDelta = (m?: string | null): number => (m === 'Oat' || m === 'Almond' || m === 'Soy' ? 0.6 : 0);
+export const milkDelta = (m?: string | null): number => MILKS.find((x) => x.v === m)?.delta ?? 0;
 export const extraDelta = (x: string): number => (x === 'Extra shot' ? 0.9 : x === 'Decaf' ? 0 : 0.5);
 
 export const lineUnit = (li: LineItem): number => {
@@ -77,25 +77,74 @@ export const lineUnit = (li: LineItem): number => {
 export const lineTotal = (li: LineItem): number => lineUnit(li) * li.qty;
 export const itemsSub = (items: LineItem[]): number => (items || []).reduce((s, li) => s + lineTotal(li), 0);
 
+/**
+ * Round to whole cents.
+ *
+ * `money()` formats to two decimals, which rounds each figure independently at
+ * render time. If the underlying numbers keep their binary-float residue, the
+ * rows a customer reads can fail to add up to the total printed beneath them —
+ * the receipt says 12.34 + 1.02 and then prints 13.37. Every figure that leaves
+ * this module for a screen is rounded here first, and the totals are derived
+ * from the rounded parts so the arithmetic on screen is the arithmetic done.
+ */
+export const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
+
 // ---- Ticket-level money (depends on discount / tip / splits) ----
-export const subtotal = (s: PricingState): number => itemsSub(s.ticket.items);
-export const discountAmt = (s: PricingState): number => {
+
+// Raw (unrounded) goods figures. Internal: they are the base the percentages
+// are assessed on, not something a screen ever prints.
+const rawSub = (s: PricingState): number => itemsSub(s.ticket.items);
+const rawDisc = (s: PricingState): number => {
   const d = s.discount;
   if (!d) return 0;
-  const sub = subtotal(s);
-  if (d.kind === 'pct') return (sub * d.value) / 100;
-  if (d.kind === 'comp') return sub;
-  return Math.min(d.value || 0, sub);
+  const sub = rawSub(s);
+  const off = d.kind === 'pct' ? (sub * d.value) / 100 : d.kind === 'comp' ? sub : d.value || 0;
+  /*
+   * Clamp every kind, not just the fixed amount.
+   *
+   * `amt` was already capped at the subtotal but `pct` was not, so a rate over
+   * 100 produced a discount larger than the goods: `netSub` still floored the
+   * bill at zero, but the register printed "Subtotal $33.90 / −$50.85" above a
+   * Total of $0.00 — rows that contradicted their own total. No preset in
+   * DiscountModal exceeds 100%, but this is a template people fork.
+   */
+  return Math.min(Math.max(0, off), sub);
 };
-export const netSub = (s: PricingState): number => Math.max(0, subtotal(s) - discountAmt(s));
-export const tax = (s: PricingState): number => netSub(s) * TAX;
-export const regTotal = (s: PricingState): number => netSub(s) + tax(s);
+
+export const subtotal = (s: PricingState): number => round2(rawSub(s));
+export const discountAmt = (s: PricingState): number => round2(rawDisc(s));
+/** The taxable/tippable base — deliberately unrounded. */
+export const netSub = (s: PricingState): number => Math.max(0, rawSub(s) - rawDisc(s));
+export const tax = (s: PricingState): number => round2(netSub(s) * TAX);
+
+/** What tip preset `i` is worth on this ticket — the one authority for the
+ * amount, so the preset buttons cannot quote a figure the total disagrees with. */
+export const tipFor = (s: PricingState, i: number): number => round2(netSub(s) * (TIP_PRESETS[i] || 0));
+
 export const tipAmt = (s: PricingState): number => {
-  if (s.tip === 'c') return parseFloat(s.tipCustom || '0') || 0;
-  const p = TIP_PRESETS[s.tip] || 0;
-  return netSub(s) * p;
+  if (s.tip === 'c') return Math.max(0, round2(parseFloat(s.tipCustom || '0') || 0));
+  return tipFor(s, s.tip);
 };
-export const total = (s: PricingState): number => netSub(s) + tax(s) + tipAmt(s);
+
+/** Goods + tax, no tip — what the register shows before the payment screen. */
+export const regTotal = (s: PricingState): number =>
+  round2(Math.max(0, subtotal(s) - discountAmt(s)) + tax(s));
+
+/**
+ * Goods + tax for a bare list of lines — the held tray and the move sheet,
+ * which show parked tickets and have no discount of their own.
+ *
+ * Both of those screens used to write `itemsSub(items) * (1 + TAX)` inline: a
+ * third and fourth spelling of the grand-total rule, unrounded, so a parked
+ * ticket could be quoted a cent away from what the register charged for it.
+ * Equal to `regTotal` for an undiscounted ticket, which is asserted in the
+ * tests.
+ */
+export const linesTotal = (items: LineItem[]): number => {
+  const raw = itemsSub(items);
+  return round2(round2(raw) + round2(raw * TAX));
+};
+export const total = (s: PricingState): number => round2(regTotal(s) + tipAmt(s));
 export const paid = (s: PricingState): number => s.splits.reduce((a, x) => a + x.amount, 0);
 export const remaining = (s: PricingState): number => Math.max(0, total(s) - paid(s));
 
@@ -129,37 +178,28 @@ export const modLabel = (li: LineItem): string => {
 // (e.g. opening it straight from the dock). Mirrors the comp's demoSale().
 export const demoSale = (ticket: { items: LineItem[]; number: number; table: string | null }, staffName: string): Sale => {
   const items = ticket.items.length ? ticket.items : seedTicket().items;
-  const sub = itemsSub(items);
-  const t = sub * TAX;
-  const tip = sub * 0.15;
+  const sub = round2(itemsSub(items));
+  const t = round2(itemsSub(items) * TAX);
+  // The 15% preset, not a second hand-written 0.15.
+  const tip = round2(itemsSub(items) * TIP_PRESETS[2]);
+  const grand = round2(sub + t + tip);
   return {
     number: ticket.number || 1042,
     table: ticket.table || 'T12',
     items: items.map((x) => ({ name: itemById(x.id)?.name ?? x.id, qty: x.qty, unit: lineUnit(x), line: lineTotal(x), mod: modLabel(x), note: x.note })),
     subtotal: sub,
+    discount: 0,
+    discountLabel: '',
     tax: t,
     tip,
-    total: sub + t + tip,
-    splits: [{ method: 'card', amount: sub + t + tip }],
+    total: grand,
+    splits: [{ method: 'card', amount: grand }],
     change: 0,
     at: Date.now(),
     staff: staffName,
   };
 };
 
-export const keyOf = (
-  id: string,
-  size?: Size | null,
-  milk?: string | null,
-  extras?: string[],
-  note?: string,
-  seat?: number,
-): string =>
-  [
-    id,
-    size || '',
-    milk || '',
-    (extras || []).slice().sort().join('+'),
-    note ? 'n:' + note : '',
-    seat ? 's' + seat : '',
-  ].join('|');
+// Re-exported so existing callers keep importing it from here; the definition
+// lives in data/key.ts so the seed data can derive its keys from the same code.
+export { keyOf } from '../data/key';

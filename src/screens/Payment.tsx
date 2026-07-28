@@ -1,7 +1,19 @@
 import { usePos } from '../state/store';
-import { TIP_PRESETS } from '../data/demo';
+import { TAX_LABEL } from '../data/demo';
 import type { PayMethod } from '../data/types';
-import { chargeTarget, money, paid, remaining, subtotal, tableName, tax, tipAmt, total } from '../state/calc';
+import {
+  chargeTarget,
+  discountAmt,
+  money,
+  paid,
+  remaining,
+  subtotal,
+  tableName,
+  tax,
+  tipAmt,
+  tipFor,
+  total,
+} from '../state/calc';
 import { Icon } from '../components/Icon';
 import { css } from '../components/css';
 
@@ -151,7 +163,10 @@ export function Payment() {
             {[{ l: 'No tip', i: 0 }, { l: '10%', i: 1 }, { l: '15%', i: 2 }, { l: '20%', i: 3 }].map((x) => (
               <button key={x.i} className="pos-press" onClick={() => s.setTip(x.i)} style={css(tipStyle(s.tip === x.i))}>
                 <span style={css('font-size:15px;font-weight:800;')}>{x.l}</span>
-                {x.i > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-top:2px;')}>{money(subtotal(s) * TIP_PRESETS[x.i])}</span>}
+                {/* `tipFor`, not `subtotal * TIP_PRESETS[i]` — the tip is
+                    assessed on the discounted goods, so the second spelling
+                    quoted a figure the Tip row below contradicted. */}
+                {x.i > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-top:2px;')}>{money(tipFor(s, x.i))}</span>}
               </button>
             ))}
           </div>
@@ -207,7 +222,11 @@ export function Payment() {
 
           <div style={css('margin-top:24px;padding-top:16px;border-top:1px dashed var(--border-strong);display:flex;flex-direction:column;gap:9px;')}>
             <Row label="Subtotal" value={money(subtotal(s))} />
-            <Row label="Tax · 8.25%" value={money(tax(s))} />
+            {/* Without this row the summary printed Subtotal + Tax + Tip beside
+                a Total that had the discount taken off — four numbers that did
+                not add up. The register pane has always shown it. */}
+            {!!s.discount && <Row label={s.discount.label} value={'−' + money(discountAmt(s))} />}
+            <Row label={TAX_LABEL} value={money(tax(s))} />
             <Row label="Tip" value={money(tipAmt(s))} />
             <div style={css('display:flex;justify-content:space-between;font-size:16px;padding-top:9px;border-top:1px solid var(--border);')}>
               <span style={css('font-weight:800;')}>Total</span>

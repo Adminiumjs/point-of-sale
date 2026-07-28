@@ -1,5 +1,6 @@
 import { usePos } from '../state/store';
 import type { LineItem } from '../data/types';
+import { TAX_LABEL } from '../data/demo';
 import { discountAmt, itemById, lineTotal, modLabel, money, regTotal, subtotal, tableName, tax } from '../state/calc';
 import { Icon } from './Icon';
 import { css } from './css';
@@ -168,7 +169,7 @@ export function TicketPane() {
           </div>
         )}
         <div style={css('display:flex;justify-content:space-between;font-size:14px;margin-bottom:12px;')}>
-          <span style={css('color:var(--fg-muted);font-weight:600;')}>Tax · 8.25%</span>
+          <span style={css('color:var(--fg-muted);font-weight:600;')}>{TAX_LABEL}</span>
           <span style={css(MONO + 'font-weight:600;')}>{money(tax(s))}</span>
         </div>
         <div style={css('display:flex;align-items:baseline;justify-content:space-between;padding-top:12px;border-top:1px dashed var(--border-strong);')}>
