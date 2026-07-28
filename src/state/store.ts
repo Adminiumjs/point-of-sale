@@ -26,6 +26,7 @@ import type {
 } from '../data/types';
 import {
   chargeTarget,
+  discountAmt,
   itemById,
   keyOf,
   lineTotal,
@@ -188,6 +189,18 @@ let ttTimer: ReturnType<typeof setTimeout>;
 
 const curStaffOf = (s: PosState): Staff => STAFF.find((x) => x.id === s.staffSel) || STAFF[0];
 
+/*
+ * What to reset after a partial payment lands.
+ *
+ * A "charge part of the balance" amount is consumed once it is paid. Clearing
+ * `splitCustom` while leaving `splitMode: 'amount'` in place left the badge
+ * reading "By amount · $0.00" over a charge button already targeting the whole
+ * remaining balance — the screen and the button disagreed about what the next
+ * tap would take. An even split is mid-sequence and stays as it is.
+ */
+const clearAmountSplit = (s: PosState): { splitMode?: SplitMode; splitCustom: string } =>
+  s.splitMode === 'amount' ? { splitMode: 'none', splitCustom: '' } : { splitCustom: '' };
+
 const initialTheme = (): Theme => {
   try {
     const t = localStorage.getItem('pos-theme');
@@ -253,6 +266,8 @@ export const usePos = create<PosState>()((set, get) => {
         note: x.note,
       })),
       subtotal: subtotal(s),
+      discount: discountAmt(s),
+      discountLabel: s.discount ? s.discount.label : '',
       tax: tax(s),
       tip: tipAmt(s),
       total: total(s),
@@ -265,12 +280,28 @@ export const usePos = create<PosState>()((set, get) => {
     set({
       lastSale: sale,
       view: 'complete',
+      /*
+       * Retire the ticket that was just paid for.
+       *
+       * It used to stay on the register, fully intact: navigating back from the
+       * receipt and pressing Pay charged the same items a second time and wrote
+       * a second Sale under the same order number.
+       */
+      ticket: freshTicket(),
       splits: [],
       cash: '',
       card: 'waiting',
       splitMode: 'none',
       splitN: 0,
       splitCustom: '',
+      tipCustom: '',
+      /*
+       * The discount belongs to the ticket that just closed, not to the
+       * register. Without this a comp stayed applied after the sale finalised,
+       * so every subsequent customer was rung up free until someone noticed and
+       * cleared it by hand.
+       */
+      discount: null,
     });
   };
 
@@ -402,7 +433,16 @@ export const usePos = create<PosState>()((set, get) => {
       if (m.mods) get().openSheet(id);
       else addLine(id, {});
     },
-    inc: (k) => setItems(get().ticket.items.map((x) => (x.key === k ? { ...x, qty: x.qty + 1 } : x))),
+    // Bump exactly one line, mirroring `dec`. A `.map` over the key would bump
+    // every line that shares it, which is only safe while the no-duplicate-keys
+    // invariant holds — enforce it here rather than assume it.
+    inc: (k) => {
+      const items = get().ticket.items.slice();
+      const i = items.findIndex((x) => x.key === k);
+      if (i < 0) return;
+      items[i] = { ...items[i], qty: items[i].qty + 1 };
+      setItems(items);
+    },
     dec: (k) => {
       const items = get().ticket.items.slice();
       const i = items.findIndex((x) => x.key === k);
@@ -428,12 +468,43 @@ export const usePos = create<PosState>()((set, get) => {
       setItems(get().ticket.items.filter((x) => x.key !== k));
     },
     send: () => {
-      const un = get().ticket.items.filter((x) => !x.sent).length;
-      if (!un) {
+      const s = get();
+      const unsent = s.ticket.items.filter((x) => !x.sent);
+      if (!unsent.length) {
         get().showToast('Nothing new to send');
         return;
       }
-      setItems(get().ticket.items.map((x) => ({ ...x, sent: true })));
+      /*
+       * Actually put the order on the kitchen board.
+       *
+       * This used to flip `sent` on the lines and toast "Order sent to
+       * kitchen" without touching `kds` at all — the board was seeded once at
+       * startup and never grew. The seeded board happens to contain #1042, the
+       * seeded ticket, so it looked wired up right until you rang in something
+       * of your own and it never arrived.
+       */
+      const rows = unsent.map((x) => ({
+        n: itemById(x.id)?.name ?? x.id,
+        q: x.qty,
+        m: [modLabel(x), x.note].filter(Boolean).join(' · '),
+      }));
+      const kds = s.kds.slice();
+      const i = kds.findIndex((o) => o.number === s.ticket.number);
+      if (i >= 0) {
+        // A later course joins the ticket's existing card rather than opening a
+        // second one, and puts it back in the queue — the new items still have
+        // to be made even if the first course is already up.
+        kds[i] = { ...kds[i], items: kds[i].items.concat(rows), at: Date.now(), status: 'new' };
+      } else {
+        kds.push({
+          number: s.ticket.number,
+          table: s.ticket.table || 'New',
+          at: Date.now(),
+          status: 'new',
+          items: rows,
+        });
+      }
+      set({ ticket: { ...s.ticket, items: s.ticket.items.map((x) => ({ ...x, sent: true })) }, kds });
       get().showToast('Order sent to kitchen');
     },
     hold: () => {
@@ -446,7 +517,10 @@ export const usePos = create<PosState>()((set, get) => {
       const held = s.held.concat([
         { number: t.number, table: t.table || 'New', at: Date.now(), seats: t.seats, items: t.items },
       ]);
-      set({ held, ticket: freshTicket() });
+      // A discount applies to the ticket on the register; it must not follow the
+      // register onto the next one. (Held tickets do not carry a discount, so a
+      // held-then-resumed ticket has to have it re-applied.)
+      set({ held, ticket: freshTicket(), discount: null });
       get().showToast('Ticket held');
     },
     resumeHeld: (n) => {
@@ -465,6 +539,7 @@ export const usePos = create<PosState>()((set, get) => {
         ticket: { number: h.number, table: h.table, seats: h.seats || 2, openedAt: h.at, items: h.items },
         heldOpen: false,
         view: 'register',
+        discount: null,
       });
       get().showToast('Resumed ' + tableName(h.table, s.mode));
     },
@@ -537,7 +612,21 @@ export const usePos = create<PosState>()((set, get) => {
         set({ moveOpen: false });
         return;
       }
-      const items = s.ticket.items.concat(h.items.map((x) => ({ ...x })));
+      /*
+       * Merge by line key rather than concatenating.
+       *
+       * A plain concat produced two rows carrying the same `key` whenever both
+       * tickets held the same configuration — two "Croissant" rows, a duplicate
+       * React key, and `inc()` bumping both at once so the quantity climbed in
+       * twos. Identical lines are one line with the quantities added, which is
+       * the same rule `addLine` already applies at the register.
+       */
+      const items = s.ticket.items.map((x) => ({ ...x }));
+      h.items.forEach((x) => {
+        const i = items.findIndex((y) => y.key === x.key);
+        if (i >= 0) items[i] = { ...items[i], qty: items[i].qty + x.qty, sent: items[i].sent && x.sent };
+        else items.push({ ...x });
+      });
       set({
         ticket: { ...s.ticket, items },
         held: s.held.filter((x) => x.number !== n),
@@ -558,10 +647,25 @@ export const usePos = create<PosState>()((set, get) => {
 
     // ---- payment ----
     openPay: () => {
-      if (!get().ticket.items.length) {
+      const cur = get();
+      if (!cur.ticket.items.length) {
         get().showToast('Add items first');
         return;
       }
+      /*
+       * Resume a part-paid ticket instead of restarting it.
+       *
+       * This used to reset `splits: []` unconditionally, so stepping back to
+       * the ticket to add a forgotten item and pressing Pay again silently
+       * discarded every payment already collected — the balance jumped back to
+       * full and the guest who had already handed over cash was asked again.
+       */
+      if (cur.splits.length) {
+        set({ view: 'payment' });
+        return;
+      }
+      clearTimeout(ctTimer);
+      clearTimeout(ct2Timer);
       set({
         view: 'payment',
         payMethod: 'card',
@@ -606,21 +710,25 @@ export const usePos = create<PosState>()((set, get) => {
       else applyQr();
     },
     newOrder: () => {
-      const s = get();
+      /*
+       * Number the ticket with `freshTicket()`, do not re-derive it.
+       *
+       * This branch used to compute `lastSale.number + 1`, which ignores the
+       * held tray: ring up #1041 while #1042 is parked there and the next
+       * ticket is also #1042 — two open tickets, one number, and the held tray
+       * and the register disagree about which is which.
+       */
+      // `finalize` already retired the paid ticket and minted this one, so this
+      // only has to return to the register and reset the payment scratch state.
       set({
-        ticket: {
-          number: (s.lastSale ? s.lastSale.number : 1042) + 1,
-          table: s.mode === 'retail' ? '—' : null,
-          seats: 2,
-          openedAt: Date.now(),
-          items: [],
-        },
         view: 'register',
         lastSale: null,
         splits: [],
         cash: '',
         card: 'waiting',
         tip: 2,
+        tipCustom: '',
+        discount: null,
       });
     },
     printReceipt: () => get().showToast('Sent to receipt printer'),
@@ -641,7 +749,8 @@ export const usePos = create<PosState>()((set, get) => {
     // ---- floor ----
     openTable: (t) => {
       const s = get();
-      if (t.current) {
+      // Where the open ticket actually is, not the seed's pinned `current` flag.
+      if (t.label === s.ticket.table) {
         set({ view: 'register' });
         return;
       }
@@ -654,6 +763,7 @@ export const usePos = create<PosState>()((set, get) => {
         ticket: { number: nextNum(), table: t.label, seats: t.seats, openedAt: Date.now(), items: [] },
         held,
         view: 'register',
+        discount: null,
       });
       get().showToast((t.status === 'open' ? 'Seated ' : 'Opened ') + tableName(t.label, s.mode));
     },
@@ -686,15 +796,29 @@ export const usePos = create<PosState>()((set, get) => {
     if (rem - applied <= 0.005) {
       finalize(splits, change);
     } else {
-      set({ splits, cash: '', splitCustom: '' });
+      set({ splits, cash: '', ...clearAmountSplit(s) });
       get().showToast('Paid ' + money(applied) + ' · ' + money(rem - applied) + ' left', 'success');
     }
   }
+  /*
+   * The card reader is faked with two chained timers. They outlive the screen:
+   * start a charge, tap away to the register or the kitchen while it "reads",
+   * and 2.3s later the sale finalised anyway and yanked the view to the
+   * receipt. Each callback re-checks that the payment screen is still up and
+   * still on Card before it does anything — a guard rather than a cancel,
+   * because several screens navigate with `usePos.setState` directly and would
+   * bypass any action-level cleanup.
+   */
+  function stillPaying(): boolean {
+    return get().view === 'payment' && get().payMethod === 'card';
+  }
+
   function runCard() {
     if (get().card === 'reading' || get().card === 'approved') return;
     set({ card: 'reading' });
     clearTimeout(ctTimer);
     ctTimer = setTimeout(() => {
+      if (!stillPaying()) return;
       if (get().declined) {
         set({ card: 'declined' });
         get().showToast('Card declined — try another card', 'error');
@@ -702,13 +826,14 @@ export const usePos = create<PosState>()((set, get) => {
         set({ card: 'approved' });
         clearTimeout(ct2Timer);
         ct2Timer = setTimeout(() => {
+          if (!stillPaying()) return;
           const st = get();
           const rem = remaining(st);
           const amt = Math.min(chargeTarget(st), rem);
           const splits = st.splits.concat([{ method: 'card', amount: amt } as Split]);
           if (rem - amt <= 0.005) finalize(splits, 0);
           else {
-            set({ splits, card: 'waiting', splitCustom: '' });
+            set({ splits, card: 'waiting', ...clearAmountSplit(st) });
             get().showToast('Card share paid · ' + money(rem - amt) + ' left', 'success');
           }
         }, 850);
@@ -722,7 +847,7 @@ export const usePos = create<PosState>()((set, get) => {
     const splits = st.splits.concat([{ method: 'qr', amount: amt } as Split]);
     if (rem - amt <= 0.005) finalize(splits, 0);
     else {
-      set({ splits, splitCustom: '' });
+      set({ splits, ...clearAmountSplit(st) });
       get().showToast('Wallet share paid · ' + money(rem - amt) + ' left', 'success');
     }
   }
