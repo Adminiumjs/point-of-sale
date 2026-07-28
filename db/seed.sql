@@ -59,7 +59,7 @@ INSERT INTO restaurant_tables (label, seats, zone) VALUES
 -- Tickets (15 — mixed statuses and dates). total = sum of the ticket_items.
 -- ---------------------------------------------------------------------------
 INSERT INTO tickets (number, table_id, status, total, opened_at, closed_at) VALUES
-  ('1028', 11,   'paid', 19.10, now() - interval '3 days',              now() - interval '3 days' + interval '42 minutes'), -- 1
+  ('1028', 11,   'paid', 20.30, now() - interval '3 days',              now() - interval '3 days' + interval '42 minutes'), -- 1
   ('1029', 1,    'paid',  8.00, now() - interval '2 days' - interval '3 hours', now() - interval '2 days' - interval '2 hours'), -- 2
   ('1030', 4,    'paid', 22.00, now() - interval '2 days',              now() - interval '2 days' + interval '55 minutes'), -- 3
   ('1031', 6,    'paid', 31.50, now() - interval '1 day' - interval '5 hours', now() - interval '1 day' - interval '4 hours'),  -- 4
@@ -73,14 +73,14 @@ INSERT INTO tickets (number, table_id, status, total, opened_at, closed_at) VALU
   ('1039', 8,    'open',  8.00, now() - interval '6 minutes',               NULL),                                         -- 12
   ('1040', 4,    'sent', 22.00, now() - interval '4 minutes',               NULL),                                         -- 13
   ('1041', 9,    'open', 13.80, now() - interval '2 minutes',               NULL),                                         -- 14
-  ('1042', 11,   'open', 31.10, now() - interval '19 minutes',              NULL);                                         -- 15
+  ('1042', 11,   'open', 33.90, now() - interval '19 minutes',              NULL);                                         -- 15
 
 -- ---------------------------------------------------------------------------
 -- Ticket line items (menu_item_id references the catalogue above)
 -- ---------------------------------------------------------------------------
 INSERT INTO ticket_items (ticket_id, menu_item_id, qty, unit_price, notes) VALUES
-  -- #1028 (paid, T12) — 19.10
-  (1, 4, 2, 4.80, 'Oat milk'),
+  -- #1028 (paid, T12) — 20.30
+  (1, 4, 2, 5.40, 'Oat milk'),
   (1, 11, 1, 9.50, 'No chili flakes'),
   -- #1029 (paid, W1) — 8.00
   (2, 3, 1, 4.20, NULL),
@@ -127,17 +127,17 @@ INSERT INTO ticket_items (ticket_id, menu_item_id, qty, unit_price, notes) VALUE
   (14, 22, 1, 5.20, NULL),
   (14, 22, 1, 5.20, 'Decaf'),
   (14, 8, 1, 3.40, NULL),
-  -- #1042 (open, T12) — 31.10
-  (15, 2, 2, 4.50, 'Oat milk'),
-  (15, 11, 1, 9.50, NULL),
-  (15, 21, 1, 5.00, 'Extra shot'),
+  -- #1042 (open, T12) — 33.90 (matches src/data/demo.ts seedTicket)
+  (15, 2, 2, 5.10, 'Oat milk'),
+  (15, 11, 1, 9.50, 'No chili flakes'),
+  (15, 21, 1, 6.60, 'Large · Extra shot'),
   (15, 16, 2, 3.80, NULL);
 
 -- ---------------------------------------------------------------------------
 -- Payments (paid tickets only; #1037 is a card + cash split)
 -- ---------------------------------------------------------------------------
 INSERT INTO payments (ticket_id, method, amount, paid_at) VALUES
-  (1,  'card', 19.10, now() - interval '3 days' + interval '42 minutes'),
+  (1,  'card', 20.30, now() - interval '3 days' + interval '42 minutes'),
   (2,  'cash',  8.00, now() - interval '2 days' - interval '2 hours'),
   (3,  'card', 22.00, now() - interval '2 days' + interval '55 minutes'),
   (4,  'card', 31.50, now() - interval '1 day' - interval '4 hours'),

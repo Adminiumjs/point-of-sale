@@ -3,11 +3,13 @@
 // Adminium instance; today it's a fixed in-memory catalogue so the example runs
 // with zero backend.
 
+import { keyOf } from './key';
 import type {
   Category,
   Extra,
   HeldTicket,
   KdsOrder,
+  LineItem,
   MenuItem,
   Size,
   Staff,
@@ -16,7 +18,17 @@ import type {
   Ticket,
 } from './types';
 
+/** The demo venue. Authored once: the top bar's brand mark still read "M", a
+ * leftover from before the rebrand, while every other surface said this. */
+export const BRAND = 'Daybreak Coffee';
+export const BRAND_INITIAL = BRAND.charAt(0);
+
 export const TAX = 0.0825;
+
+/** The tax row's label. Derived from TAX so the two cannot drift — it used to
+ * be the literal "Tax · 8.25%", written out in both the register pane and the
+ * payment summary. */
+export const TAX_LABEL = 'Tax · ' + String(Math.round(TAX * 10000) / 100) + '%';
 
 /** Tip presets as fractions, indexed 0..3 → No tip / 10% / 15% / 20%. */
 export const TIP_PRESETS = [0, 0.1, 0.15, 0.2];
@@ -95,7 +107,7 @@ export const TABLES: TableInfo[] = [
   { zone: 'Bar', label: 'B4', seats: 1, status: 'attention', total: 9.2, since: 31, server: 'JD', note: 'Sent 31m ago' },
   { zone: 'Main', label: 'T10', seats: 4, status: 'open' },
   { zone: 'Main', label: 'T11', seats: 2, status: 'open' },
-  { zone: 'Main', label: 'T12', seats: 4, status: 'occupied', since: 19, server: 'SR', current: true },
+  { zone: 'Main', label: 'T12', seats: 4, status: 'occupied', since: 19, server: 'SR' },
   { zone: 'Main', label: 'T14', seats: 6, status: 'occupied', total: 61.0, since: 44, server: 'AC' },
   { zone: 'Main', label: 'T15', seats: 2, status: 'open' },
   { zone: 'Main', label: 'T16', seats: 4, status: 'open' },
@@ -109,7 +121,20 @@ export const SIZES: { v: Size; label: string }[] = [
   { v: 'L', label: 'L' },
 ];
 
-export const MILKS = ['Whole', 'Oat', 'Almond', 'Skim'];
+/**
+ * Milk choices and what each one adds to the cup.
+ *
+ * The set used to be authored twice and the two copies already disagreed: this
+ * list offered Skim, while the pricing rule in calc.ts charged 60¢ for
+ * "Oat | Almond | Soy" — a milk nobody could order. One list now, so the sheet
+ * cannot show an option the till does not know how to price.
+ */
+export const MILKS: { v: string; delta: number }[] = [
+  { v: 'Whole', delta: 0 },
+  { v: 'Oat', delta: 0.6 },
+  { v: 'Almond', delta: 0.6 },
+  { v: 'Skim', delta: 0 },
+];
 
 export const EXTRAS: Extra[] = [
   { v: 'Extra shot', icon: 'plus-circle' },
@@ -124,6 +149,24 @@ export const FAVOURITES = ['flatwhite', 'coldbrew', 'croissant', 'avotoast', 'es
 
 // ---- Seed factories (timestamps computed at call time) ----
 
+/**
+ * Build a seeded line, deriving its `key` with the real key function.
+ *
+ * The keys used to be hand-written string literals and five of the eight had
+ * drifted a field (`'croissant||||'` where `keyOf` produces `'croissant|||||'`),
+ * so tapping Croissant on the register never merged into the seeded Croissant
+ * line — it appended a second one at qty 1.
+ */
+function line(
+  id: string,
+  qty: number,
+  sent: boolean,
+  mods: { size?: Size | null; milk?: string | null; extras?: string[]; note?: string; seat?: number } = {},
+): LineItem {
+  const { size = null, milk = null, extras = [], note = '', seat = 0 } = mods;
+  return { key: keyOf(id, size, milk, extras, note, seat), id, qty, size, milk, extras, note, seat, sent };
+}
+
 export function seedTicket(): Ticket {
   return {
     number: 1042,
@@ -131,10 +174,10 @@ export function seedTicket(): Ticket {
     seats: 4,
     openedAt: Date.now() - 19 * 60000,
     items: [
-      { key: 'flatwhite|M|Oat||s1', id: 'flatwhite', qty: 2, size: 'M', milk: 'Oat', extras: [], note: '', seat: 1, sent: true },
-      { key: 'avotoast||||n:No chili flakes|s1', id: 'avotoast', qty: 1, size: null, milk: null, extras: [], note: 'No chili flakes', seat: 1, sent: true },
-      { key: 'coldbrew|L||Extra shot|s2', id: 'coldbrew', qty: 1, size: 'L', milk: null, extras: ['Extra shot'], note: '', seat: 2, sent: false },
-      { key: 'croissant||||', id: 'croissant', qty: 2, size: null, milk: null, extras: [], note: '', seat: 0, sent: false },
+      line('flatwhite', 2, true, { size: 'M', milk: 'Oat', seat: 1 }),
+      line('avotoast', 1, true, { note: 'No chili flakes', seat: 1 }),
+      line('coldbrew', 1, false, { size: 'L', extras: ['Extra shot'], seat: 2 }),
+      line('croissant', 2, false),
     ],
   };
 }
@@ -147,9 +190,9 @@ export function seedHeld(): HeldTicket[] {
       at: Date.now() - 6 * 60000,
       seats: 2,
       items: [
-        { key: 'latte|M|Oat||', id: 'latte', qty: 1, size: 'M', milk: 'Oat', extras: [], note: '', seat: 0, sent: true },
-        { key: 'bowl||||', id: 'bowl', qty: 1, size: null, milk: null, extras: [], note: '', seat: 0, sent: true },
-        { key: 'oj||||', id: 'oj', qty: 2, size: null, milk: null, extras: [], note: '', seat: 0, sent: true },
+        line('latte', 1, true, { size: 'M', milk: 'Oat' }),
+        line('bowl', 1, true),
+        line('oj', 2, true),
       ],
     },
     {
@@ -157,10 +200,7 @@ export function seedHeld(): HeldTicket[] {
       table: 'B2',
       at: Date.now() - 2 * 60000,
       seats: 1,
-      items: [
-        { key: 'cappuccino|M|||', id: 'cappuccino', qty: 1, size: 'M', milk: null, extras: [], note: '', seat: 0, sent: false },
-        { key: 'croissant||||', id: 'croissant', qty: 1, size: null, milk: null, extras: [], note: '', seat: 0, sent: false },
-      ],
+      items: [line('cappuccino', 1, false, { size: 'M' }), line('croissant', 1, false)],
     },
   ];
 }
