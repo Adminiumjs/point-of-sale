@@ -55,15 +55,15 @@ There are two ways to run Point of Sale:
 
 **1 · One-click frontend (Vercel / DigitalOcean).** The deploy buttons above ship the **POS terminal only**, running on the bundled demo catalogue — which now uses **real product photography**. No database, no backend: a static SPA you can hand to a café to try in a minute.
 
-**2 · Full self-host (Docker Compose).** [`docker-compose.yml`](docker-compose.yml) brings up the whole product — a seeded Postgres database, an auto-generated Adminium admin dashboard, and the POS terminal:
+**2 · Full self-host (Docker Compose).** [`docker-compose.yml`](docker-compose.yml) brings up the whole product — a Postgres database seeded by default, an auto-generated Adminium admin dashboard, and the POS terminal:
 
 ```bash
 cp .env.example .env      # optional for local; REQUIRED beyond your laptop
 docker compose up
 ```
 
-- **`pos-db`** — Postgres 16, initialised from [`db/schema.sql`](db/schema.sql) + [`db/seed.sql`](db/seed.sql): the same 25-item menu, prices, and **real images** the terminal ships.
-- **`adminium`** — an Adminium instance pre-pointed at the seeded `pos` database. It imports that connection and **auto-generates the back-office** (menu, tickets, payments, shifts) — see [`manifest.json`](manifest.json). Finish the ~1-minute setup wizard the first time.
+- **`pos-db`** — Postgres 16. On first boot it applies [`db/schema.sql`](db/schema.sql), then [`db/demo-toolkit.sql`](db/demo-toolkit.sql), then runs [`db/init-demo.sh`](db/init-demo.sh), which loads [`db/seed.sql`](db/seed.sql) unless you set `DEMO_DATA=0`: the same 25-item menu, prices, and **real images** the terminal ships.
+- **`adminium`** — an Adminium instance pre-pointed at the `pos` database. It imports that connection and **auto-generates the back-office** (menu, tickets, payments, shifts) — see [`manifest.json`](manifest.json). Finish the ~1-minute setup wizard the first time.
 - **`web`** — the POS terminal SPA, built and served by Caddy.
 
 | Surface | URL |
@@ -74,6 +74,21 @@ docker compose up
 The **same menu** appears in both, because both read the one `pos` database. Set a real `ADMINIUM_SECRET` (a 32-byte hex string — `openssl rand -hex 32`; see [`.env.example`](.env.example)) for any deployment beyond local dev.
 
 > **Live data:** the terminal renders through a thin `DataSource` seam ([`src/data/source.ts`](src/data/source.ts)). Once the **browser-safe publishable key** ships, an HTTP source will read the same rows through the Adminium **records API** — the UI never changes. Today the terminal uses the built-in demo catalogue (now with real images).
+
+### Demo data
+
+The stack is seeded out of the box: `docker compose up` gives you the schema plus the demo menu, tickets, payments, and shifts, so the back-office has something to show on the first run. For an empty database with exactly the same schema, set `DEMO_DATA=0` in `.env` before the first `docker compose up`. Neither choice is permanent — four scripts drive it from then on:
+
+| Command | What it does |
+| --- | --- |
+| `npm run demo:status` | What is loaded right now, table by table |
+| `npm run demo:import` | Load `db/seed.sql` |
+| `npm run demo:wipe` | Remove the demo rows — the schema and your own rows stay |
+| `npm run demo:reset` | Wipe, then import a fresh copy |
+
+A wipe deletes only the rows the seed added. They are tracked in a separate `adminium_demo` Postgres schema, so nothing is written to your tables. A demo row your own data still depends on is kept rather than force-deleted, and reported under `kept`. `ON DELETE CASCADE` still applies, though: deleting a demo ticket takes its `ticket_items` with it, including a line you added to that ticket yourself, and those rows are counted separately under `cascaded`. `wipe` and `reset` ask before they run — `npm run demo:wipe -- --yes` skips the question, which is what you need in a script, where there is nobody to ask. Set `DATABASE_URL` to point any of them at a Postgres elsewhere (Neon, Supabase, RDS) instead of the `pos-db` container.
+
+The full reference, including how the tracking works, is in [db/README.md](db/README.md).
 
 ---
 
