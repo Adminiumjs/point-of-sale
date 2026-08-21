@@ -78,6 +78,7 @@ export interface TableInfo {
   total?: number;
   since?: number;
   server?: string;
+  /** A message key (see TABLES in data/demo.ts), not literal copy. */
   note?: string;
 }
 
@@ -136,7 +137,10 @@ export interface KdsItem {
 
 export interface KdsOrder {
   number: number;
-  table: string;
+  /** `null` for a ticket opened without a table — rendered through
+   * `tableName()`, which turns it into the localized "New ticket" /
+   * "Walk-in sale" label rather than a hardcoded English word. */
+  table: string | null;
   at: number;
   status: KdsStatus;
   items: KdsItem[];

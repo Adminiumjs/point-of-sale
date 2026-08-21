@@ -1,6 +1,7 @@
 import { usePos, curStaffOf } from '../state/store';
 import { BRAND } from '../data/demo';
 import { demoSale, money, tableName } from '../state/calc';
+import { useI18n } from '../i18n';
 import { Icon } from '../components/Icon';
 import { css } from '../components/css';
 
@@ -8,18 +9,20 @@ const MONO = "font-family:'JetBrains Mono',monospace;";
 
 export function Complete() {
   const s = usePos();
+  const { t, date } = useI18n();
   const sale = s.lastSale || demoSale(s.ticket, curStaffOf(s).name);
 
   const methods: string[] = [];
   sale.splits.forEach((sp) => {
-    const l = sp.method === 'cash' ? 'Cash' : sp.method === 'card' ? 'Card' : 'QR';
+    const l = t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : 'payment.qr');
     if (methods.indexOf(l) < 0) methods.push(l);
   });
-  const d = new Date(sale.at);
-  const hh = d.getHours();
-  const mm = ('0' + d.getMinutes()).slice(-2);
-  const h12 = ((hh + 11) % 12) + 1;
-  const ap = hh < 12 ? 'AM' : 'PM';
+  /*
+   * The clock is `Intl`'s, not a hand-rolled 12-hour split: whether this reads
+   * "2:41 PM" or "14:41" is the locale's call, and half the world does not
+   * write AM/PM at all.
+   */
+  const at = date(sale.at, { hour: 'numeric', minute: '2-digit' });
 
   return (
     <div className="pos-scroll" style={css('flex:1;min-height:0;overflow-y:auto;background:var(--bg);')}>
@@ -28,12 +31,14 @@ export function Complete() {
           <div style={css('width:76px;height:76px;border-radius:22px;margin:0 auto;background:var(--pos-soft);color:var(--pos);display:flex;align-items:center;justify-content:center;')}>
             <Icon name="check-circle-2" size={42} />
           </div>
-          <div style={css('font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:16px;')}>Payment complete</div>
-          <div style={css('font-size:14.5px;color:var(--fg-muted);margin-top:5px;')}>Order #{sale.number} · {tableName(sale.table, s.mode)} · {h12}:{mm} {ap}</div>
+          <div style={css('font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:16px;')}>{t('complete.title')}</div>
+          <div style={css('font-size:14.5px;color:var(--fg-muted);margin-top:5px;')}>
+            {t('complete.subtitle', { n: sale.number, table: tableName(sale.table, s.mode), time: at })}
+          </div>
           <div style={css('font-size:48px;font-weight:800;' + MONO + 'letter-spacing:-.02em;margin-top:14px;')}>{money(sale.total)}</div>
           {sale.change > 0 && (
             <div style={css('display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:9px 17px;border-radius:20px;background:var(--pos-soft);color:var(--pos);font-size:15px;font-weight:800;')}>
-              Change due<span style={css(MONO)}>{money(sale.change)}</span>
+              {t('payment.changeDue')}<span style={css(MONO)}>{money(sale.change)}</span>
             </div>
           )}
         </div>
@@ -47,7 +52,7 @@ export function Complete() {
               </div>
               <div style={css('border-top:1px dashed var(--border-strong);margin:13px 0;')} />
               <div style={css('display:flex;justify-content:space-between;font-size:11.5px;color:var(--fg-muted);margin-bottom:11px;' + MONO)}>
-                <span>Order #{sale.number}</span>
+                <span>{t('complete.orderNo', { n: sale.number })}</span>
                 <span>{tableName(sale.table, s.mode)}</span>
               </div>
               {sale.items.map((it, i) => {
@@ -63,56 +68,56 @@ export function Complete() {
                 );
               })}
               <div style={css('border-top:1px dashed var(--border-strong);margin:13px 0;')} />
-              <ReceiptRow label="Subtotal" value={money(sale.subtotal)} />
+              <ReceiptRow label={t('common.subtotal')} value={money(sale.subtotal)} />
               {/* A discounted sale used to print Subtotal / Tax / Tip over a
                   Total that had the discount removed — a receipt whose own rows
                   contradicted its total. */}
               {sale.discount > 0 && (
-                <ReceiptRow label={sale.discountLabel || 'Discount'} value={'−' + money(sale.discount)} />
+                <ReceiptRow label={sale.discountLabel || t('common.discount')} value={'−' + money(sale.discount)} />
               )}
-              <ReceiptRow label="Tax" value={money(sale.tax)} />
-              <ReceiptRow label="Tip" value={money(sale.tip)} />
+              <ReceiptRow label={t('common.tax')} value={money(sale.tax)} />
+              <ReceiptRow label={t('common.tip')} value={money(sale.tip)} />
               <div style={css('display:flex;justify-content:space-between;font-size:15px;font-weight:800;padding-top:9px;border-top:1px solid var(--border);margin-top:4px;')}>
-                <span>Total</span>
+                <span>{t('common.total')}</span>
                 <span style={css(MONO)}>{money(sale.total)}</span>
               </div>
               <div style={css('border-top:1px dashed var(--border-strong);margin:13px 0;')} />
               <div style={css('display:flex;justify-content:space-between;font-size:12px;')}>
-                <span style={css('color:var(--fg-muted);')}>Paid · {methods.join(' + ')}</span>
+                <span style={css('color:var(--fg-muted);')}>{t('complete.paidWith', { methods: methods.join(' + ') })}</span>
                 <span style={css(MONO)}>{money(sale.total)}</span>
               </div>
-              <div style={css('text-align:center;font-size:11px;color:var(--fg-muted);margin-top:18px;')}>Served by {sale.staff} · Thank you!</div>
+              <div style={css('text-align:center;font-size:11px;color:var(--fg-muted);margin-top:18px;')}>{t('complete.servedBy', { staff: sale.staff })}</div>
             </div>
           </div>
 
           <div style={css('flex:1;min-width:280px;display:flex;flex-direction:column;gap:11px;')}>
             <button className="pos-press" onClick={s.printReceipt} style={css('height:66px;border-radius:16px;border:none;background:var(--accent);color:var(--accent-fg);font-size:17px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:11px;')}>
               <Icon name="printer" size={21} />
-              Print receipt
+              {t('complete.printReceipt')}
             </button>
             <div style={css('display:flex;gap:11px;')}>
-              <button className="pos-press" onClick={() => s.sendReceipt('Email')} style={css('flex:1;height:62px;border-radius:15px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;')}>
+              <button className="pos-press" onClick={() => s.sendReceipt('email')} style={css('flex:1;height:62px;border-radius:15px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;')}>
                 <Icon name="mail" size={19} />
-                Email
+                {t('complete.email')}
               </button>
-              <button className="pos-press" onClick={() => s.sendReceipt('Text')} style={css('flex:1;height:62px;border-radius:15px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;')}>
+              <button className="pos-press" onClick={() => s.sendReceipt('text')} style={css('flex:1;height:62px;border-radius:15px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;')}>
                 <Icon name="message-square" size={19} />
-                Text
+                {t('complete.text')}
               </button>
             </div>
             <div style={css('display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);')}>
               <Icon name="at-sign" size={17} color="var(--fg-subtle)" />
-              <input placeholder="guest@email.com or phone number" style={css('flex:1;border:none;background:transparent;outline:none;font-size:14.5px;color:var(--fg);')} />
+              <input placeholder={t('complete.contactPlaceholder')} aria-label={t('complete.contactPlaceholder')} style={css('flex:1;border:none;background:transparent;outline:none;font-size:14.5px;color:var(--fg);')} />
             </div>
             <div style={css('height:1px;background:var(--border);margin:6px 0;')} />
             <button className="pos-press" onClick={s.newOrder} style={css('height:66px;border-radius:16px;border:1.5px solid var(--accent);background:var(--accent-soft);color:var(--accent);font-size:17px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:11px;')}>
               <Icon name="plus" size={21} />
-              New order
+              {t('complete.newOrder')}
             </button>
             {s.mode === 'restaurant' && (
               <button className="pos-press" onClick={() => usePos.setState({ view: 'floor' })} style={css('height:56px;border-radius:15px;border:none;background:transparent;color:var(--fg-muted);font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;')}>
                 <Icon name="grid-3x3" size={18} />
-                Back to floor
+                {t('complete.backToFloor')}
               </button>
             )}
           </div>

@@ -5,10 +5,13 @@ import './styles/tokens.css';
 import './styles/fonts.css';
 import './styles/app.css';
 
+import { I18nProvider } from './i18n';
 import { App } from './app/App';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <I18nProvider>
+      <App />
+    </I18nProvider>
   </StrictMode>,
 );

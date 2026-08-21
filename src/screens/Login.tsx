@@ -1,6 +1,7 @@
 import { usePos, curStaffOf } from '../state/store';
 import { BRAND, STAFF } from '../data/demo';
-import { money } from '../state/calc';
+import { money, roleName } from '../state/calc';
+import { useT } from '../i18n';
 import { Icon } from './../components/Icon';
 import { css } from './../components/css';
 
@@ -23,8 +24,9 @@ const PAD: { t?: string; kind: 'num' | 'clear' | 'back' }[] = [
 
 export function Login() {
   const s = usePos();
+  const t = useT();
   const hr = new Date().getHours();
-  const greet = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+  const greet = t(hr < 12 ? 'login.goodMorning' : hr < 18 ? 'login.goodAfternoon' : 'login.goodEvening');
   const firstName = curStaffOf(s).name.split(' ')[0];
 
   return (
@@ -34,7 +36,9 @@ export function Login() {
           D
         </div>
         <div style={css('font-size:26px;font-weight:800;letter-spacing:-.03em;')}>{BRAND}</div>
-        <div style={css('font-size:14.5px;color:var(--fg-muted);margin-top:4px;font-weight:500;')}>{greet} — tap in to start your shift</div>
+        <div style={css('font-size:14.5px;color:var(--fg-muted);margin-top:4px;font-weight:500;')}>
+          {t('login.tapIn', { greet })}
+        </div>
 
         {s.loginStep === 'pin' && (
           <div style={css('width:100%;margin-top:26px;')}>
@@ -57,9 +61,9 @@ export function Login() {
                     <div style={css('width:38px;height:38px;border-radius:11px;flex-shrink:0;background:' + (on ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (on ? 'var(--accent-fg)' : 'var(--fg-muted)') + ';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;')}>
                       {st.initials}
                     </div>
-                    <div style={css('text-align:left;line-height:1.2;')}>
+                    <div style={css('text-align:start;line-height:1.2;')}>
                       <div style={css('font-size:13.5px;font-weight:700;')}>{st.name}</div>
-                      <div style={css('font-size:11px;color:var(--fg-muted);')}>{st.role}</div>
+                      <div style={css('font-size:11px;color:var(--fg-muted);')}>{roleName(st.role)}</div>
                     </div>
                   </button>
                 );
@@ -80,7 +84,7 @@ export function Login() {
               ))}
             </div>
             <div style={css('text-align:center;font-size:12.5px;margin:12px 0 16px;min-height:16px;color:' + (s.pinErr ? 'var(--danger)' : 'var(--fg-muted)') + ';font-weight:600;')}>
-              {s.pinErr ? 'Incorrect PIN — try again' : "Enter " + firstName + "'s 4-digit PIN"}
+              {s.pinErr ? t('login.pinError') : t('login.pinPrompt', { name: firstName })}
             </div>
 
             <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:10px;')}>
@@ -89,12 +93,13 @@ export function Login() {
                   key={i}
                   className="pos-press"
                   onClick={() => s.pinPush(k.kind === 'num' ? (k.t as string) : k.kind)}
+                  aria-label={k.kind === 'back' ? t('login.backspace') : k.kind === 'clear' ? t('common.clear') : k.t}
                   style={css("height:62px;border-radius:15px;border:1px solid var(--border);background:var(--surface);color:var(--fg);font-size:24px;font-weight:700;" + MONO + "cursor:pointer;display:flex;align-items:center;justify-content:center;")}
                 >
                   {k.kind === 'back' ? (
                     <Icon name="delete" size={22} />
                   ) : k.kind === 'clear' ? (
-                    <span style={css("font-size:15px;font-weight:700;font-family:'Manrope';")}>Clear</span>
+                    <span style={css("font-size:15px;font-weight:700;font-family:'Manrope';")}>{t('common.clear')}</span>
                   ) : (
                     k.t
                   )}
@@ -108,21 +113,21 @@ export function Login() {
           <div style={css('width:100%;margin-top:26px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;box-shadow:var(--shadow);')}>
             <div style={css('display:flex;align-items:center;gap:10px;font-size:16px;font-weight:800;')}>
               <Icon name="calculator" size={19} color="var(--accent)" />
-              Open shift · count drawer
+              {t('login.countDrawer')}
             </div>
             <div style={css('font-size:13.5px;color:var(--fg-muted);margin-top:6px;line-height:1.5;')}>
-              Count the cash in the drawer to start the shift. This becomes the opening float.
+              {t('login.countDrawerHint')}
             </div>
             <div style={css('text-align:center;margin:22px 0;')}>
-              <div style={css('font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-subtle);')}>Starting cash</div>
+              <div style={css('font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-subtle);')}>{t('login.startingCash')}</div>
               <div style={css('font-size:52px;font-weight:800;' + MONO + 'letter-spacing:-.02em;margin-top:4px;')}>{money(s.drawer)}</div>
             </div>
             <div style={css('display:flex;gap:8px;margin-bottom:14px;')}>
               <button className="pos-press" onClick={() => s.drawerAdj(-10)} style={css('flex:1;height:56px;border-radius:14px;border:1px solid var(--border-strong);background:var(--surface-2);font-size:20px;font-weight:800;cursor:pointer;color:var(--fg);')}>
-                −$10
+                {t('login.drawerMinus', { amount: money(10) })}
               </button>
               <button className="pos-press" onClick={() => s.drawerAdj(10)} style={css('flex:1;height:56px;border-radius:14px;border:1px solid var(--border-strong);background:var(--surface-2);font-size:20px;font-weight:800;cursor:pointer;color:var(--fg);')}>
-                +$10
+                {t('login.drawerPlus', { amount: money(10) })}
               </button>
             </div>
             <div style={css('display:flex;gap:8px;margin-bottom:18px;')}>
@@ -150,7 +155,7 @@ export function Login() {
             </div>
             <button className="pos-press" onClick={s.openShift} style={css('width:100%;height:64px;border-radius:16px;border:none;background:var(--accent);color:var(--accent-fg);font-size:18px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;')}>
               <Icon name="unlock" size={20} />
-              Open shift
+              {t('login.openShift')}
             </button>
           </div>
         )}

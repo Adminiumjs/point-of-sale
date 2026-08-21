@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { usePos } from '../state/store';
+import { useI18n } from '../i18n';
+import { setAmbient } from '../i18n/ambient';
 import { DemoDock } from '../components/DemoDock';
 import { TopBar } from '../components/TopBar';
 import { Toast } from '../components/Toast';
@@ -18,6 +20,17 @@ import { Kitchen } from '../screens/Kitchen';
 export function App() {
   const view = usePos((s) => s.view);
   const theme = usePos((s) => s.theme);
+
+  /*
+   * Publish the live locale to the module-level bridge before anything below
+   * renders. The store's toasts and calc.ts's money/table/modifier labels run
+   * outside React and cannot hold a hook; this is the one place that knows both
+   * sides. Assigning during render (rather than in an effect) matters: children
+   * render after this line, so the first paint after a locale switch is already
+   * in the new locale instead of one frame behind.
+   */
+  const { locale, t, money, number } = useI18n();
+  setAmbient(locale, t, money, number);
 
   // Dark mode = data-theme on <html> + localStorage (per the token contract).
   useEffect(() => {

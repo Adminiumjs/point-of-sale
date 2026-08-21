@@ -4,6 +4,10 @@
 // `view` state var (no router), also like the comp.
 
 import { create } from 'zustand';
+
+// Toast copy is produced inside actions, which are not React components — the
+// ambient bridge hands back the same `t` the tree is rendering with.
+import { t } from '../i18n/ambient';
 import { demoSource } from '../data/source';
 import { STAFF, seedTicket } from '../data/demo';
 import type {
@@ -175,7 +179,8 @@ export interface PosState {
   onCharge: () => void;
   newOrder: () => void;
   printReceipt: () => void;
-  sendReceipt: (kind: string) => void;
+  /** Channel id, not display copy — the toast is looked up from it. */
+  sendReceipt: (kind: 'email' | 'text') => void;
 
   bumpK: (n: number) => void;
   openTable: (t: TableInfo) => void;
@@ -203,8 +208,8 @@ const clearAmountSplit = (s: PosState): { splitMode?: SplitMode; splitCustom: st
 
 const initialTheme = (): Theme => {
   try {
-    const t = localStorage.getItem('pos-theme');
-    if (t === 'dark' || t === 'light') return t;
+    const stored = localStorage.getItem('pos-theme');
+    if (stored === 'dark' || stored === 'light') return stored;
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
   } catch {
     /* no storage — fall through to light */
@@ -276,7 +281,7 @@ export const usePos = create<PosState>()((set, get) => {
       at: Date.now(),
       staff: curStaffOf(s).name,
     };
-    get().showToast('Payment complete · ' + money(sale.total), 'success');
+    get().showToast(t('toast.paymentComplete', { amount: money(sale.total) }), 'success');
     set({
       lastSale: sale,
       view: 'complete',
@@ -361,14 +366,14 @@ export const usePos = create<PosState>()((set, get) => {
 
     // ---- display / behaviour ----
     toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
-    setTheme: (t) => set({ theme: t }),
+    setTheme: (next) => set({ theme: next }),
     setMode: (m) =>
       set((s) => ({ mode: m, view: m === 'retail' && s.view === 'floor' ? 'register' : s.view })),
     toggleOnline: () => set((s) => ({ online: !s.online })),
     toggleDeclined: () => {
       const willDecline = !get().declined;
       set({ declined: willDecline, card: 'waiting' });
-      get().showToast(willDecline ? 'Card will decline' : 'Card will approve');
+      get().showToast(t(willDecline ? 'toast.cardWillDecline' : 'toast.cardWillApprove'));
     },
     go: (v) => {
       if (v === 'login') set({ view: 'login', loginStep: 'pin', pin: '', pinErr: false });
@@ -415,7 +420,7 @@ export const usePos = create<PosState>()((set, get) => {
     drawerPreset: (v) => set({ drawer: v }),
     openShift: () => {
       set({ view: 'register' });
-      get().showToast('Shift opened · Drawer ' + money(get().drawer), 'success');
+      get().showToast(t('toast.shiftOpened', { amount: money(get().drawer) }), 'success');
     },
 
     // ---- register ----
@@ -471,7 +476,7 @@ export const usePos = create<PosState>()((set, get) => {
       const s = get();
       const unsent = s.ticket.items.filter((x) => !x.sent);
       if (!unsent.length) {
-        get().showToast('Nothing new to send');
+        get().showToast(t('toast.nothingToSend'));
         return;
       }
       /*
@@ -498,30 +503,30 @@ export const usePos = create<PosState>()((set, get) => {
       } else {
         kds.push({
           number: s.ticket.number,
-          table: s.ticket.table || 'New',
+          table: s.ticket.table,
           at: Date.now(),
           status: 'new',
           items: rows,
         });
       }
       set({ ticket: { ...s.ticket, items: s.ticket.items.map((x) => ({ ...x, sent: true })) }, kds });
-      get().showToast('Order sent to kitchen');
+      get().showToast(t('toast.orderSent'));
     },
     hold: () => {
       const s = get();
       if (!s.ticket.items.length) {
-        get().showToast('Ticket is empty');
+        get().showToast(t('toast.ticketEmpty'));
         return;
       }
-      const t = s.ticket;
+      const tk = s.ticket;
       const held = s.held.concat([
-        { number: t.number, table: t.table || 'New', at: Date.now(), seats: t.seats, items: t.items },
+        { number: tk.number, table: tk.table, at: Date.now(), seats: tk.seats, items: tk.items },
       ]);
       // A discount applies to the ticket on the register; it must not follow the
       // register onto the next one. (Held tickets do not carry a discount, so a
       // held-then-resumed ticket has to have it re-applied.)
       set({ held, ticket: freshTicket(), discount: null });
-      get().showToast('Ticket held');
+      get().showToast(t('toast.ticketHeld'));
     },
     resumeHeld: (n) => {
       const s = get();
@@ -532,7 +537,7 @@ export const usePos = create<PosState>()((set, get) => {
       held.splice(idx, 1);
       const cur = s.ticket;
       if (cur.items.length) {
-        held.push({ number: cur.number, table: cur.table || 'New', at: Date.now(), seats: cur.seats, items: cur.items });
+        held.push({ number: cur.number, table: cur.table, at: Date.now(), seats: cur.seats, items: cur.items });
       }
       set({
         held,
@@ -541,7 +546,7 @@ export const usePos = create<PosState>()((set, get) => {
         view: 'register',
         discount: null,
       });
-      get().showToast('Resumed ' + tableName(h.table, s.mode));
+      get().showToast(t('toast.resumed', { table: tableName(h.table, s.mode) }));
     },
 
     // ---- modifier sheet ----
@@ -582,12 +587,12 @@ export const usePos = create<PosState>()((set, get) => {
       if (ms === 'coffee' || ms === 'cold') opt.extras = s.sheetExtras.slice();
       addLine(s.sheetId as string, opt);
       set({ sheetOpen: false });
-      get().showToast('Added ' + m.name, 'success');
+      get().showToast(t('toast.added', { name: m.name }), 'success');
     },
 
     // ---- void ----
     openVoid: (k) => set({ voidOpen: true, voidKey: k, voidText: '' }),
-    setVoidText: (t) => set({ voidText: t }),
+    setVoidText: (text) => set({ voidText: text }),
     closeVoid: () => set({ voidOpen: false, voidText: '' }),
     confirmVoid: () => {
       const s = get();
@@ -595,7 +600,7 @@ export const usePos = create<PosState>()((set, get) => {
       const k = s.voidKey;
       setItems(s.ticket.items.filter((x) => x.key !== k));
       set({ voidOpen: false, voidKey: null, voidText: '' });
-      get().showToast('Item voided');
+      get().showToast(t('toast.itemVoided'));
     },
 
     // ---- move / discount ----
@@ -603,7 +608,7 @@ export const usePos = create<PosState>()((set, get) => {
     closeMove: () => set({ moveOpen: false }),
     doMove: (label) => {
       set((s) => ({ ticket: { ...s.ticket, table: label }, moveOpen: false }));
-      get().showToast('Moved to ' + tableName(label, get().mode), 'success');
+      get().showToast(t('toast.movedTo', { table: tableName(label, get().mode) }), 'success');
     },
     doMerge: (n) => {
       const s = get();
@@ -632,24 +637,24 @@ export const usePos = create<PosState>()((set, get) => {
         held: s.held.filter((x) => x.number !== n),
         moveOpen: false,
       });
-      get().showToast('Merged ' + tableName(h.table, s.mode) + ' in', 'success');
+      get().showToast(t('toast.merged', { table: tableName(h.table, s.mode) }), 'success');
     },
     openDiscount: () => set({ discountOpen: true }),
     closeDiscount: () => set({ discountOpen: false }),
     applyDiscount: (kind, value, label) => {
       set({ discount: { kind, value, label }, discountOpen: false });
-      get().showToast((kind === 'comp' ? 'Comped · ' : 'Discount · ') + label, 'success');
+      get().showToast(t(kind === 'comp' ? 'toast.comped' : 'toast.discounted', { label }), 'success');
     },
     clearDiscount: () => {
       set({ discount: null, discountOpen: false });
-      get().showToast('Discount removed');
+      get().showToast(t('toast.discountRemoved'));
     },
 
     // ---- payment ----
     openPay: () => {
       const cur = get();
       if (!cur.ticket.items.length) {
-        get().showToast('Add items first');
+        get().showToast(t('toast.addItemsFirst'));
         return;
       }
       /*
@@ -731,8 +736,9 @@ export const usePos = create<PosState>()((set, get) => {
         discount: null,
       });
     },
-    printReceipt: () => get().showToast('Sent to receipt printer'),
-    sendReceipt: (kind) => get().showToast(kind + ' receipt sent'),
+    printReceipt: () => get().showToast(t('toast.printSent')),
+    sendReceipt: (kind) =>
+      get().showToast(t(kind === 'email' ? 'toast.receiptSentEmail' : 'toast.receiptSentText')),
 
     // ---- kitchen ----
     bumpK: (n) =>
@@ -747,25 +753,29 @@ export const usePos = create<PosState>()((set, get) => {
       }),
 
     // ---- floor ----
-    openTable: (t) => {
+    openTable: (tbl) => {
       const s = get();
       // Where the open ticket actually is, not the seed's pinned `current` flag.
-      if (t.label === s.ticket.table) {
+      if (tbl.label === s.ticket.table) {
         set({ view: 'register' });
         return;
       }
       const held = s.held.slice();
       const cur = s.ticket;
       if (cur.items.length) {
-        held.push({ number: cur.number, table: cur.table || 'New', at: Date.now(), seats: cur.seats, items: cur.items });
+        held.push({ number: cur.number, table: cur.table, at: Date.now(), seats: cur.seats, items: cur.items });
       }
       set({
-        ticket: { number: nextNum(), table: t.label, seats: t.seats, openedAt: Date.now(), items: [] },
+        ticket: { number: nextNum(), table: tbl.label, seats: tbl.seats, openedAt: Date.now(), items: [] },
         held,
         view: 'register',
         discount: null,
       });
-      get().showToast((t.status === 'open' ? 'Seated ' : 'Opened ') + tableName(t.label, s.mode));
+      get().showToast(
+        t(tbl.status === 'open' ? 'toast.seated' : 'toast.opened', {
+          table: tableName(tbl.label, s.mode),
+        }),
+      );
     },
   };
 
@@ -775,7 +785,7 @@ export const usePos = create<PosState>()((set, get) => {
     const rem = remaining(s);
     const tend = parseFloat(s.cash || '0') || 0;
     if (tend <= 0) {
-      get().showToast('Enter cash tendered');
+      get().showToast(t('toast.enterCash'));
       return;
     }
     const target = chargeTarget(s);
@@ -786,7 +796,7 @@ export const usePos = create<PosState>()((set, get) => {
       change = tend > rem ? tend - rem : 0;
     } else {
       if (tend < target - 0.005) {
-        get().showToast('Under the ' + money(target) + ' share', 'error');
+        get().showToast(t('toast.underShare', { amount: money(target) }), 'error');
         return;
       }
       applied = target;
@@ -797,7 +807,7 @@ export const usePos = create<PosState>()((set, get) => {
       finalize(splits, change);
     } else {
       set({ splits, cash: '', ...clearAmountSplit(s) });
-      get().showToast('Paid ' + money(applied) + ' · ' + money(rem - applied) + ' left', 'success');
+      get().showToast(t('toast.paidPartial', { amount: money(applied), rem: money(rem - applied) }), 'success');
     }
   }
   /*
@@ -821,7 +831,7 @@ export const usePos = create<PosState>()((set, get) => {
       if (!stillPaying()) return;
       if (get().declined) {
         set({ card: 'declined' });
-        get().showToast('Card declined — try another card', 'error');
+        get().showToast(t('toast.cardDeclined'), 'error');
       } else {
         set({ card: 'approved' });
         clearTimeout(ct2Timer);
@@ -834,7 +844,7 @@ export const usePos = create<PosState>()((set, get) => {
           if (rem - amt <= 0.005) finalize(splits, 0);
           else {
             set({ splits, card: 'waiting', ...clearAmountSplit(st) });
-            get().showToast('Card share paid · ' + money(rem - amt) + ' left', 'success');
+            get().showToast(t('toast.cardSharePaid', { rem: money(rem - amt) }), 'success');
           }
         }, 850);
       }
@@ -848,7 +858,7 @@ export const usePos = create<PosState>()((set, get) => {
     if (rem - amt <= 0.005) finalize(splits, 0);
     else {
       set({ splits, ...clearAmountSplit(st) });
-      get().showToast('Wallet share paid · ' + money(rem - amt) + ' left', 'success');
+      get().showToast(t('toast.walletSharePaid', { rem: money(rem - amt) }), 'success');
     }
   }
 });

@@ -1,5 +1,4 @@
 import { usePos } from '../state/store';
-import { TAX_LABEL } from '../data/demo';
 import type { PayMethod } from '../data/types';
 import {
   chargeTarget,
@@ -11,9 +10,11 @@ import {
   tableName,
   tax,
   tipAmt,
+  taxLabel,
   tipFor,
   total,
 } from '../state/calc';
+import { useT, type MessageKey } from '../i18n';
 import { Icon } from '../components/Icon';
 import { css } from '../components/css';
 
@@ -52,6 +53,7 @@ const CASH_PAD: { t?: string; back?: boolean }[] = [
 
 export function Payment() {
   const s = usePos();
+  const t = useT();
   const rem = remaining(s);
   const paidv = paid(s);
   const total_ = total(s);
@@ -78,15 +80,36 @@ export function Payment() {
   ];
 
   const splitBadge = evenActive
-    ? 'Even · ' + s.splitN + '-way'
+    ? t('payment.splitBadgeEven', { n: s.splitN })
     : s.splitMode === 'amount'
-      ? 'By amount · ' + money(parseFloat(s.splitCustom) || 0)
+      ? t('payment.splitBadgeAmount', { amount: money(parseFloat(s.splitCustom) || 0) })
       : '';
-  const ledgerText = evenActive ? 'Payer ' + Math.min(payersPaid + 1, s.splitN) + ' of ' + s.splitN + ' · ' + money(base) + ' each' : '';
+  const ledgerText = evenActive
+    ? t('payment.ledger', {
+        i: Math.min(payersPaid + 1, s.splitN),
+        n: s.splitN,
+        amount: money(base),
+      })
+    : '';
 
   // card
-  const cardTitle = s.card === 'waiting' ? 'Insert, tap, or swipe' : s.card === 'reading' ? 'Reading card…' : s.card === 'approved' ? 'Approved' : 'Card declined';
-  const cardSub = s.card === 'waiting' ? 'Present the card to charge ' + money(rem) : s.card === 'reading' ? 'Keep the card in place' : s.card === 'approved' ? 'Completing sale…' : 'Try another card or a different method';
+  const cardTitle = t(
+    s.card === 'waiting'
+      ? 'payment.cardWaiting'
+      : s.card === 'reading'
+        ? 'payment.cardReading'
+        : s.card === 'approved'
+          ? 'payment.cardApproved'
+          : 'payment.declinedTitle',
+  );
+  const cardSub =
+    s.card === 'waiting'
+      ? t('payment.cardWaitingSub', { amount: money(rem) })
+      : s.card === 'reading'
+        ? t('payment.cardReadingSub')
+        : s.card === 'approved'
+          ? t('payment.cardApprovedSub')
+          : t('payment.cardDeclinedSub');
   const cardBorder = s.card === 'approved' ? 'color-mix(in srgb, var(--pos) 45%, transparent)' : s.card === 'declined' ? 'color-mix(in srgb, var(--danger) 45%, transparent)' : 'var(--border)';
   const cardIcon = s.card === 'approved' ? 'check-circle-2' : s.card === 'declined' ? 'x-circle' : 'credit-card';
   const cardIconCol = s.card === 'approved' ? 'var(--pos)' : s.card === 'declined' ? 'var(--danger)' : 'var(--accent)';
@@ -97,23 +120,37 @@ export function Payment() {
   let chargeIcon: string;
   if (isCard) {
     chargeIcon = s.card === 'declined' ? 'rotate-ccw' : 'credit-card';
-    chargeLabel = s.card === 'reading' ? 'Reading…' : s.card === 'approved' ? 'Approved' : s.card === 'declined' ? 'Retry card' : 'Charge ' + money(target);
+    chargeLabel =
+      s.card === 'reading'
+        ? t('payment.chargeReading')
+        : s.card === 'approved'
+          ? t('payment.cardApproved')
+          : s.card === 'declined'
+            ? t('payment.retryCard')
+            : t('payment.charge', { amount: money(target) });
   } else if (isCash) {
     chargeIcon = 'banknote';
-    chargeLabel = tend <= 0 ? 'Enter cash tendered' : s.splitMode !== 'none' ? 'Charge ' + money(target) : tend >= rem ? 'Charge ' + money(rem) : 'Add ' + money(tend) + ' · partial';
+    chargeLabel =
+      tend <= 0
+        ? t('payment.enterCash')
+        : s.splitMode !== 'none'
+          ? t('payment.charge', { amount: money(target) })
+          : tend >= rem
+            ? t('payment.charge', { amount: money(rem) })
+            : t('payment.addPartial', { amount: money(tend) });
   } else {
     chargeIcon = 'check';
-    chargeLabel = 'Mark paid ' + money(target);
+    chargeLabel = t('payment.markPaid', { amount: money(target) });
   }
 
   // cash presets
   const r5 = Math.ceil(rem / 5) * 5;
   const r10 = Math.ceil(rem / 10) * 10;
-  const pres: { label: string; v: number }[] = [{ label: 'Exact', v: Math.round(rem * 100) / 100 }];
+  const pres: { label: string; v: number }[] = [{ label: t('payment.exact'), v: Math.round(rem * 100) / 100 }];
   if (r5 > rem) pres.push({ label: money(r5), v: r5 });
   if (r10 > rem && r10 !== r5) pres.push({ label: money(r10), v: r10 });
-  if (50 > rem && pres.length < 4) pres.push({ label: '$50', v: 50 });
-  if (100 > rem && pres.length < 4) pres.push({ label: '$100', v: 100 });
+  if (50 > rem && pres.length < 4) pres.push({ label: money(50), v: 50 });
+  if (100 > rem && pres.length < 4) pres.push({ label: money(100), v: 100 });
   const cashPresets = pres.slice(0, 4);
 
   return (
@@ -121,11 +158,13 @@ export function Payment() {
       <header style={css('flex-shrink:0;min-height:70px;display:flex;align-items:center;gap:14px;padding:0 18px;background:var(--surface);border-bottom:1px solid var(--border);')}>
         <button className="pos-press" onClick={() => usePos.setState({ view: 'register' })} style={css('display:flex;align-items:center;gap:9px;height:50px;padding:0 16px 0 12px;border-radius:14px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:15px;font-weight:700;cursor:pointer;')}>
           <Icon name="arrow-left" size={19} />
-          Ticket
+          {t('payment.back')}
         </button>
         <div>
-          <div style={css('font-size:18px;font-weight:800;letter-spacing:-.02em;')}>Payment</div>
-          <div style={css('font-size:12.5px;color:var(--fg-muted);margin-top:2px;')}>Ticket #{s.ticket.number} · {tableName(s.ticket.table, s.mode)}</div>
+          <div style={css('font-size:18px;font-weight:800;letter-spacing:-.02em;')}>{t('payment.title')}</div>
+          <div style={css('font-size:12.5px;color:var(--fg-muted);margin-top:2px;')}>
+            {t('payment.subtitle', { n: s.ticket.number, table: tableName(s.ticket.table, s.mode) })}
+          </div>
         </div>
       </header>
 
@@ -133,8 +172,8 @@ export function Payment() {
         <div style={css('flex-shrink:0;display:flex;align-items:center;gap:12px;margin:14px 18px 0;padding:14px 16px;border-radius:14px;background:var(--danger-soft);border:1px solid color-mix(in srgb, var(--danger) 35%, transparent);color:var(--danger);')}>
           <Icon name="x-circle" size={22} />
           <div style={css('flex:1;')}>
-            <div style={css('font-size:14.5px;font-weight:800;')}>Card declined</div>
-            <div style={css('font-size:12.5px;font-weight:600;opacity:.85;')}>Ask for another card or choose a different method.</div>
+            <div style={css('font-size:14.5px;font-weight:800;')}>{t('payment.declinedTitle')}</div>
+            <div style={css('font-size:12.5px;font-weight:600;opacity:.85;')}>{t('payment.declinedHint')}</div>
           </div>
         </div>
       )}
@@ -142,7 +181,7 @@ export function Payment() {
       <div className="pay-body">
         {/* LEFT: summary rail */}
         <div className="pos-scroll pay-summary">
-          <div style={css('font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-subtle);')}>{paidv > 0 ? 'Remaining balance' : 'Balance due'}</div>
+          <div style={css('font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-subtle);')}>{t(paidv > 0 ? 'payment.remainingBalance' : 'payment.balanceDue')}</div>
           <div style={css('font-size:64px;font-weight:800;' + MONO + 'letter-spacing:-.03em;line-height:1;margin:6px 0 2px;')}>{money(rem)}</div>
 
           {s.splits.length > 0 && (
@@ -150,17 +189,24 @@ export function Payment() {
               {s.splits.map((sp, i) => (
                 <div key={i} style={css('display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:13px;background:var(--surface);border:1px solid var(--border);')}>
                   <Icon name={sp.method === 'cash' ? 'banknote' : sp.method === 'card' ? 'credit-card' : 'qr-code'} size={17} color="var(--pos)" />
-                  <span style={css('font-size:14px;font-weight:700;')}>{sp.method === 'cash' ? 'Cash' : sp.method === 'card' ? 'Card' : 'QR pay'}</span>
-                  <span style={css('margin-left:auto;' + MONO + 'font-weight:700;')}>{money(sp.amount)}</span>
+                  <span style={css('font-size:14px;font-weight:700;')}>
+                    {t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : 'payment.qrPay')}
+                  </span>
+                  <span style={css('margin-inline-start:auto;' + MONO + 'font-weight:700;')}>{money(sp.amount)}</span>
                   <Icon name="check" size={16} color="var(--pos)" />
                 </div>
               ))}
             </div>
           )}
 
-          <div style={css('margin-top:24px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin-bottom:11px;')}>Tip</div>
+          <div style={css('margin-top:24px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin-bottom:11px;')}>{t('common.tip')}</div>
           <div style={css('display:flex;gap:8px;')}>
-            {[{ l: 'No tip', i: 0 }, { l: '10%', i: 1 }, { l: '15%', i: 2 }, { l: '20%', i: 3 }].map((x) => (
+            {[
+              { l: t('payment.noTip'), i: 0 },
+              { l: t('payment.tipPct', { pct: 10 }), i: 1 },
+              { l: t('payment.tipPct', { pct: 15 }), i: 2 },
+              { l: t('payment.tipPct', { pct: 20 }), i: 3 },
+            ].map((x) => (
               <button key={x.i} className="pos-press" onClick={() => s.setTip(x.i)} style={css(tipStyle(s.tip === x.i))}>
                 <span style={css('font-size:15px;font-weight:800;')}>{x.l}</span>
                 {/* `tipFor`, not `subtotal * TIP_PRESETS[i]` — the tip is
@@ -172,23 +218,25 @@ export function Payment() {
           </div>
 
           <div style={css('margin-top:22px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin-bottom:11px;')}>
-            Split bill
+            {t('payment.splitBill')}
             {s.splitMode !== 'none' && (
               <>
                 <span style={css('font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px;background:var(--accent-soft);color:var(--accent);' + MONO + 'text-transform:none;letter-spacing:0;')}>{splitBadge}</span>
-                <button className="pos-press" onClick={s.clearSplit} style={css('margin-left:auto;font-size:11.5px;font-weight:700;border:none;background:transparent;color:var(--fg-muted);cursor:pointer;text-transform:none;letter-spacing:0;')}>Clear</button>
+                <button className="pos-press" onClick={s.clearSplit} style={css('margin-inline-start:auto;font-size:11.5px;font-weight:700;border:none;background:transparent;color:var(--fg-muted);cursor:pointer;text-transform:none;letter-spacing:0;')}>{t('common.clear')}</button>
               </>
             )}
           </div>
-          <div style={css('font-size:11.5px;font-weight:700;color:var(--fg-subtle);margin-bottom:7px;')}>Split evenly</div>
+          <div style={css('font-size:11.5px;font-weight:700;color:var(--fg-subtle);margin-bottom:7px;')}>{t('payment.splitEvenly')}</div>
           <div style={css('display:flex;gap:8px;flex-wrap:wrap;')}>
             {evenNs.map((n) => {
               const sh = Math.round((total_ / n) * 100) / 100;
               const on = s.splitMode === 'even' && s.splitN === n;
               return (
                 <button key={n} className="pos-press" onClick={() => s.setSplitN(n)} style={css(scStyle(on))}>
-                  <span style={css('font-size:14.5px;font-weight:800;')}>{guests === n && n > 4 ? 'Guests ' + n : n + ' ways'}</span>
-                  <span style={css('font-size:11.5px;' + MONO + 'opacity:.7;')}>{money(sh)} ea</span>
+                  <span style={css('font-size:14.5px;font-weight:800;')}>
+                    {guests === n && n > 4 ? t('payment.guestsN', { n }) : t('payment.nWays', { n })}
+                  </span>
+                  <span style={css('font-size:11.5px;' + MONO + 'opacity:.7;')}>{t('payment.each', { amount: money(sh) })}</span>
                 </button>
               );
             })}
@@ -197,7 +245,7 @@ export function Payment() {
             <div style={css('margin-top:12px;padding:14px 15px;border-radius:14px;background:var(--surface);border:1px solid var(--border);')}>
               <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px;')}>
                 <span style={css('font-size:13.5px;font-weight:800;')}>{ledgerText}</span>
-                <span style={css('font-size:12.5px;font-weight:800;' + MONO + 'color:var(--accent);white-space:nowrap;')}>This charge · {money(target)}</span>
+                <span style={css('font-size:12.5px;font-weight:800;' + MONO + 'color:var(--accent);white-space:nowrap;')}>{t('payment.thisCharge', { amount: money(target) })}</span>
               </div>
               <div style={css('display:flex;gap:5px;')}>
                 {pips.map((filled, pi) => (
@@ -206,7 +254,7 @@ export function Payment() {
               </div>
             </div>
           )}
-          <div style={css('font-size:11.5px;font-weight:700;color:var(--fg-subtle);margin:14px 0 7px;')}>Or charge part of the balance</div>
+          <div style={css('font-size:11.5px;font-weight:700;color:var(--fg-subtle);margin:14px 0 7px;')}>{t('payment.chargePart')}</div>
           <div style={css('display:flex;gap:8px;flex-wrap:wrap;')}>
             {amountChipDefs.map((x) => {
               const v = Math.round(rem * x.f * 100) / 100;
@@ -221,15 +269,15 @@ export function Payment() {
           </div>
 
           <div style={css('margin-top:24px;padding-top:16px;border-top:1px dashed var(--border-strong);display:flex;flex-direction:column;gap:9px;')}>
-            <Row label="Subtotal" value={money(subtotal(s))} />
+            <Row label={t('common.subtotal')} value={money(subtotal(s))} />
             {/* Without this row the summary printed Subtotal + Tax + Tip beside
                 a Total that had the discount taken off — four numbers that did
                 not add up. The register pane has always shown it. */}
             {!!s.discount && <Row label={s.discount.label} value={'−' + money(discountAmt(s))} />}
-            <Row label={TAX_LABEL} value={money(tax(s))} />
-            <Row label="Tip" value={money(tipAmt(s))} />
+            <Row label={taxLabel()} value={money(tax(s))} />
+            <Row label={t('common.tip')} value={money(tipAmt(s))} />
             <div style={css('display:flex;justify-content:space-between;font-size:16px;padding-top:9px;border-top:1px solid var(--border);')}>
-              <span style={css('font-weight:800;')}>Total</span>
+              <span style={css('font-weight:800;')}>{t('common.total')}</span>
               <span style={css(MONO + 'font-weight:800;')}>{money(total_)}</span>
             </div>
           </div>
@@ -238,10 +286,14 @@ export function Payment() {
         {/* RIGHT: method pane */}
         <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;')}>
           <div style={css('flex-shrink:0;display:flex;gap:10px;padding:20px 22px 0;')}>
-            {([{ m: 'cash', l: 'Cash', ic: 'banknote' }, { m: 'card', l: 'Card', ic: 'credit-card' }, { m: 'qr', l: 'QR', ic: 'qr-code' }] as { m: PayMethod; l: string; ic: string }[]).map((x) => (
+            {([
+              { m: 'cash', l: 'common.cash', ic: 'banknote' },
+              { m: 'card', l: 'common.card', ic: 'credit-card' },
+              { m: 'qr', l: 'payment.qr', ic: 'qr-code' },
+            ] as { m: PayMethod; l: MessageKey; ic: string }[]).map((x) => (
               <button key={x.m} className="pos-press" onClick={() => s.setMethod(x.m)} style={css(methodStyle(s.payMethod === x.m))}>
                 <Icon name={x.ic} size={20} />
-                {x.l}
+                {t(x.l)}
               </button>
             ))}
           </div>
@@ -252,11 +304,11 @@ export function Payment() {
                 <div style={css('flex:1;min-width:220px;')}>
                   <div style={css('display:flex;flex-direction:column;gap:10px;margin-bottom:16px;')}>
                     <div style={css('display:flex;justify-content:space-between;align-items:baseline;padding:15px 16px;border-radius:15px;background:var(--surface);border:1px solid var(--border);')}>
-                      <span style={css('font-size:13px;font-weight:700;color:var(--fg-muted);')}>Tendered</span>
+                      <span style={css('font-size:13px;font-weight:700;color:var(--fg-muted);')}>{t('payment.tendered')}</span>
                       <span style={css('font-size:28px;font-weight:800;' + MONO)}>{money(tend)}</span>
                     </div>
                     <div style={css('display:flex;justify-content:space-between;align-items:baseline;padding:15px 16px;border-radius:15px;background:var(--pos-soft);')}>
-                      <span style={css('font-size:13px;font-weight:700;color:var(--pos);')}>Change due</span>
+                      <span style={css('font-size:13px;font-weight:700;color:var(--pos);')}>{t('payment.changeDue')}</span>
                       <span style={css('font-size:28px;font-weight:800;' + MONO + 'color:var(--pos);')}>{money(tend > target ? tend - target : 0)}</span>
                     </div>
                   </div>
@@ -271,7 +323,7 @@ export function Payment() {
                 <div style={css('width:264px;')}>
                   <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:9px;')}>
                     {CASH_PAD.map((k, i) => (
-                      <button key={i} className="pos-press" onClick={() => s.cashPush(k.back ? 'back' : (k.t as string))} style={css('height:60px;border-radius:13px;border:1px solid var(--border);background:var(--surface);color:var(--fg);font-size:23px;font-weight:700;' + MONO + 'cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+                      <button key={i} className="pos-press" onClick={() => s.cashPush(k.back ? 'back' : (k.t as string))} aria-label={k.back ? t('login.backspace') : k.t} style={css('height:60px;border-radius:13px;border:1px solid var(--border);background:var(--surface);color:var(--fg);font-size:23px;font-weight:700;' + MONO + 'cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
                         {k.back ? <Icon name="delete" size={21} /> : k.t}
                       </button>
                     ))}
@@ -290,7 +342,7 @@ export function Payment() {
                 </div>
                 <div style={css('display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;font-size:12.5px;color:var(--fg-subtle);')}>
                   <Icon name="shield-check" size={15} />
-                  Encrypted terminal · chip &amp; contactless
+                  {t('payment.encrypted')}
                 </div>
               </div>
             )}
@@ -300,8 +352,8 @@ export function Payment() {
                 <div style={css('width:224px;height:224px;margin:0 auto;border-radius:22px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);')}>
                   <Icon name="qr-code" size={156} color="var(--fg)" />
                 </div>
-                <div style={css('font-size:19px;font-weight:800;margin-top:18px;')}>Scan to pay {money(rem)}</div>
-                <div style={css('font-size:13.5px;color:var(--fg-muted);margin-top:6px;line-height:1.5;')}>Point the camera at the code — Apple Pay, Google Pay, or any wallet.</div>
+                <div style={css('font-size:19px;font-weight:800;margin-top:18px;')}>{t('payment.scanToPay', { amount: money(rem) })}</div>
+                <div style={css('font-size:13.5px;color:var(--fg-muted);margin-top:6px;line-height:1.5;')}>{t('payment.qrHint')}</div>
               </div>
             )}
           </div>

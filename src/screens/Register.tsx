@@ -1,6 +1,7 @@
 import { usePos } from '../state/store';
 import { CATS, FAVOURITES, MENU } from '../data/demo';
-import { itemById, money } from '../state/calc';
+import { catName, itemById, money } from '../state/calc';
+import { useT } from '../i18n';
 import { Icon } from '../components/Icon';
 import { MenuThumb } from '../components/MenuThumb';
 import { css } from '../components/css';
@@ -10,6 +11,7 @@ const MONO = "font-family:'JetBrains Mono',monospace;";
 
 export function Register() {
   const s = usePos();
+  const t = useT();
   const dark = s.theme === 'dark';
   const dense = s.menuDensity === 'dense';
 
@@ -33,7 +35,7 @@ export function Register() {
         <div className="pos-scroll" style={css('flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px 18px 2px;overflow-x:auto;')}>
           <span style={css('display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);flex-shrink:0;')}>
             <Icon name="star" size={14} />
-            Quick add
+            {t('register.quickAdd')}
           </span>
           {FAVOURITES.map((id) => {
             const m = itemById(id);
@@ -77,7 +79,7 @@ export function Register() {
                   )}
                 >
                   <Icon name={c.icon} size={17} />
-                  {c.name}
+                  {catName(c)}
                   <span style={css('font-size:12px;font-weight:800;' + MONO + 'padding:1px 8px;border-radius:20px;background:' + (on ? 'rgba(255,255,255,.22)' : 'var(--surface-3)') + ';color:' + (on ? 'var(--accent-fg)' : 'var(--fg-muted)') + ';')}>
                     {cnt}
                   </span>
@@ -86,10 +88,10 @@ export function Register() {
             })}
           </div>
           <div style={css('display:flex;gap:3px;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:3px;flex-shrink:0;')}>
-            <button className="pos-press" onClick={() => s.setDensity('cozy')} title="Comfortable" style={css(densSeg(!dense))}>
+            <button className="pos-press" onClick={() => s.setDensity('cozy')} title={t('register.densityComfortable')} aria-label={t('register.densityComfortable')} style={css(densSeg(!dense))}>
               <Icon name="layout-grid" size={17} />
             </button>
-            <button className="pos-press" onClick={() => s.setDensity('dense')} title="Dense" style={css(densSeg(dense))}>
+            <button className="pos-press" onClick={() => s.setDensity('dense')} title={t('register.densityDense')} aria-label={t('register.densityDense')} style={css(densSeg(dense))}>
               <Icon name="grip" size={17} />
             </button>
           </div>
@@ -105,7 +107,7 @@ export function Register() {
                   key={m.id}
                   className="pos-tile"
                   onClick={() => s.tapTile(m.id)}
-                  style={css('display:flex;flex-direction:column;text-align:left;padding:0;border:1px solid var(--border);border-radius:' + rad + ';background:var(--surface);cursor:' + (sold ? 'default' : 'pointer') + ';overflow:hidden;box-shadow:var(--shadow);opacity:' + (sold ? '.6' : '1') + ';')}
+                  style={css('display:flex;flex-direction:column;text-align:start;padding:0;border:1px solid var(--border);border-radius:' + rad + ';background:var(--surface);cursor:' + (sold ? 'default' : 'pointer') + ';overflow:hidden;box-shadow:var(--shadow);opacity:' + (sold ? '.6' : '1') + ';')}
                 >
                   <MenuThumb
                     item={m}
@@ -117,19 +119,19 @@ export function Register() {
                         {sold && (
                           <div style={css('position:absolute;inset:0;background:color-mix(in srgb, var(--surface) 62%, transparent);display:flex;align-items:center;justify-content:center;')}>
                             <span style={css('font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);background:var(--surface);padding:5px 11px;border-radius:9px;box-shadow:var(--shadow);')}>
-                              Sold out
+                              {t('register.soldOut')}
                             </span>
                           </div>
                         )}
                         {!!m.mods && (
-                          <span style={css('position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);')}>
+                          <span title={t('register.hasOptions')} style={css('position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);')}>
                             <Icon name="sliders-horizontal" size={13} color="var(--fg-muted)" />
                           </span>
                         )}
                       </>
                     }
                   />
-                  <div style={css('padding:' + (dense ? '8px 10px 9px' : '11px 12px 12px') + ';text-align:left;')}>
+                  <div style={css('padding:' + (dense ? '8px 10px 9px' : '11px 12px 12px') + ';text-align:start;')}>
                     <div style={css('font-size:' + (dense ? '13px' : '15px') + ';font-weight:700;letter-spacing:-.01em;line-height:1.2;margin-bottom:' + (dense ? '3px' : '5px') + ';')}>{m.name}</div>
                     <div style={css('font-size:' + (dense ? '13px' : '15px') + ';font-weight:700;' + MONO + 'color:var(--fg-muted);')}>{money(m.price)}</div>
                   </div>

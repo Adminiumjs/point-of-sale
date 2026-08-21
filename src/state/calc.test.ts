@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BRAND, BRAND_INITIAL, MILKS, TAX, TAX_LABEL, TIP_PRESETS, seedTicket } from '../data/demo';
+import { BRAND, BRAND_INITIAL, MILKS, TAX, TIP_PRESETS, seedTicket } from '../data/demo';
 import { keyOf } from '../data/key';
 import type { Discount, LineItem, Size, Split } from '../data/types';
 import {
@@ -22,6 +22,7 @@ import {
   subtotal,
   tableName,
   tax,
+  taxLabel,
   tipAmt,
   tipFor,
   total,
@@ -389,8 +390,9 @@ describe('labels', () => {
   });
 
   it('the tax label is derived from the rate', () => {
-    expect(TAX_LABEL).toBe('Tax · 8.25%');
-    expect(TAX_LABEL).toContain(String(round2(TAX * 100)));
+    // No provider is mounted here, so the ambient bridge serves en-US.
+    expect(taxLabel()).toBe('Tax · 8.25%');
+    expect(taxLabel()).toContain(String(round2(TAX * 100)));
   });
 
   it('table names expand the zone prefix', () => {

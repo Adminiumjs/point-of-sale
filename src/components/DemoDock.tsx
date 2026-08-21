@@ -1,20 +1,22 @@
 // "Demo controls" dock — the demo's navigation chrome (screen switcher, a
-// contextual demo action, restaurant/retail toggle, online/offline, theme). It
-// is comp-only chrome, not part of the product UI. The fixed-canvas device
-// frame from the comp is intentionally dropped in favour of responsive layout.
+// contextual demo action, restaurant/retail toggle, language, online/offline,
+// theme). It is comp-only chrome, not part of the product UI. The fixed-canvas
+// device frame from the comp is intentionally dropped in favour of responsive
+// layout.
 
 import { usePos } from '../state/store';
 import type { View } from '../data/types';
+import { LOCALES, LOCALE_TAGS, useI18n, type LocaleTag, type MessageKey } from '../i18n';
 import { Icon } from './Icon';
 import { css } from './css';
 
-const SCREENS: { v: View; label: string; icon: string }[] = [
-  { v: 'login', label: 'Login', icon: 'lock' },
-  { v: 'register', label: 'Register', icon: 'layout-grid' },
-  { v: 'floor', label: 'Floor', icon: 'grid-3x3' },
-  { v: 'payment', label: 'Payment', icon: 'credit-card' },
-  { v: 'complete', label: 'Receipt', icon: 'receipt' },
-  { v: 'kitchen', label: 'Kitchen', icon: 'cooking-pot' },
+const SCREENS: { v: View; label: MessageKey; icon: string }[] = [
+  { v: 'login', label: 'dock.screen.login', icon: 'lock' },
+  { v: 'register', label: 'dock.screen.register', icon: 'layout-grid' },
+  { v: 'floor', label: 'dock.screen.floor', icon: 'grid-3x3' },
+  { v: 'payment', label: 'dock.screen.payment', icon: 'credit-card' },
+  { v: 'complete', label: 'dock.screen.complete', icon: 'receipt' },
+  { v: 'kitchen', label: 'dock.screen.kitchen', icon: 'cooking-pot' },
 ];
 
 const chip = (active: boolean): string =>
@@ -32,24 +34,25 @@ const actionStyle =
 
 export function DemoDock() {
   const s = usePos();
+  const { t, locale, setLocale } = useI18n();
 
   const actions: { label: string; icon: string; onClick: () => void }[] = [];
   if (s.view === 'register') {
-    actions.push({ label: 'Empty ticket', icon: 'eraser', onClick: s.emptyTicket });
-    actions.push({ label: 'Reset ticket', icon: 'rotate-ccw', onClick: s.resetTicket });
+    actions.push({ label: t('dock.emptyTicket'), icon: 'eraser', onClick: s.emptyTicket });
+    actions.push({ label: t('dock.resetTicket'), icon: 'rotate-ccw', onClick: s.resetTicket });
   } else if (s.view === 'payment') {
     actions.push({
-      label: s.declined ? 'Card: will decline' : 'Card: will approve',
+      label: t(s.declined ? 'dock.cardWillDecline' : 'dock.cardWillApprove'),
       icon: s.declined ? 'x-circle' : 'check-circle',
       onClick: s.toggleDeclined,
     });
   } else if (s.view === 'complete') {
-    actions.push({ label: 'New order', icon: 'plus', onClick: s.newOrder });
+    actions.push({ label: t('dock.newOrder'), icon: 'plus', onClick: s.newOrder });
   } else if (s.view === 'login') {
-    actions.push({ label: 'Autofill PIN', icon: 'wand-2', onClick: s.autofillPin });
+    actions.push({ label: t('dock.autofillPin'), icon: 'wand-2', onClick: s.autofillPin });
   } else if (s.view === 'floor') {
     actions.push({
-      label: s.online ? 'Go offline' : 'Go online',
+      label: t(s.online ? 'dock.goOffline' : 'dock.goOnline'),
       icon: s.online ? 'cloud-off' : 'cloud',
       onClick: s.toggleOnline,
     });
@@ -65,18 +68,18 @@ export function DemoDock() {
       >
         <span
           style={css(
-            'display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-subtle);padding-right:4px;',
+            'display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-subtle);padding-inline-end:4px;',
           )}
         >
           <Icon name="app-window" size={14} />
-          Demo controls
+          {t('dock.title')}
         </span>
 
         <div style={css('display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:4px;flex-wrap:wrap;')}>
           {SCREENS.map((sc) => (
             <button key={sc.v} className="pos-press" onClick={() => s.go(sc.v)} style={css(chip(s.view === sc.v))}>
               <Icon name={sc.icon} size={15} />
-              {sc.label}
+              {t(sc.label)}
             </button>
           ))}
         </div>
@@ -90,20 +93,39 @@ export function DemoDock() {
           </button>
         ))}
 
-        <div style={css('margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;')}>
+        <div style={css('margin-inline-start:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;')}>
           <div style={css('display:flex;gap:3px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:3px;')}>
             <button className="pos-press" onClick={() => s.setMode('restaurant')} style={css(seg(s.mode === 'restaurant'))}>
-              Restaurant
+              {t('dock.restaurant')}
             </button>
             <button className="pos-press" onClick={() => s.setMode('retail')} style={css(seg(s.mode === 'retail'))}>
-              Retail
+              {t('dock.retail')}
             </button>
           </div>
+
+          {/* Languages are listed in their own script — a reader looking for
+              their language cannot be expected to recognise its English name. */}
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as LocaleTag)}
+            aria-label={t('dock.language')}
+            title={t('dock.language')}
+            style={css(
+              'height:38px;padding:0 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;',
+            )}
+          >
+            {LOCALE_TAGS.map((tag) => (
+              <option key={tag} value={tag}>
+                {LOCALES[tag].native}
+              </option>
+            ))}
+          </select>
 
           <button
             className="pos-press"
             onClick={s.toggleOnline}
-            title="Toggle connectivity"
+            title={t('dock.toggleConnectivity')}
+            aria-label={t('dock.toggleConnectivity')}
             style={css(
               'width:38px;height:38px;border-radius:10px;border:1px solid ' +
                 (s.online ? 'var(--border)' : 'color-mix(in srgb, var(--warn) 40%, transparent)') +
@@ -120,7 +142,8 @@ export function DemoDock() {
           <button
             className="pos-press"
             onClick={s.toggleTheme}
-            title="Toggle theme"
+            title={t('dock.toggleTheme')}
+            aria-label={t('dock.toggleTheme')}
             style={css(
               'width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;',
             )}

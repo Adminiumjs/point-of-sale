@@ -25,11 +25,6 @@ export const BRAND_INITIAL = BRAND.charAt(0);
 
 export const TAX = 0.0825;
 
-/** The tax row's label. Derived from TAX so the two cannot drift — it used to
- * be the literal "Tax · 8.25%", written out in both the register pane and the
- * payment summary. */
-export const TAX_LABEL = 'Tax · ' + String(Math.round(TAX * 10000) / 100) + '%';
-
 /** Tip presets as fractions, indexed 0..3 → No tip / 10% / 15% / 20%. */
 export const TIP_PRESETS = [0, 0.1, 0.15, 0.2];
 
@@ -94,9 +89,15 @@ export const CATS: Category[] = [
   { slug: 'cold', name: 'Cold Drinks', icon: 'glass-water', tint: '#3a72c2' },
 ];
 
+/**
+ * `note` holds a *message key*, not a sentence: the attention flags are UI
+ * status text, so they have to translate with the rest of the chrome, and only
+ * this file knows which table says what. The Floor screen resolves it with the
+ * table's own `since` in hand for the ones that quote a time.
+ */
 export const TABLES: TableInfo[] = [
   { zone: 'Window', label: 'W1', seats: 2, status: 'occupied', total: 18.4, since: 12, server: 'SR' },
-  { zone: 'Window', label: 'W2', seats: 4, status: 'attention', total: 52.0, since: 38, server: 'AC', note: 'Bill requested' },
+  { zone: 'Window', label: 'W2', seats: 4, status: 'attention', total: 52.0, since: 38, server: 'AC', note: 'floor.noteBillRequested' },
   { zone: 'Window', label: 'W3', seats: 2, status: 'open' },
   { zone: 'Patio', label: 'P1', seats: 4, status: 'occupied', total: 34.2, since: 9, server: 'JD' },
   { zone: 'Patio', label: 'P2', seats: 4, status: 'open' },
@@ -104,7 +105,7 @@ export const TABLES: TableInfo[] = [
   { zone: 'Bar', label: 'B1', seats: 1, status: 'occupied', total: 12.8, since: 6, server: 'AC' },
   { zone: 'Bar', label: 'B2', seats: 1, status: 'open' },
   { zone: 'Bar', label: 'B3', seats: 1, status: 'open' },
-  { zone: 'Bar', label: 'B4', seats: 1, status: 'attention', total: 9.2, since: 31, server: 'JD', note: 'Sent 31m ago' },
+  { zone: 'Bar', label: 'B4', seats: 1, status: 'attention', total: 9.2, since: 31, server: 'JD', note: 'floor.noteSentAgo' },
   { zone: 'Main', label: 'T10', seats: 4, status: 'open' },
   { zone: 'Main', label: 'T11', seats: 2, status: 'open' },
   { zone: 'Main', label: 'T12', seats: 4, status: 'occupied', since: 19, server: 'SR' },

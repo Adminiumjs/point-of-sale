@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { usePos } from '../state/store';
 import { EXTRAS, MILKS, SIZES } from '../data/demo';
-import { extraDelta, itemById, milkDelta, money, sizeDelta } from '../state/calc';
+import { extraDelta, itemById, milkDelta, money, sizeDelta, sizeLabel } from '../state/calc';
+import { useT } from '../i18n';
 import { Icon } from './Icon';
 import { MenuThumb } from './MenuThumb';
 import { css } from './css';
@@ -28,6 +29,7 @@ const chipBox = (on: boolean) =>
 
 export function ModifierSheet() {
   const s = usePos();
+  const t = useT();
   if (!s.sheetOpen) return null;
   const m = itemById(s.sheetId || '');
   if (!m) return null;
@@ -45,14 +47,14 @@ export function ModifierSheet() {
   line *= s.sheetQty;
 
   const summaryParts: string[] = [];
-  if (hasSize) summaryParts.push(s.sheetSize === 'S' ? 'Small' : s.sheetSize === 'L' ? 'Large' : 'Medium');
-  if (hasMilk && s.sheetMilk !== 'Whole') summaryParts.push(s.sheetMilk + ' milk');
+  if (hasSize) summaryParts.push(sizeLabel(s.sheetSize));
+  if (hasMilk && s.sheetMilk !== 'Whole') summaryParts.push(t('mod.milkSuffix', { milk: s.sheetMilk }));
   s.sheetExtras.forEach((x) => summaryParts.push(x));
-  if (s.sheetSeat > 0) summaryParts.push('Seat ' + s.sheetSeat);
-  const summary = summaryParts.length ? summaryParts.join(' · ') : 'No customizations';
+  if (s.sheetSeat > 0) summaryParts.push(t('ticket.seatN', { n: s.sheetSeat }));
+  const summary = summaryParts.length ? summaryParts.join(' · ') : t('sheet.noCustomizations');
 
-  const seats: { v: number; label: string }[] = [{ v: 0, label: 'Shared' }];
-  for (let i = 1; i <= (s.ticket.seats || 0); i++) seats.push({ v: i, label: 'Seat ' + i });
+  const seats: { v: number; label: string }[] = [{ v: 0, label: t('ticket.shared') }];
+  for (let i = 1; i <= (s.ticket.seats || 0); i++) seats.push({ v: i, label: t('ticket.seatN', { n: i }) });
 
   return (
     <>
@@ -65,22 +67,22 @@ export function ModifierSheet() {
           <MenuThumb item={m} dark={dark} radius="16px" box="width:60px;height:60px;flex-shrink:0;" />
           <div style={css('flex:1;min-width:0;')}>
             <div style={css('font-size:21px;font-weight:800;letter-spacing:-.02em;')}>{m.name}</div>
-            <div style={css('font-size:14px;color:var(--fg-muted);' + MONO + 'margin-top:2px;')}>Base {money(m.price)}</div>
+            <div style={css('font-size:14px;color:var(--fg-muted);' + MONO + 'margin-top:2px;')}>{t('sheet.base', { amount: money(m.price) })}</div>
           </div>
-          <button className="pos-press" onClick={s.closeSheet} style={css('width:46px;height:46px;border-radius:13px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;')}>
+          <button className="pos-press" onClick={s.closeSheet} aria-label={t('sheet.close')} style={css('width:46px;height:46px;border-radius:13px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;')}>
             <Icon name="x" size={22} />
           </button>
         </div>
 
         <div className="pos-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:22px 24px;')}>
           <div style={css('display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;')}>
-            <span style={css('font-size:15px;font-weight:800;')}>Quantity</span>
+            <span style={css('font-size:15px;font-weight:800;')}>{t('sheet.quantity')}</span>
             <div style={css('display:flex;align-items:center;gap:4px;background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:4px;')}>
-              <button className="pos-press" onClick={s.sheetQtyDec} style={css('width:48px;height:48px;border-radius:11px;border:none;background:var(--surface);color:var(--fg);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow);')}>
+              <button className="pos-press" onClick={s.sheetQtyDec} aria-label={t('ticket.decrease')} style={css('width:48px;height:48px;border-radius:11px;border:none;background:var(--surface);color:var(--fg);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow);')}>
                 <Icon name="minus" size={20} />
               </button>
               <span style={css('min-width:44px;text-align:center;font-size:22px;font-weight:800;' + MONO)}>{s.sheetQty}</span>
-              <button className="pos-press" onClick={s.sheetQtyInc} style={css('width:48px;height:48px;border-radius:11px;border:none;background:var(--surface);color:var(--fg);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow);')}>
+              <button className="pos-press" onClick={s.sheetQtyInc} aria-label={t('ticket.increase')} style={css('width:48px;height:48px;border-radius:11px;border:none;background:var(--surface);color:var(--fg);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow);')}>
                 <Icon name="plus" size={20} />
               </button>
             </div>
@@ -88,13 +90,13 @@ export function ModifierSheet() {
 
           {hasSize && (
             <>
-              <SectionLabel>Size</SectionLabel>
+              <SectionLabel>{t('sheet.size')}</SectionLabel>
               <div style={css('display:flex;gap:10px;margin-bottom:24px;')}>
                 {SIZES.map((o) => {
                   const on = s.sheetSize === o.v;
                   const d = sizeDelta(o.v);
-                  const lbl = o.v === 'S' ? 'Small' : o.v === 'L' ? 'Large' : 'Medium';
-                  const delta = (d > 0 ? '+' : '') + money(Math.abs(d)).replace('$', d < 0 ? '−$' : '$');
+                  const lbl = sizeLabel(o.v);
+                  const delta = (d < 0 ? '−' : '+') + money(Math.abs(d));
                   return (
                     <button key={o.v} className="pos-press" onClick={() => s.setSheetSize(o.v)} style={css(optBox(on))}>
                       <span style={css('font-size:16px;font-weight:800;')}>{lbl}</span>
@@ -108,14 +110,14 @@ export function ModifierSheet() {
 
           {hasMilk && (
             <>
-              <SectionLabel>Milk</SectionLabel>
+              <SectionLabel>{t('sheet.milk')}</SectionLabel>
               <div style={css('display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;')}>
                 {MILKS.map(({ v, delta: d }) => {
                   const on = s.sheetMilk === v;
                   return (
                     <button key={v} className="pos-press" onClick={() => s.setSheetMilk(v)} style={css(chipBox(on))}>
                       {v}
-                      {d > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-left:6px;')}>+{money(d)}</span>}
+                      {d > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-inline-start:6px;')}>+{money(d)}</span>}
                     </button>
                   );
                 })}
@@ -125,7 +127,7 @@ export function ModifierSheet() {
 
           {hasExtras && (
             <>
-              <SectionLabel>Extras</SectionLabel>
+              <SectionLabel>{t('sheet.extras')}</SectionLabel>
               <div style={css('display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;')}>
                 {EXTRAS.map((o) => {
                   const on = s.sheetExtras.indexOf(o.v) >= 0;
@@ -134,7 +136,7 @@ export function ModifierSheet() {
                     <button key={o.v} className="pos-press" onClick={() => s.toggleSheetExtra(o.v)} style={css(chipBox(on))}>
                       <Icon name={o.icon} size={16} />
                       {o.v}
-                      {d > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-left:2px;')}>+{money(d)}</span>}
+                      {d > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-inline-start:2px;')}>+{money(d)}</span>}
                     </button>
                   );
                 })}
@@ -144,7 +146,7 @@ export function ModifierSheet() {
 
           {hasSeat && (
             <>
-              <SectionLabel>Seat</SectionLabel>
+              <SectionLabel>{t('sheet.seat')}</SectionLabel>
               <div style={css('display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;')}>
                 {seats.map((o) => (
                   <button key={o.v} className="pos-press" onClick={() => s.setSheetSeat(o.v)} style={css(chipBox(s.sheetSeat === o.v))}>
@@ -155,11 +157,12 @@ export function ModifierSheet() {
             </>
           )}
 
-          <SectionLabel>Item note</SectionLabel>
+          <SectionLabel>{t('sheet.itemNote')}</SectionLabel>
           <textarea
             value={s.sheetNote}
             onChange={(e) => s.setSheetNote(e.target.value)}
-            placeholder="e.g. extra hot, oat foam, to stay"
+            placeholder={t('sheet.notePlaceholder')}
+            aria-label={t('sheet.itemNote')}
             style={css('width:100%;min-height:70px;resize:none;border:1px solid var(--border-strong);background:var(--surface-2);border-radius:14px;padding:14px 16px;font-size:15px;font-weight:500;color:var(--fg);outline:none;')}
           />
         </div>
@@ -170,7 +173,7 @@ export function ModifierSheet() {
             <span style={css('font-weight:600;')}>{summary}</span>
           </div>
           <button className="pos-press" onClick={s.sheetAdd} style={css('width:100%;height:66px;border-radius:17px;border:none;background:var(--accent);color:var(--accent-fg);font-size:18px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;')}>
-            <span>Add {s.sheetQty} to ticket</span>
+            <span>{t('sheet.addToTicket', { qty: s.sheetQty })}</span>
             <span style={css(MONO + 'font-weight:800;')}>{money(line)}</span>
           </button>
         </div>

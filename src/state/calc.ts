@@ -3,7 +3,9 @@
 // epsilons (0.005) or the last-payer remainder logic; the ledger depends on it.
 
 import { CATS, MENU, MILKS, TAX, TIP_PRESETS, seedTicket } from '../data/demo';
-import type { Discount, LineItem, MenuItem, Sale, Size, Split, ServiceMode } from '../data/types';
+import type { Category, Discount, LineItem, MenuItem, Sale, Size, Split, ServiceMode } from '../data/types';
+import type { MessageKey } from '../i18n';
+import { money as fmtMoney, number as fmtNumber, t, tOr } from '../i18n/ambient';
 
 /** The slice of store state the pricing helpers read. */
 export interface PricingState {
@@ -17,8 +19,16 @@ export interface PricingState {
   splitCustom: string;
 }
 
-export const money = (n: number): string =>
-  '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/**
+ * The one money formatter.
+ *
+ * The currency is a property of the till, not of the reader — a New York cafe
+ * charges dollars to a German tourist too — so it stays USD while the *locale*
+ * decides grouping, decimal separator, digit shapes and where the symbol sits
+ * ($1,234.50 / 1.234,50 $ / ‏US$ ١٬٢٣٤٫٥٠). Before `<App>` mounts this falls
+ * back to en-US, which is what the unit tests assert against.
+ */
+export const money = (n: number, currency?: string): string => fmtMoney(Number(n || 0), currency);
 
 export const hexToRgba = (hex: string, a: number): string => {
   let h = (hex || '#4f46e5').replace('#', '');
@@ -34,6 +44,22 @@ export const catTint = (slug: string): string => {
   return c && c.tint ? c.tint : 'var(--accent)';
 };
 
+/**
+ * Labels for seed data whose key is only known at runtime. The category, zone
+ * and role names are UI chrome that happens to be authored in the catalogue —
+ * unlike the item and modifier names, which are the cafe's own words and stay
+ * as typed. An unrecognised slug falls back to whatever the seed says.
+ */
+export const catName = (c: Category): string => tOr('category.' + c.slug, c.name);
+export const zoneName = (zone: string): string => tOr('zone.' + zone.toLowerCase(), zone);
+export const roleName = (role: string): string =>
+  tOr('role.' + role.toLowerCase().replace(/\s+/g, ''), role);
+
+/** The tax row's label. Derived from TAX so the rate and the label cannot drift
+ * — it used to be the literal "Tax · 8.25%", written out in both the register
+ * pane and the payment summary. */
+export const taxLabel = (): string => t('common.taxRate', { pct: fmtNumber(round2(TAX * 100)) });
+
 export const tintOf = (id: string): string => {
   const m = itemById(id);
   return m ? catTint(m.cat) : 'var(--accent)';
@@ -43,19 +69,26 @@ export const tintOf = (id: string): string => {
 export const mins = (ts: number): number => Math.max(0, Math.round((Date.now() - ts) / 60000));
 export const agoLabel = (ts: number): string => {
   const m = mins(ts);
-  return m < 1 ? 'just now' : m + 'm ago';
+  return m < 1 ? t('common.justNow') : t('common.minutesAgo', { m });
 };
 export const dur = (ms: number): string => {
   const m = Math.round(ms / 60000);
   const h = Math.floor(m / 60);
-  return (h ? h + 'h ' : '') + (m % 60) + 'm';
+  return h ? t('common.durationHm', { h, m: m % 60 }) : t('common.minutesShort', { m });
 };
 
+/** The table's own label ("T12") is the cafe's; the noun in front of it is
+ * ours, so only the noun is translated. */
 export const tableName = (l: string | null | undefined, mode: ServiceMode): string => {
-  if (!l || l === '—') return mode === 'retail' ? 'Walk-in sale' : 'New ticket';
-  const map: Record<string, string> = { T: 'Table ', W: 'Window ', P: 'Patio ', B: 'Bar ' };
-  const pre = map[l[0]];
-  return pre ? pre + l.slice(1) : l;
+  if (!l || l === '—') return mode === 'retail' ? t('table.walkIn') : t('table.newTicket');
+  const map: Record<string, MessageKey> = {
+    T: 'table.table',
+    W: 'table.window',
+    P: 'table.patio',
+    B: 'table.bar',
+  };
+  const key = map[l[0]];
+  return key ? t(key, { n: l.slice(1) }) : l;
 };
 
 // ---- Pricing deltas ----
@@ -166,10 +199,15 @@ export const chargeTarget = (s: PricingState): number => {
   return rem;
 };
 
+/** The size words and the "… milk" frame are chrome; the milk and extra names
+ * themselves are the cafe's catalogue and pass through untouched. */
+export const sizeLabel = (s: Size): string =>
+  t(s === 'S' ? 'size.small' : s === 'L' ? 'size.large' : 'size.medium');
+
 export const modLabel = (li: LineItem): string => {
   const parts: string[] = [];
-  if (li.size) parts.push(li.size === 'S' ? 'Small' : li.size === 'L' ? 'Large' : 'Medium');
-  if (li.milk && li.milk !== 'Whole') parts.push(li.milk + ' milk');
+  if (li.size) parts.push(sizeLabel(li.size));
+  if (li.milk && li.milk !== 'Whole') parts.push(t('mod.milkSuffix', { milk: li.milk }));
   (li.extras || []).forEach((x) => parts.push(x));
   return parts.join(' · ');
 };
