@@ -13,239 +13,255 @@
     "key": "mft.pos.desc",
     "fallback": "Point-of-sale terminal and back-office for cafes and restaurants — menu, tickets, split payments, floor plan, and staff shifts, over one shared database."
   },
-  "categories": ["hospitality"],
+  "categories": [
+    "hospitality"
+  ],
   "compatibility": {
     "minAdminiumVersion": "1.0.0",
-    "engines": ["sqlite", "postgres"],
-    "requires": ["realtime"]
+    "engines": [
+      "sqlite",
+      "postgres"
+    ],
+    "requires": [
+      "realtime"
+    ]
   },
-
   "requiredSchema": {
-    "menuItems": {
-      "table": "menu_items",
-      "label": { "key": "mft.pos.entity.menuItems", "fallback": "Menu items" },
-      "primaryKey": "id",
-      "displayField": "name",
-      "columns": {
-        "id": { "type": "int" },
-        "name": { "type": "text" },
-        "price": { "type": "money" },
-        "category": { "type": "text" },
-        "imageUrl": { "type": "image", "column": "image_url" },
-        "available": { "type": "bool", "default": true }
-      }
-    },
-    "tables": {
-      "table": "restaurant_tables",
-      "label": { "key": "mft.pos.entity.tables", "fallback": "Tables" },
-      "primaryKey": "id",
-      "displayField": "label",
-      "columns": {
-        "id": { "type": "int" },
-        "label": { "type": "text" },
-        "seats": { "type": "int" },
-        "zone": { "type": "text" }
-      }
-    },
-    "tickets": {
-      "table": "tickets",
-      "label": { "key": "mft.pos.entity.tickets", "fallback": "Tickets" },
-      "primaryKey": "id",
-      "displayField": "number",
-      "columns": {
-        "id": { "type": "int" },
-        "number": { "type": "text", "unique": true },
-        "tableId": { "type": "ref", "ref": "tables", "column": "table_id", "nullable": true },
-        "status": { "type": "enum", "values": ["open", "sent", "paid", "void"], "default": "open" },
-        "total": { "type": "money", "default": 0 },
-        "openedAt": { "type": "datetime", "column": "opened_at" },
-        "closedAt": { "type": "datetime", "column": "closed_at", "nullable": true }
-      }
-    },
-    "ticketItems": {
-      "table": "ticket_items",
-      "label": { "key": "mft.pos.entity.ticketItems", "fallback": "Ticket items" },
-      "primaryKey": "id",
-      "columns": {
-        "id": { "type": "int" },
-        "ticketId": { "type": "ref", "ref": "tickets", "column": "ticket_id", "onDelete": "cascade" },
-        "menuItemId": { "type": "ref", "ref": "menuItems", "column": "menu_item_id" },
-        "qty": { "type": "int", "default": 1 },
-        "unitPrice": { "type": "money", "column": "unit_price" },
-        "notes": { "type": "text", "nullable": true }
-      }
-    },
-    "payments": {
-      "table": "payments",
-      "label": { "key": "mft.pos.entity.payments", "fallback": "Payments" },
-      "primaryKey": "id",
-      "columns": {
-        "id": { "type": "int" },
-        "ticketId": { "type": "ref", "ref": "tickets", "column": "ticket_id" },
-        "method": { "type": "enum", "values": ["cash", "card", "qr"] },
-        "amount": { "type": "money" },
-        "paidAt": { "type": "datetime", "column": "paid_at" }
-      }
-    },
-    "shifts": {
-      "table": "shifts",
-      "label": { "key": "mft.pos.entity.shifts", "fallback": "Shifts" },
-      "primaryKey": "id",
-      "displayField": "staff",
-      "columns": {
-        "id": { "type": "int" },
-        "staff": { "type": "text" },
-        "startedAt": { "type": "datetime", "column": "started_at" },
-        "endedAt": { "type": "datetime", "column": "ended_at", "nullable": true }
-      }
-    }
-  },
-
-  "pages": [
-    {
-      "key": "pos-dashboard",
-      "title": { "key": "mft.pos.page.dashboard", "fallback": "Dashboard" },
-      "type": "page-dashboard",
-      "nav": { "group": "manifest:pos", "icon": "gauge", "order": 1 },
-      "widgets": [
-        {
-          "type": "kpi-row",
-          "title": { "key": "mft.pos.kpi.sales", "fallback": "Today" },
-          "metrics": [
-            { "label": "Gross sales", "source": "payments", "agg": "sum", "field": "amount", "format": "money", "window": "today" },
-            { "label": "Tickets", "source": "tickets", "agg": "count", "filter": { "status": "paid" }, "window": "today" },
-            { "label": "Avg ticket", "source": "tickets", "agg": "avg", "field": "total", "filter": { "status": "paid" }, "format": "money", "window": "today" },
-            { "label": "Open tabs", "source": "tickets", "agg": "count", "filter": { "status": ["open", "sent"] } }
-          ]
-        },
-        {
-          "type": "chart-bar",
-          "title": { "key": "mft.pos.chart.hourly", "fallback": "Sales by hour" },
-          "source": "payments",
-          "x": { "field": "paidAt", "bucket": "hour" },
-          "y": { "agg": "sum", "field": "amount", "format": "money" }
-        }
-      ]
-    },
-    {
-      "key": "pos-menu",
-      "title": { "key": "mft.pos.page.menu", "fallback": "Menu" },
-      "type": "page-crud",
-      "entity": "menuItems",
-      "nav": { "group": "manifest:pos", "icon": "utensils", "order": 2 },
-      "view": {
-        "kind": "card-gallery",
-        "image": "imageUrl",
-        "title": "name",
-        "subtitle": "price",
-        "badge": "category",
-        "groupBy": "category"
-      },
-      "form": {
-        "fields": ["name", "price", "category", "imageUrl", "available"]
-      }
-    },
-    {
-      "key": "pos-tickets",
-      "title": { "key": "mft.pos.page.tickets", "fallback": "Tickets" },
-      "type": "page-master-detail",
-      "nav": { "group": "manifest:pos", "icon": "receipt", "order": 3 },
-      "master": {
-        "entity": "tickets",
-        "filter": { "status": ["open", "sent"] },
-        "sort": [{ "field": "openedAt", "dir": "asc" }],
-        "columns": ["number", "tableId", "status", "total", "openedAt"]
-      },
-      "detail": {
-        "entity": "tickets",
-        "sections": [
+    "tables": [
+      {
+        "ref": "menuitems",
+        "columns": [
           {
-            "kind": "line-items",
-            "entity": "ticketItems",
-            "foreignKey": "ticketId",
-            "columns": ["menuItemId", "qty", "unitPrice", "notes"]
+            "ref": "id",
+            "type": "int"
           },
           {
-            "kind": "totals",
-            "rows": [
-              { "label": "Subtotal", "agg": "sum", "entity": "ticketItems", "expr": "qty * unitPrice" },
-              { "label": "Paid", "agg": "sum", "entity": "payments", "field": "amount" },
-              { "label": "Total", "field": "total" }
+            "ref": "name",
+            "type": "text"
+          },
+          {
+            "ref": "price",
+            "type": "money"
+          },
+          {
+            "ref": "category",
+            "type": "text"
+          },
+          {
+            "ref": "imageurl",
+            "type": "text",
+            "semantic": "image"
+          },
+          {
+            "ref": "available",
+            "type": "bool"
+          }
+        ]
+      },
+      {
+        "ref": "tables",
+        "columns": [
+          {
+            "ref": "id",
+            "type": "int"
+          },
+          {
+            "ref": "label",
+            "type": "text"
+          },
+          {
+            "ref": "seats",
+            "type": "int"
+          },
+          {
+            "ref": "zone",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "ref": "tickets",
+        "columns": [
+          {
+            "ref": "id",
+            "type": "int"
+          },
+          {
+            "ref": "number",
+            "type": "text"
+          },
+          {
+            "ref": "tables",
+            "type": "fk",
+            "nullable": true,
+            "references": "tables"
+          },
+          {
+            "ref": "status",
+            "type": "enum",
+            "enum": [
+              "open",
+              "sent",
+              "paid",
+              "void"
             ]
+          },
+          {
+            "ref": "total",
+            "type": "money"
+          },
+          {
+            "ref": "openedat",
+            "type": "timestamptz"
+          },
+          {
+            "ref": "closedat",
+            "type": "timestamptz",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "ref": "ticketitems",
+        "columns": [
+          {
+            "ref": "id",
+            "type": "int"
+          },
+          {
+            "ref": "tickets",
+            "type": "fk",
+            "references": "tickets"
+          },
+          {
+            "ref": "menuitems",
+            "type": "fk",
+            "references": "menuitems"
+          },
+          {
+            "ref": "qty",
+            "type": "int"
+          },
+          {
+            "ref": "unitprice",
+            "type": "money"
+          },
+          {
+            "ref": "notes",
+            "type": "text",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "ref": "payments",
+        "columns": [
+          {
+            "ref": "id",
+            "type": "int"
+          },
+          {
+            "ref": "tickets",
+            "type": "fk",
+            "references": "tickets"
+          },
+          {
+            "ref": "method",
+            "type": "enum",
+            "enum": [
+              "cash",
+              "card",
+              "qr"
+            ]
+          },
+          {
+            "ref": "amount",
+            "type": "money"
+          },
+          {
+            "ref": "paidat",
+            "type": "timestamptz"
+          }
+        ]
+      },
+      {
+        "ref": "shifts",
+        "columns": [
+          {
+            "ref": "id",
+            "type": "int"
+          },
+          {
+            "ref": "staff",
+            "type": "text"
+          },
+          {
+            "ref": "startedat",
+            "type": "timestamptz"
+          },
+          {
+            "ref": "endedat",
+            "type": "timestamptz",
+            "nullable": true
           }
         ]
       }
+    ]
+  },
+  "pages": [
+    {
+      "ref": "pos-dashboard",
+      "template": "page-dashboard",
+      "title": {
+        "key": "mft.pos.page.dashboard",
+        "fallback": "Dashboard"
+      },
+      "nav": {
+        "group": "manifest:pos",
+        "icon": "gauge",
+        "order": 1
+      }
     },
     {
-      "key": "pos-shifts",
-      "title": { "key": "mft.pos.page.shifts", "fallback": "Shifts" },
-      "type": "page-scheduler",
-      "entity": "shifts",
-      "nav": { "group": "manifest:pos", "icon": "calendar-clock", "order": 4 },
-      "scheduler": {
-        "resource": "staff",
-        "start": "startedAt",
-        "end": "endedAt"
+      "ref": "pos-menu",
+      "template": "page-crud",
+      "title": {
+        "key": "mft.pos.page.menu",
+        "fallback": "Menu"
+      },
+      "nav": {
+        "group": "manifest:pos",
+        "icon": "utensils",
+        "order": 2
+      }
+    },
+    {
+      "ref": "pos-tickets",
+      "template": "page-master-detail",
+      "title": {
+        "key": "mft.pos.page.tickets",
+        "fallback": "Tickets"
+      },
+      "nav": {
+        "group": "manifest:pos",
+        "icon": "receipt",
+        "order": 3
+      }
+    },
+    {
+      "ref": "pos-shifts",
+      "template": "page-scheduler",
+      "title": {
+        "key": "mft.pos.page.shifts",
+        "fallback": "Shifts"
+      },
+      "nav": {
+        "group": "manifest:pos",
+        "icon": "calendar-clock",
+        "order": 4
       }
     }
   ],
-
-  "roles": {
-    "pos-cashier": {
-      "name": { "key": "mft.pos.role.cashier", "fallback": "Cashier" },
-      "permissions": [
-        { "resource": "tickets", "actions": ["create", "read", "update"] },
-        { "resource": "ticketItems", "actions": ["create", "read", "update", "delete"] },
-        { "resource": "payments", "actions": ["create", "read"] },
-        { "resource": "menuItems", "actions": ["read"] },
-        { "resource": "tables", "actions": ["read"] }
-      ]
-    },
-    "pos-manager": {
-      "name": { "key": "mft.pos.role.manager", "fallback": "Manager" },
-      "extends": "pos-cashier",
-      "permissions": [
-        { "resource": "menuItems", "actions": ["create", "read", "update", "delete"] },
-        { "resource": "tables", "actions": ["create", "read", "update", "delete"] },
-        { "resource": "shifts", "actions": ["create", "read", "update", "delete"] },
-        { "resource": "pos-dashboard", "actions": ["read"] }
-      ]
-    }
-  },
-
-  "settings": {
-    "currency": {
-      "type": "string",
-      "label": { "key": "mft.pos.setting.currency", "fallback": "Currency" },
-      "default": "USD"
-    },
-    "tax_rate": {
-      "type": "number",
-      "label": { "key": "mft.pos.setting.taxRate", "fallback": "Tax rate (%)" },
-      "default": 8.25
-    },
-    "service_mode": {
-      "type": "enum",
-      "values": ["retail", "restaurant"],
-      "label": { "key": "mft.pos.setting.serviceMode", "fallback": "Service mode" },
-      "default": "restaurant"
-    },
-    "receipt_header": {
-      "type": "string",
-      "label": { "key": "mft.pos.setting.receiptHeader", "fallback": "Receipt header" },
-      "default": "Daybreak Coffee"
-    },
-    "printer_target": {
-      "type": "string",
-      "label": { "key": "mft.pos.setting.printerTarget", "fallback": "Receipt printer target" },
-      "default": ""
-    },
-    "stripe_terminal_key": {
-      "type": "secret",
-      "label": { "key": "mft.pos.setting.stripeTerminalKey", "fallback": "Stripe Terminal key" }
-    }
-  },
-
   "capabilities": [
     "offline-required",
     "receipt-printer",
@@ -253,16 +269,15 @@
     "payments",
     "realtime"
   ],
-
-  "frontend": {
-    "kind": "electron",
-    "root": ".",
-    "buildCommand": "npm run build",
-    "buildOutput": "dist",
-    "entry": "index.html",
-    "routes": {
-      "pos": "/",
-      "admin": "/studio"
+  "kind": "app",
+  "frontends": [
+    {
+      "side": "staff",
+      "kind": "electron",
+      "entry": "index.html",
+      "routes": {
+        "pos": "/"
+      }
     }
-  }
+  ]
 }
