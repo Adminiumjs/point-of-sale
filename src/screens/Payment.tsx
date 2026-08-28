@@ -340,6 +340,7 @@ export function Payment() {
                   <div style={css('font-size:13.5px;color:var(--fg-muted);margin-top:6px;')}>{cardSub}</div>
                   {s.card === 'reading' && <div style={css('width:34px;height:34px;border:3px solid var(--surface-3);border-top-color:var(--accent);border-radius:50%;animation:pos-spin .8s linear infinite;margin:18px auto 0;')} />}
                 </div>
+                <div style={css('margin-top:14px;font-size:12.5px;color:var(--fg-subtle);')}>{t('payment.cardDemo')}</div>
                 <div style={css('display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;font-size:12.5px;color:var(--fg-subtle);')}>
                   <Icon name="shield-check" size={15} />
                   {t('payment.encrypted')}
