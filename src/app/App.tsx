@@ -3,6 +3,7 @@ import { usePos } from '../state/store';
 import { useI18n } from '../i18n';
 import { setAmbient } from '../i18n/ambient';
 import { DemoDock } from '../components/DemoDock';
+import { isConnected } from '../data/source';
 import { TopBar } from '../components/TopBar';
 import { Toast } from '../components/Toast';
 import { ModifierSheet } from '../components/ModifierSheet';
@@ -52,7 +53,7 @@ export function App() {
 
   return (
     <div className="pos-app">
-      <DemoDock />
+      {!isConnected() && <DemoDock />}
       <div className="pos-terminal">
         {showTopbar && <TopBar />}
         {view === 'login' && <Login />}
