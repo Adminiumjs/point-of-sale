@@ -1,5 +1,5 @@
 import { usePos, curStaffOf } from '../state/store';
-import { BRAND_INITIAL, SHIFT_START } from '../data/demo';
+import { source } from '../data/source';
 import { dur, tableName } from '../state/calc';
 import { useT } from '../i18n';
 import { Icon } from './Icon';
@@ -43,7 +43,7 @@ export function TopBar() {
         style={css('display:flex;align-items:center;gap:12px;min-width:0;flex-shrink:1;background:none;border:none;cursor:pointer;padding:8px 10px 8px 6px;border-radius:14px;')}
       >
         <div style={css('width:42px;height:42px;border-radius:13px;background:var(--accent);color:var(--accent-fg);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;letter-spacing:-.03em;box-shadow:0 3px 10px color-mix(in srgb, var(--accent) 40%, transparent);flex-shrink:0;')}>
-          {BRAND_INITIAL}
+          {source.brand().charAt(0)}
         </div>
         <div style={css('text-align:start;min-width:0;')}>
           <div style={css('font-size:18px;font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap;')}>{title}</div>
@@ -93,7 +93,7 @@ export function TopBar() {
           <div style={css('text-align:end;line-height:1.15;')}>
             <div style={css('font-size:13.5px;font-weight:700;')}>{staff.name}</div>
             <div style={css('font-size:11.5px;color:var(--fg-muted);' + MONO)}>
-              {t('topbar.shiftOpen', { d: dur(Date.now() - SHIFT_START) })}
+              {t('topbar.shiftOpen', { d: dur(Date.now() - source.shiftStart()) })}
             </div>
           </div>
           <div style={css('width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--accent-fg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;')}>

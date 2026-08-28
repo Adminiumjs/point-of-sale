@@ -8,8 +8,11 @@ import { create } from 'zustand';
 // Toast copy is produced inside actions, which are not React components — the
 // ambient bridge hands back the same `t` the tree is rendering with.
 import { t } from '../i18n/ambient';
-import { demoSource } from '../data/source';
-import { STAFF, seedTicket } from '../data/demo';
+/* The SEAM, not the seed. `demoSource` here meant a connected till read the
+ * demo catalogue no matter what the server said — the swap had nowhere to
+ * land. */
+import { source } from '../data/source';
+import { seedTicket } from '../data/demo';
 import type {
   Discount,
   DiscountKind,
@@ -192,7 +195,10 @@ let ctTimer: ReturnType<typeof setTimeout>;
 let ct2Timer: ReturnType<typeof setTimeout>;
 let ttTimer: ReturnType<typeof setTimeout>;
 
-const curStaffOf = (s: PosState): Staff => STAFF.find((x) => x.id === s.staffSel) || STAFF[0];
+const curStaffOf = (s: PosState): Staff => {
+  const roster = source.staff();
+  return roster.find((x: Staff) => x.id === s.staffSel) ?? (roster[0] as Staff);
+};
 
 /*
  * What to reset after a partial payment lands.
@@ -328,8 +334,8 @@ export const usePos = create<PosState>()((set, get) => {
     menuDensity: 'cozy',
     coursing: false,
     unavail: ['almond'],
-    ticket: demoSource.openTicket(),
-    held: demoSource.heldTickets(),
+    ticket: source.openTicket(),
+    held: source.heldTickets(),
 
     sheetOpen: false,
     sheetId: null,
@@ -360,7 +366,7 @@ export const usePos = create<PosState>()((set, get) => {
     splitCustom: '',
 
     lastSale: null,
-    kds: demoSource.kitchenOrders(),
+    kds: source.kitchenOrders(),
 
     toast: null,
 
@@ -864,4 +870,10 @@ export const usePos = create<PosState>()((set, get) => {
 });
 
 export { curStaffOf };
-export { SHIFT, STAFF, TABLES } from '../data/demo';
+/*
+ * The seed re-export that used to stand here — `SHIFT`, `STAFF`, `TABLES`
+ * forwarded straight out of `data/demo.ts` — is gone. Nothing imported it any
+ * more, and while it stood it was a second door into the seed that the seam
+ * could not close: a connected till would have served the demo's shift totals
+ * and the demo's floor plan to anybody who took this route instead.
+ */

@@ -1,5 +1,5 @@
 import { usePos } from '../state/store';
-import { CATS, FAVOURITES, MENU } from '../data/demo';
+import { source } from '../data/source';
 import { catName, itemById, money } from '../state/calc';
 import { useT } from '../i18n';
 import { Icon } from '../components/Icon';
@@ -16,7 +16,7 @@ export function Register() {
   const dense = s.menuDensity === 'dense';
 
   const q = s.search.trim().toLowerCase();
-  const list = MENU.filter((m) => (q ? m.name.toLowerCase().indexOf(q) >= 0 : s.cat === 'all' || m.cat === s.cat));
+  const list = source.menu().filter((m) => (q ? m.name.toLowerCase().indexOf(q) >= 0 : s.cat === 'all' || m.cat === s.cat));
   const imgH = dense ? '62px' : '98px';
   const rad = dense ? '13px' : '18px';
 
@@ -37,7 +37,7 @@ export function Register() {
             <Icon name="star" size={14} />
             {t('register.quickAdd')}
           </span>
-          {FAVOURITES.map((id) => {
+          {source.favourites().map((id) => {
             const m = itemById(id);
             if (!m) return null;
             return (
@@ -60,9 +60,9 @@ export function Register() {
         {/* Category row + density */}
         <div style={css('flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px 18px 14px;border-bottom:1px solid var(--border);')}>
           <div className="pos-scroll" style={css('flex:1;min-width:0;display:flex;gap:10px;overflow-x:auto;')}>
-            {CATS.map((c) => {
+            {source.categories().map((c) => {
               const on = s.cat === c.slug;
-              const cnt = c.slug === 'all' ? MENU.length : MENU.filter((m) => m.cat === c.slug).length;
+              const cnt = c.slug === 'all' ? source.menu().length : source.menu().filter((m) => m.cat === c.slug).length;
               return (
                 <button
                   key={c.slug}

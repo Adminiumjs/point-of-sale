@@ -1,5 +1,5 @@
 import { usePos, curStaffOf } from '../state/store';
-import { BRAND } from '../data/demo';
+import { source } from '../data/source';
 import { demoSale, money, tableName } from '../state/calc';
 import { useI18n } from '../i18n';
 import { Icon } from '../components/Icon';
@@ -47,7 +47,7 @@ export function Complete() {
           <div style={css('flex:1;min-width:280px;display:flex;justify-content:center;')}>
             <div style={css('width:300px;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 22px 24px;box-shadow:var(--shadow-lg);')}>
               <div style={css('text-align:center;margin-bottom:6px;')}>
-                <div style={css('font-size:20px;font-weight:800;letter-spacing:.04em;')}>{BRAND.toUpperCase()}</div>
+                <div style={css('font-size:20px;font-weight:800;letter-spacing:.04em;')}>{source.brand().toUpperCase()}</div>
                 <div style={css('font-size:11px;color:var(--fg-muted);margin-top:3px;')}>128 Alder Lane · (415) 555-0148</div>
               </div>
               <div style={css('border-top:1px dashed var(--border-strong);margin:13px 0;')} />
@@ -104,10 +104,6 @@ export function Complete() {
                 <Icon name="message-square" size={19} />
                 {t('complete.text')}
               </button>
-            </div>
-            <div style={css('display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);')}>
-              <Icon name="at-sign" size={17} color="var(--fg-subtle)" />
-              <input placeholder={t('complete.contactPlaceholder')} aria-label={t('complete.contactPlaceholder')} style={css('flex:1;border:none;background:transparent;outline:none;font-size:14.5px;color:var(--fg);')} />
             </div>
             <div style={css('height:1px;background:var(--border);margin:6px 0;')} />
             <button className="pos-press" onClick={s.newOrder} style={css('height:66px;border-radius:16px;border:1.5px solid var(--accent);background:var(--accent-soft);color:var(--accent);font-size:17px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:11px;')}>

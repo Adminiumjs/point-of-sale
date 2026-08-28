@@ -1,5 +1,5 @@
 import { usePos } from '../state/store';
-import { BRAND } from '../data/demo';
+import { source } from '../data/source';
 import type { KdsStatus } from '../data/types';
 import { mins, tableName } from '../state/calc';
 import { useT, type MessageKey } from '../i18n';
@@ -33,7 +33,7 @@ export function Kitchen() {
         </div>
         <div>
           <div style={css('font-size:18px;font-weight:800;letter-spacing:-.02em;')}>{t('kitchen.title')}</div>
-          <div style={css('font-size:12.5px;color:var(--fg-muted);')}>{t('kitchen.subtitle', { brand: BRAND })}</div>
+          <div style={css('font-size:12.5px;color:var(--fg-muted);')}>{t('kitchen.subtitle', { brand: source.brand() })}</div>
         </div>
         <button className="pos-press" onClick={() => usePos.setState({ view: 'register' })} style={css('margin-inline-start:auto;height:46px;padding:0 16px;border-radius:13px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;')}>
           <Icon name="arrow-left" size={17} />

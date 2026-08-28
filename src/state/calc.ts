@@ -2,7 +2,8 @@
 // rounding is deliberately identical to the comp — do not "simplify" the
 // epsilons (0.005) or the last-payer remainder logic; the ledger depends on it.
 
-import { CATS, MENU, MILKS, TAX, TIP_PRESETS, seedTicket } from '../data/demo';
+import { seedTicket } from '../data/demo';
+import { source } from '../data/source';
 import type { Category, Discount, LineItem, MenuItem, Sale, Size, Split, ServiceMode } from '../data/types';
 import type { MessageKey } from '../i18n';
 import { money as fmtMoney, number as fmtNumber, t, tOr } from '../i18n/ambient';
@@ -37,10 +38,10 @@ export const hexToRgba = (hex: string, a: number): string => {
   return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
 };
 
-export const itemById = (id: string): MenuItem | undefined => MENU.find((m) => m.id === id);
+export const itemById = (id: string): MenuItem | undefined => source.menu().find((m) => m.id === id);
 
 export const catTint = (slug: string): string => {
-  const c = CATS.find((x) => x.slug === slug);
+  const c = source.categories().find((x) => x.slug === slug);
   return c && c.tint ? c.tint : 'var(--accent)';
 };
 
@@ -55,10 +56,10 @@ export const zoneName = (zone: string): string => tOr('zone.' + zone.toLowerCase
 export const roleName = (role: string): string =>
   tOr('role.' + role.toLowerCase().replace(/\s+/g, ''), role);
 
-/** The tax row's label. Derived from TAX so the rate and the label cannot drift
+/** The tax row's label. Derived from source.taxRate() so the rate and the label cannot drift
  * — it used to be the literal "Tax · 8.25%", written out in both the register
  * pane and the payment summary. */
-export const taxLabel = (): string => t('common.taxRate', { pct: fmtNumber(round2(TAX * 100)) });
+export const taxLabel = (): string => t('common.taxRate', { pct: fmtNumber(round2(source.taxRate() * 100)) });
 
 export const tintOf = (id: string): string => {
   const m = itemById(id);
@@ -93,7 +94,7 @@ export const tableName = (l: string | null | undefined, mode: ServiceMode): stri
 
 // ---- Pricing deltas ----
 export const sizeDelta = (s?: Size | null): number => (s === 'S' ? -0.4 : s === 'L' ? 0.7 : 0);
-export const milkDelta = (m?: string | null): number => MILKS.find((x) => x.v === m)?.delta ?? 0;
+export const milkDelta = (m?: string | null): number => source.milks().find((x) => x.v === m)?.delta ?? 0;
 export const extraDelta = (x: string): number => (x === 'Extra shot' ? 0.9 : x === 'Decaf' ? 0 : 0.5);
 
 export const lineUnit = (li: LineItem): number => {
@@ -148,11 +149,11 @@ export const subtotal = (s: PricingState): number => round2(rawSub(s));
 export const discountAmt = (s: PricingState): number => round2(rawDisc(s));
 /** The taxable/tippable base — deliberately unrounded. */
 export const netSub = (s: PricingState): number => Math.max(0, rawSub(s) - rawDisc(s));
-export const tax = (s: PricingState): number => round2(netSub(s) * TAX);
+export const tax = (s: PricingState): number => round2(netSub(s) * source.taxRate());
 
 /** What tip preset `i` is worth on this ticket — the one authority for the
  * amount, so the preset buttons cannot quote a figure the total disagrees with. */
-export const tipFor = (s: PricingState, i: number): number => round2(netSub(s) * (TIP_PRESETS[i] || 0));
+export const tipFor = (s: PricingState, i: number): number => round2(netSub(s) * (source.tipPresets()[i] || 0));
 
 export const tipAmt = (s: PricingState): number => {
   if (s.tip === 'c') return Math.max(0, round2(parseFloat(s.tipCustom || '0') || 0));
@@ -167,7 +168,7 @@ export const regTotal = (s: PricingState): number =>
  * Goods + tax for a bare list of lines — the held tray and the move sheet,
  * which show parked tickets and have no discount of their own.
  *
- * Both of those screens used to write `itemsSub(items) * (1 + TAX)` inline: a
+ * Both of those screens used to write `itemsSub(items) * (1 + source.taxRate())` inline: a
  * third and fourth spelling of the grand-total rule, unrounded, so a parked
  * ticket could be quoted a cent away from what the register charged for it.
  * Equal to `regTotal` for an undiscounted ticket, which is asserted in the
@@ -175,7 +176,7 @@ export const regTotal = (s: PricingState): number =>
  */
 export const linesTotal = (items: LineItem[]): number => {
   const raw = itemsSub(items);
-  return round2(round2(raw) + round2(raw * TAX));
+  return round2(round2(raw) + round2(raw * source.taxRate()));
 };
 export const total = (s: PricingState): number => round2(regTotal(s) + tipAmt(s));
 export const paid = (s: PricingState): number => s.splits.reduce((a, x) => a + x.amount, 0);
@@ -217,9 +218,9 @@ export const modLabel = (li: LineItem): string => {
 export const demoSale = (ticket: { items: LineItem[]; number: number; table: string | null }, staffName: string): Sale => {
   const items = ticket.items.length ? ticket.items : seedTicket().items;
   const sub = round2(itemsSub(items));
-  const t = round2(itemsSub(items) * TAX);
+  const t = round2(itemsSub(items) * source.taxRate());
   // The 15% preset, not a second hand-written 0.15.
-  const tip = round2(itemsSub(items) * TIP_PRESETS[2]);
+  const tip = round2(itemsSub(items) * source.tipPresets()[2]);
   const grand = round2(sub + t + tip);
   return {
     number: ticket.number || 1042,

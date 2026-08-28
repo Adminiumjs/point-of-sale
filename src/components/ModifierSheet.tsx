@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { usePos } from '../state/store';
-import { EXTRAS, MILKS, SIZES } from '../data/demo';
+import { source } from '../data/source';
 import { extraDelta, itemById, milkDelta, money, sizeDelta, sizeLabel } from '../state/calc';
 import { useT } from '../i18n';
 import { Icon } from './Icon';
@@ -92,7 +92,7 @@ export function ModifierSheet() {
             <>
               <SectionLabel>{t('sheet.size')}</SectionLabel>
               <div style={css('display:flex;gap:10px;margin-bottom:24px;')}>
-                {SIZES.map((o) => {
+                {source.sizes().map((o) => {
                   const on = s.sheetSize === o.v;
                   const d = sizeDelta(o.v);
                   const lbl = sizeLabel(o.v);
@@ -112,7 +112,7 @@ export function ModifierSheet() {
             <>
               <SectionLabel>{t('sheet.milk')}</SectionLabel>
               <div style={css('display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;')}>
-                {MILKS.map(({ v, delta: d }) => {
+                {source.milks().map(({ v, delta: d }) => {
                   const on = s.sheetMilk === v;
                   return (
                     <button key={v} className="pos-press" onClick={() => s.setSheetMilk(v)} style={css(chipBox(on))}>
@@ -129,7 +129,7 @@ export function ModifierSheet() {
             <>
               <SectionLabel>{t('sheet.extras')}</SectionLabel>
               <div style={css('display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;')}>
-                {EXTRAS.map((o) => {
+                {source.extras().map((o) => {
                   const on = s.sheetExtras.indexOf(o.v) >= 0;
                   const d = extraDelta(o.v);
                   return (

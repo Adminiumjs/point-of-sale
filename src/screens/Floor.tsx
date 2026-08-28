@@ -1,5 +1,5 @@
 import { usePos } from '../state/store';
-import { TABLES, ZONE_ORDER } from '../data/demo';
+import { source } from '../data/source';
 import type { TableInfo } from '../data/types';
 import { money, regTotal, zoneName } from '../state/calc';
 import { useT, type MessageKey } from '../i18n';
@@ -49,8 +49,8 @@ export function Floor() {
         </div>
       </div>
 
-      {ZONE_ORDER.map((zn) => {
-        const all = TABLES.filter((tb) => tb.zone === zn);
+      {source.zoneOrder().map((zn) => {
+        const all = source.tables().filter((tb) => tb.zone === zn);
         const seated = all.filter((tb) => tb.status !== 'open').length;
         return (
           <div key={zn} style={css('margin-bottom:16px;border:1px solid var(--border);border-radius:20px;background:var(--surface-2);padding:14px 16px 16px;')}>
@@ -89,7 +89,7 @@ function Legend({ dot, label }: { dot: string; label: string }) {
 
 /*
  * `cur` is passed in, derived from where the open ticket actually is. It used
- * to read `t.current` — a flag baked into the TABLES seed and pinned to T12
+ * to read `t.current` — a flag baked into the source.tables() seed and pinned to T12
  * forever, so moving the ticket to another table left the floor badging T12
  * "Current" (with the live running total on it) and made T12 impossible to
  * seat again.

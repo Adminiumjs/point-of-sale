@@ -1,5 +1,5 @@
 import { usePos, curStaffOf } from '../state/store';
-import { BRAND, STAFF } from '../data/demo';
+import { source } from '../data/source';
 import { money, roleName } from '../state/calc';
 import { useT } from '../i18n';
 import { Icon } from './../components/Icon';
@@ -35,7 +35,7 @@ export function Login() {
         <div style={css('width:64px;height:64px;border-radius:19px;background:var(--accent);color:var(--accent-fg);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:32px;letter-spacing:-.03em;box-shadow:0 8px 24px color-mix(in srgb, var(--accent) 42%, transparent);margin-bottom:18px;')}>
           D
         </div>
-        <div style={css('font-size:26px;font-weight:800;letter-spacing:-.03em;')}>{BRAND}</div>
+        <div style={css('font-size:26px;font-weight:800;letter-spacing:-.03em;')}>{source.brand()}</div>
         <div style={css('font-size:14.5px;color:var(--fg-muted);margin-top:4px;font-weight:500;')}>
           {t('login.tapIn', { greet })}
         </div>
@@ -43,7 +43,7 @@ export function Login() {
         {s.loginStep === 'pin' && (
           <div style={css('width:100%;margin-top:26px;')}>
             <div style={css('display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;')}>
-              {STAFF.map((st) => {
+              {source.staff().map((st) => {
                 const on = s.staffSel === st.id;
                 return (
                   <button
