@@ -5,7 +5,7 @@
 -- terminal and the Adminium admin dashboard render the identical menu. Almond
 -- Croissant is the one sold-out item.
 --
--- Serial ids land in insertion order: menu_items 1..25, restaurant_tables 1..12,
+-- Serial ids land in insertion order: menu_items 1..25, restaurant_tables 1..16,
 -- tickets 1..15. The ticket_items / payments below reference those ids directly.
 
 -- ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ INSERT INTO menu_items (name, price, category, image_url, available) VALUES
   ('Lemonade',        4.50, 'cold',   'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=600&q=75&auto=format&fit=crop', TRUE);
 
 -- ---------------------------------------------------------------------------
--- Floor plan (12 tables across four zones)
+-- Floor plan (16 tables across four zones)
 -- ---------------------------------------------------------------------------
 INSERT INTO restaurant_tables (label, seats, zone) VALUES
   ('W1',  2, 'Window'),   -- 1
@@ -51,9 +51,13 @@ INSERT INTO restaurant_tables (label, seats, zone) VALUES
   ('B1',  1, 'Bar'),      -- 7
   ('B2',  1, 'Bar'),      -- 8
   ('B3',  1, 'Bar'),      -- 9
-  ('T10', 4, 'Main'),     -- 10
-  ('T12', 4, 'Main'),     -- 11
-  ('T14', 6, 'Main');     -- 12
+  ('B4',  1, 'Bar'),      -- 10
+  ('T10', 4, 'Main'),     -- 11
+  ('T11', 2, 'Main'),     -- 12
+  ('T12', 4, 'Main'),     -- 13
+  ('T14', 6, 'Main'),     -- 14
+  ('T15', 2, 'Main'),     -- 15
+  ('T16', 4, 'Main');     -- 16
 
 -- ---------------------------------------------------------------------------
 -- Tickets (15 — mixed statuses and dates). total = sum of the ticket_items.
