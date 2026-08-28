@@ -1,8 +1,9 @@
 /**
  * Simplified Chinese (简体中文) — zh-CN.
  *
- * Typed as `Record<MessageKey, string>` so the key set cannot drift from en.ts —
- * adding a key to en.ts breaks this file until it carries it too. Do not rename
+ * Typed as `Translated<typeof enUS>` so the key set cannot drift from en.ts —
+ * adding a key to en.ts breaks this file until it carries it too, unless
+ * en.ts marked it `en("…")`, which defers it and makes it optional here. Do not rename
  * or reorder the keys.
  *
  * The cafe's own content — menu item names, modifier names, table labels, staff
@@ -13,9 +14,10 @@
  * order — see PLURAL_ORDER in ../index.tsx. Chinese has a single category
  * (`other`), so plural strings carry exactly one variant and no `|`.
  */
-import type { MessageKey } from './index';
+import type { Translated } from '../untranslated';
+import type { enUS } from './en';
 
-export const zhCn: Record<MessageKey, string> = {
+export const zhCn: Translated<typeof enUS> = {
   // ---- shared chrome ----
   'common.cancel': '取消',
   'common.clear': '清空',
@@ -243,6 +245,7 @@ export const zhCn: Record<MessageKey, string> = {
   'payment.cardApprovedSub': '正在完成交易…',
   'payment.cardDeclinedSub': '请更换卡片或改用其他方式',
   'payment.encrypted': '加密终端 · 支持芯片与感应',
+  'payment.cardDemo': '模拟终端 · 仅为演示，不会扣真实银行卡',
   'payment.scanToPay': '扫码支付 {amount}',
   'payment.qrHint': '将摄像头对准二维码——支持 Apple Pay、Google Pay 或任意钱包。',
   'payment.chargeReading': '读取中…',
@@ -261,7 +264,6 @@ export const zhCn: Record<MessageKey, string> = {
   'complete.printReceipt': '打印小票',
   'complete.email': '邮件',
   'complete.text': '短信',
-  'complete.contactPlaceholder': 'guest@email.com 或手机号',
   'complete.newOrder': '新订单',
   'complete.backToFloor': '返回桌位',
 
@@ -303,7 +305,7 @@ export const zhCn: Record<MessageKey, string> = {
   'toast.cardDeclined': '刷卡被拒——请更换卡片',
   'toast.cardSharePaid': '刷卡份额已付 · 剩余 {rem}',
   'toast.walletSharePaid': '钱包份额已付 · 剩余 {rem}',
-  'toast.printSent': '已发送至小票打印机',
-  'toast.receiptSentEmail': '邮件小票已发送',
-  'toast.receiptSentText': '短信小票已发送',
+  'toast.printSent': '打印已模拟 · 仅为演示',
+  'toast.receiptSentEmail': '邮件小票已模拟 · 仅为演示',
+  'toast.receiptSentText': '短信小票已模拟 · 仅为演示',
 };

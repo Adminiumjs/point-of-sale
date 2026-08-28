@@ -1,9 +1,14 @@
 /**
  * English source bundle — the authoritative key list.
  *
- * `MessageKey` is `keyof typeof en`, so every other locale is type-checked
+ * `MessageKey` is `keyof typeof enUS`, so every other locale is type-checked
  * against this file: adding a key here breaks the seven translations until they
  * carry it too, and a typo in a `t('…')` call is a compile error.
+ *
+ * A key you cannot translate yet is authored `en("…")` (../untranslated.ts):
+ * that marks it deferred, makes it OPTIONAL in the seven rather than required,
+ * and records it in ../untranslated.json so the debt is countable. The bundle is
+ * `enUS` and not `en` for exactly that reason — `en` is the marker's name.
  *
  * Scope: UI chrome only. The cafe's own content — menu item names, modifier
  * names ("Oat", "Extra shot"), table labels, staff names, order numbers, the
@@ -13,7 +18,7 @@
  * Plurals use the `|` convention documented in ../index.tsx: variants in the
  * locale's own CLDR category order, selected by the `count` argument.
  */
-export const en = {
+export const enUS = {
   // ---- shared chrome ----
   'common.cancel': 'Cancel',
   'common.clear': 'Clear',
@@ -243,6 +248,7 @@ export const en = {
   'payment.cardApprovedSub': 'Completing sale…',
   'payment.cardDeclinedSub': 'Try another card or a different method',
   'payment.encrypted': 'Encrypted terminal · chip & contactless',
+  'payment.cardDemo': 'Simulated terminal · demo only, no card is charged',
   'payment.scanToPay': 'Scan to pay {amount}',
   'payment.qrHint': 'Point the camera at the code — Apple Pay, Google Pay, or any wallet.',
   'payment.chargeReading': 'Reading…',
@@ -261,7 +267,6 @@ export const en = {
   'complete.printReceipt': 'Print receipt',
   'complete.email': 'Email',
   'complete.text': 'Text',
-  'complete.contactPlaceholder': 'guest@email.com or phone number',
   'complete.newOrder': 'New order',
   'complete.backToFloor': 'Back to floor',
 
@@ -303,7 +308,7 @@ export const en = {
   'toast.cardDeclined': 'Card declined — try another card',
   'toast.cardSharePaid': 'Card share paid · {rem} left',
   'toast.walletSharePaid': 'Wallet share paid · {rem} left',
-  'toast.printSent': 'Sent to receipt printer',
-  'toast.receiptSentEmail': 'Email receipt sent',
-  'toast.receiptSentText': 'Text receipt sent',
+  'toast.printSent': 'Printing simulated · demo only',
+  'toast.receiptSentEmail': 'Email receipt simulated · demo only',
+  'toast.receiptSentText': 'Text receipt simulated · demo only',
 } as const;

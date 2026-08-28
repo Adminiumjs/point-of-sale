@@ -1,9 +1,10 @@
 /**
  * German (Deutsch) — de-DE.
  *
- * Typed as `Record<MessageKey, string>` so the key set cannot drift from en.ts
- * — adding a key to en.ts breaks this file until it carries it too. Do not
- * rename or reorder the keys.
+ * Typed as `Translated<typeof enUS>` so the key set cannot drift from en.ts
+ * — adding a key to en.ts breaks this file until it carries it too, UNLESS it
+ * was authored as `en("…")` there, which marks it deferred and makes it
+ * optional here. Do not rename or reorder the keys.
  *
  * The cafe's own content — menu item names, modifier names, table labels, staff
  * names, order numbers, the receipt address — stays English on purpose, the way
@@ -14,9 +15,10 @@
  * Plural messages use `|`-separated variants in this locale's CLDR category
  * order — for de-DE that is one|other. See PLURAL_ORDER in ../index.tsx.
  */
-import type { MessageKey } from './index';
+import type { Translated } from '../untranslated';
+import type { enUS } from './en';
 
-export const de: Record<MessageKey, string> = {
+export const de: Translated<typeof enUS> = {
   // ---- shared chrome ----
   'common.cancel': 'Abbrechen',
   'common.clear': 'Leeren',
@@ -246,6 +248,7 @@ export const de: Record<MessageKey, string> = {
   'payment.cardApprovedSub': 'Verkauf wird abgeschlossen…',
   'payment.cardDeclinedSub': 'Andere Karte oder andere Methode versuchen',
   'payment.encrypted': 'Verschlüsseltes Terminal · Chip & kontaktlos',
+  'payment.cardDemo': 'Simuliertes Terminal · nur Demo, keine Karte wird belastet',
   'payment.scanToPay': 'Scannen und {amount} zahlen',
   'payment.qrHint': 'Kamera auf den Code richten — Apple Pay, Google Pay oder ein beliebiges Wallet.',
   'payment.chargeReading': 'Wird gelesen…',
@@ -264,7 +267,6 @@ export const de: Record<MessageKey, string> = {
   'complete.printReceipt': 'Beleg drucken',
   'complete.email': 'E-Mail',
   'complete.text': 'SMS',
-  'complete.contactPlaceholder': 'gast@email.com oder Telefonnummer',
   'complete.newOrder': 'Neue Bestellung',
   'complete.backToFloor': 'Zum Tischplan',
 
@@ -306,7 +308,7 @@ export const de: Record<MessageKey, string> = {
   'toast.cardDeclined': 'Karte abgelehnt — andere Karte versuchen',
   'toast.cardSharePaid': 'Kartenanteil bezahlt · {rem} offen',
   'toast.walletSharePaid': 'Wallet-Anteil bezahlt · {rem} offen',
-  'toast.printSent': 'An den Bondrucker gesendet',
-  'toast.receiptSentEmail': 'Beleg per E-Mail gesendet',
-  'toast.receiptSentText': 'Beleg per SMS gesendet',
+  'toast.printSent': 'Druck simuliert · nur Demo',
+  'toast.receiptSentEmail': 'Beleg per E-Mail simuliert · nur Demo',
+  'toast.receiptSentText': 'Beleg per SMS simuliert · nur Demo',
 };

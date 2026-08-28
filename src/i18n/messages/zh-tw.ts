@@ -1,17 +1,19 @@
 /**
  * Traditional Chinese (繁體中文) — zh-TW.
  *
- * Typed as `Record<MessageKey, string>` so the key set cannot drift from en.ts
- * — adding a key to en.ts breaks this file until it carries it too. Do not
- * rename or reorder the keys.
+ * Typed as `Translated<typeof enUS>` so the key set cannot drift from en.ts
+ * — adding a key to en.ts breaks this file until it carries it too, UNLESS it
+ * was authored as `en("…")` there, which marks it deferred and makes it
+ * optional here. Do not rename or reorder the keys.
  *
  * Plural messages use `|`-separated variants in this locale's CLDR category
  * order — see PLURAL_ORDER in ../index.tsx. Chinese has `other` only, so plural
  * messages carry a single variant with no `|`.
  */
-import type { MessageKey } from './index';
+import type { Translated } from '../untranslated';
+import type { enUS } from './en';
 
-export const zhTw: Record<MessageKey, string> = {
+export const zhTw: Translated<typeof enUS> = {
   // ---- shared chrome ----
   'common.cancel': '取消',
   'common.clear': '清除',
@@ -241,6 +243,7 @@ export const zhTw: Record<MessageKey, string> = {
   'payment.cardApprovedSub': '完成交易中…',
   'payment.cardDeclinedSub': '請改用其他卡片或付款方式',
   'payment.encrypted': '加密讀卡機 · 晶片與感應',
+  'payment.cardDemo': '模擬讀卡機 · 僅為示範，不會扣真實的卡片',
   'payment.scanToPay': '掃碼支付 {amount}',
   'payment.qrHint': '將相機對準條碼 — Apple Pay、Google Pay 或任何電子錢包皆可。',
   'payment.chargeReading': '讀取中…',
@@ -259,7 +262,6 @@ export const zhTw: Record<MessageKey, string> = {
   'complete.printReceipt': '列印收據',
   'complete.email': '電子郵件',
   'complete.text': '簡訊',
-  'complete.contactPlaceholder': 'guest@email.com 或電話號碼',
   'complete.newOrder': '新訂單',
   'complete.backToFloor': '返回桌況',
 
@@ -301,7 +303,7 @@ export const zhTw: Record<MessageKey, string> = {
   'toast.cardDeclined': '刷卡遭拒 — 請改用其他卡片',
   'toast.cardSharePaid': '刷卡分攤已付 · 剩餘 {rem}',
   'toast.walletSharePaid': '電子錢包分攤已付 · 剩餘 {rem}',
-  'toast.printSent': '已送至收據印表機',
-  'toast.receiptSentEmail': '收據已以電子郵件寄出',
-  'toast.receiptSentText': '收據已以簡訊傳送',
+  'toast.printSent': '列印已模擬 · 僅為示範',
+  'toast.receiptSentEmail': '電子郵件收據已模擬 · 僅為示範',
+  'toast.receiptSentText': '簡訊收據已模擬 · 僅為示範',
 };

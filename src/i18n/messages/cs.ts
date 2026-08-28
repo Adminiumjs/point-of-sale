@@ -1,8 +1,9 @@
 /**
  * Czech (Čeština) — cs-CZ.
  *
- * Typed as `Record<MessageKey, string>` so the key set cannot drift from en.ts
- * — adding a key to en.ts breaks this file until it carries it too. Translate
+ * Typed as `Translated<typeof enUS>` so the key set cannot drift from en.ts
+ * — adding a key to en.ts breaks this file until it carries it too, unless
+ * en.ts marked it `en("…")`, which defers it and makes it optional here. Translate
  * values in place; do not rename or reorder the keys.
  *
  * Plural messages use `|`-separated variants in this locale's CLDR category
@@ -12,9 +13,10 @@
  * numbers — stays English on purpose, the same way a real till shows whatever
  * the operator typed into their catalogue.
  */
-import type { MessageKey } from './index';
+import type { Translated } from '../untranslated';
+import type { enUS } from './en';
 
-export const cs: Record<MessageKey, string> = {
+export const cs: Translated<typeof enUS> = {
   // ---- shared chrome ----
   'common.cancel': 'Zrušit',
   'common.clear': 'Vymazat',
@@ -244,6 +246,7 @@ export const cs: Record<MessageKey, string> = {
   'payment.cardApprovedSub': 'Dokončování prodeje…',
   'payment.cardDeclinedSub': 'Zkuste jinou kartu nebo jiný způsob',
   'payment.encrypted': 'Šifrovaný terminál · čip a bezkontaktně',
+  'payment.cardDemo': 'Simulovaný terminál · jen ukázka, žádná karta se nestrhává',
   'payment.scanToPay': 'Naskenujte a zaplaťte {amount}',
   'payment.qrHint': 'Namiřte fotoaparát na kód — Apple Pay, Google Pay nebo jiná peněženka.',
   'payment.chargeReading': 'Načítání…',
@@ -262,7 +265,6 @@ export const cs: Record<MessageKey, string> = {
   'complete.printReceipt': 'Vytisknout účtenku',
   'complete.email': 'E-mail',
   'complete.text': 'SMS',
-  'complete.contactPlaceholder': 'host@email.com nebo telefonní číslo',
   'complete.newOrder': 'Nová objednávka',
   'complete.backToFloor': 'Zpět do sálu',
 
@@ -304,7 +306,7 @@ export const cs: Record<MessageKey, string> = {
   'toast.cardDeclined': 'Karta zamítnuta — zkuste jinou',
   'toast.cardSharePaid': 'Podíl kartou zaplacen · zbývá {rem}',
   'toast.walletSharePaid': 'Podíl peněženkou zaplacen · zbývá {rem}',
-  'toast.printSent': 'Odesláno na tiskárnu účtenek',
-  'toast.receiptSentEmail': 'Účtenka odeslána e-mailem',
-  'toast.receiptSentText': 'Účtenka odeslána SMS',
+  'toast.printSent': 'Tisk simulován · jen ukázka',
+  'toast.receiptSentEmail': 'Účtenka e-mailem simulována · jen ukázka',
+  'toast.receiptSentText': 'Účtenka SMS simulována · jen ukázka',
 };

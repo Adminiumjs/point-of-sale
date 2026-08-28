@@ -1,9 +1,10 @@
 /**
  * French (Français) — fr-FR.
  *
- * Typed as `Record<MessageKey, string>` so the key set cannot drift from en.ts
- * — adding a key to en.ts breaks this file until it carries it too. Do not
- * rename or reorder the keys.
+ * Typed as `Translated<typeof enUS>` so the key set cannot drift from en.ts
+ * — adding a key to en.ts breaks this file until it carries it too, UNLESS it
+ * was authored as `en("…")` there, which marks it deferred and makes it
+ * optional here. Do not rename or reorder the keys.
  *
  * The cafe's own content — menu item names, modifier names, table labels, staff
  * names, order numbers, the receipt's address — stays English on purpose, the
@@ -12,9 +13,10 @@
  * Plural messages use `|`-separated variants in this locale's CLDR category
  * order — for fr-FR that is `one|other`. See PLURAL_ORDER in ../index.tsx.
  */
-import type { MessageKey } from './index';
+import type { Translated } from '../untranslated';
+import type { enUS } from './en';
 
-export const fr: Record<MessageKey, string> = {
+export const fr: Translated<typeof enUS> = {
   // ---- shared chrome ----
   'common.cancel': 'Annuler',
   'common.clear': 'Effacer',
@@ -244,6 +246,7 @@ export const fr: Record<MessageKey, string> = {
   'payment.cardApprovedSub': 'Finalisation de la vente…',
   'payment.cardDeclinedSub': 'Essayez une autre carte ou un autre moyen',
   'payment.encrypted': 'Terminal chiffré · puce et sans contact',
+  'payment.cardDemo': 'Terminal simulé · démo seulement, aucune carte n’est débitée',
   'payment.scanToPay': 'Scannez pour payer {amount}',
   'payment.qrHint': 'Pointez la caméra vers le code — Apple Pay, Google Pay ou tout autre portefeuille.',
   'payment.chargeReading': 'Lecture…',
@@ -262,7 +265,6 @@ export const fr: Record<MessageKey, string> = {
   'complete.printReceipt': 'Imprimer le reçu',
   'complete.email': 'E-mail',
   'complete.text': 'SMS',
-  'complete.contactPlaceholder': 'client@email.com ou numéro de téléphone',
   'complete.newOrder': 'Nouvelle commande',
   'complete.backToFloor': 'Retour à la salle',
 
@@ -304,7 +306,7 @@ export const fr: Record<MessageKey, string> = {
   'toast.cardDeclined': 'Carte refusée — essayez une autre carte',
   'toast.cardSharePaid': 'Part carte payée · reste {rem}',
   'toast.walletSharePaid': 'Part portefeuille payée · reste {rem}',
-  'toast.printSent': 'Envoyé à l’imprimante',
-  'toast.receiptSentEmail': 'Reçu envoyé par e-mail',
-  'toast.receiptSentText': 'Reçu envoyé par SMS',
+  'toast.printSent': 'Impression simulée · démo seulement',
+  'toast.receiptSentEmail': 'Reçu par e-mail simulé · démo seulement',
+  'toast.receiptSentText': 'Reçu par SMS simulé · démo seulement',
 };

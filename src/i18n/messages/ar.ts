@@ -1,8 +1,9 @@
 /**
  * Arabic (العربية) — RTL — ar-EG.
  *
- * Typed as `Record<MessageKey, string>` so the key set cannot drift from en.ts —
- * adding a key to en.ts breaks this file until it carries it too. Translate the
+ * Typed as `Translated<typeof enUS>` so the key set cannot drift from en.ts —
+ * adding a key to en.ts breaks this file until it carries it too, unless
+ * en.ts marked it `en("…")`, which defers it and makes it optional here. Translate the
  * values in place; do not rename or reorder the keys.
  *
  * The cafe's own content — menu item names, modifier names, table labels, staff
@@ -12,9 +13,10 @@
  * Plural messages use `|`-separated variants in this locale's CLDR category
  * order — zero, one, two, few, many, other. See PLURAL_ORDER in ../index.tsx.
  */
-import type { MessageKey } from './index';
+import type { Translated } from '../untranslated';
+import type { enUS } from './en';
 
-export const ar: Record<MessageKey, string> = {
+export const ar: Translated<typeof enUS> = {
   // ---- shared chrome ----
   'common.cancel': 'إلغاء',
   'common.clear': 'مسح',
@@ -246,6 +248,7 @@ export const ar: Record<MessageKey, string> = {
   'payment.cardApprovedSub': 'جارٍ إتمام البيع…',
   'payment.cardDeclinedSub': 'جرّب بطاقة أخرى أو طريقة مختلفة',
   'payment.encrypted': 'طرفية مشفّرة · شريحة ودفع تقريبي',
+  'payment.cardDemo': 'طرفية محاكاة · عرض توضيحي فقط، لا يتم خصم أي بطاقة',
   'payment.scanToPay': 'امسح الرمز لدفع {amount}',
   'payment.qrHint': 'وجّه الكاميرا نحو الرمز — Apple Pay أو Google Pay أو أي محفظة.',
   'payment.chargeReading': 'جارٍ القراءة…',
@@ -264,7 +267,6 @@ export const ar: Record<MessageKey, string> = {
   'complete.printReceipt': 'طباعة الإيصال',
   'complete.email': 'بريد',
   'complete.text': 'رسالة',
-  'complete.contactPlaceholder': 'guest@email.com أو رقم الهاتف',
   'complete.newOrder': 'طلب جديد',
   'complete.backToFloor': 'العودة إلى الصالة',
 
@@ -306,7 +308,7 @@ export const ar: Record<MessageKey, string> = {
   'toast.cardDeclined': 'رُفضت البطاقة — جرّب بطاقة أخرى',
   'toast.cardSharePaid': 'دُفعت حصة البطاقة · تبقّى {rem}',
   'toast.walletSharePaid': 'دُفعت حصة المحفظة · تبقّى {rem}',
-  'toast.printSent': 'أُرسل إلى طابعة الإيصالات',
-  'toast.receiptSentEmail': 'أُرسل الإيصال بالبريد',
-  'toast.receiptSentText': 'أُرسل الإيصال برسالة نصية',
+  'toast.printSent': 'محاكاة الطباعة · عرض توضيحي فقط',
+  'toast.receiptSentEmail': 'محاكاة إرسال الإيصال بالبريد · عرض توضيحي فقط',
+  'toast.receiptSentText': 'محاكاة إرسال الإيصال برسالة نصية · عرض توضيحي فقط',
 };

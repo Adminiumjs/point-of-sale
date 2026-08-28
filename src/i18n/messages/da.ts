@@ -1,9 +1,10 @@
 /**
  * Danish (Dansk) — da-DK.
  *
- * Typed as `Record<MessageKey, string>` so the key set cannot drift from en.ts
- * — adding a key to en.ts breaks this file until it carries it too. Do not
- * rename or reorder the keys.
+ * Typed as `Translated<typeof enUS>` so the key set cannot drift from en.ts
+ * — adding a key to en.ts breaks this file until it carries it too, UNLESS it
+ * was authored as `en("…")` there, which marks it deferred and makes it
+ * optional here. Do not rename or reorder the keys.
  *
  * The cafe's own content — menu item names, modifier names ("Oat"), staff
  * names, order numbers — stays English, the same as in en.ts.
@@ -11,9 +12,10 @@
  * Plural messages use `|`-separated variants in this locale's CLDR category
  * order — one, other — see PLURAL_ORDER in ../index.tsx.
  */
-import type { MessageKey } from './index';
+import type { Translated } from '../untranslated';
+import type { enUS } from './en';
 
-export const da: Record<MessageKey, string> = {
+export const da: Translated<typeof enUS> = {
   // ---- shared chrome ----
   'common.cancel': 'Fortryd',
   'common.clear': 'Ryd',
@@ -243,6 +245,7 @@ export const da: Record<MessageKey, string> = {
   'payment.cardApprovedSub': 'Afslutter salget…',
   'payment.cardDeclinedSub': 'Prøv et andet kort eller en anden metode',
   'payment.encrypted': 'Krypteret terminal · chip og kontaktløs',
+  'payment.cardDemo': 'Simuleret terminal · kun demo, der trækkes ikke på et kort',
   'payment.scanToPay': 'Scan for at betale {amount}',
   'payment.qrHint': 'Ret kameraet mod koden — Apple Pay, Google Pay eller en anden wallet.',
   'payment.chargeReading': 'Læser…',
@@ -261,7 +264,6 @@ export const da: Record<MessageKey, string> = {
   'complete.printReceipt': 'Print kvittering',
   'complete.email': 'E-mail',
   'complete.text': 'SMS',
-  'complete.contactPlaceholder': 'gæst@email.com eller telefonnummer',
   'complete.newOrder': 'Ny ordre',
   'complete.backToFloor': 'Tilbage til bordplan',
 
@@ -303,7 +305,7 @@ export const da: Record<MessageKey, string> = {
   'toast.cardDeclined': 'Kort afvist — prøv et andet kort',
   'toast.cardSharePaid': 'Kortandel betalt · {rem} tilbage',
   'toast.walletSharePaid': 'Wallet-andel betalt · {rem} tilbage',
-  'toast.printSent': 'Sendt til bonprinter',
-  'toast.receiptSentEmail': 'Kvittering sendt på e-mail',
-  'toast.receiptSentText': 'Kvittering sendt på SMS',
+  'toast.printSent': 'Udskrift simuleret · kun demo',
+  'toast.receiptSentEmail': 'Kvittering på e-mail simuleret · kun demo',
+  'toast.receiptSentText': 'Kvittering på SMS simuleret · kun demo',
 };
