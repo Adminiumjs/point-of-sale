@@ -33,7 +33,10 @@ export function Kitchen() {
         </div>
         <div>
           <div style={css('font-size:18px;font-weight:800;letter-spacing:-.02em;')}>{t('kitchen.title')}</div>
-          <div style={css('font-size:12.5px;color:var(--fg-muted);')}>{t('kitchen.subtitle', { brand: source.brand() })}</div>
+          {/* A real shop's name has no column (WS-I G-1), so `brand()` is empty
+              outside the demo — and "{brand} · live order tickets" then opens
+              with a stray separator. The product's name stands in. */}
+          <div style={css('font-size:12.5px;color:var(--fg-muted);')}>{t('kitchen.subtitle', { brand: source.brand() || t('nav.app') })}</div>
         </div>
         <button className="pos-press" onClick={() => usePos.setState({ view: 'register' })} style={css('margin-inline-start:auto;height:46px;padding:0 16px;border-radius:13px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;')}>
           <Icon name="arrow-left" size={17} />

@@ -47,7 +47,7 @@ export function Register() {
                 onClick={() => s.tapTile(id)}
                 style={css('display:flex;align-items:center;gap:10px;height:54px;padding:0 16px 0 8px;border-radius:15px;border:1px solid var(--border);background:var(--surface);cursor:pointer;flex-shrink:0;box-shadow:var(--shadow);')}
               >
-                <MenuThumb item={m} dark={dark} radius="11px" box="width:38px;height:38px;flex-shrink:0;" />
+                <MenuThumb item={m} dark={dark} radius="11px" box="width:38px;height:38px;flex-shrink:0;" iconSize={19} />
                 <span>
                   <span style={css('display:block;font-size:14px;font-weight:700;line-height:1.15;')}>{m.name}</span>
                   <span style={css('display:block;font-size:12px;font-weight:700;' + MONO + 'color:var(--fg-muted);')}>{money(m.price)}</span>
@@ -114,6 +114,7 @@ export function Register() {
                     dark={dark}
                     radius="0"
                     box={'height:' + imgH + ';'}
+                    iconSize={dense ? 26 : 34}
                     overlay={
                       <>
                         {sold && (

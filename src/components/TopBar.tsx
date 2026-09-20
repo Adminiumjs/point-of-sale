@@ -2,10 +2,41 @@ import { usePos, curStaffOf } from '../state/store';
 import { source } from '../data/source';
 import { dur, tableName } from '../state/calc';
 import { useT } from '../i18n';
+import { timezoneNotice } from '../i18n/ambient';
 import { Icon } from './Icon';
 import { css } from './css';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
+
+/**
+ * The one VISIBLE trace of a zone nobody confirmed (`data/sessionSource.ts`).
+ *
+ * Two states, one chip. `fallback` — the connection has no zone at all, so the
+ * receipt clock reads UTC. `host` — a real zone, but the one Adminium took from
+ * the machine it runs on: plausible and unverified, and so the more dangerous
+ * of the two, because UTC announces itself and a wrong city does not.
+ *
+ * A chip beside the offline one, not a banner: the till works either way, and
+ * the fix lives in the tooltip. Renders nothing for an operator-set zone, which
+ * is what nearly every boot should be, and nothing in the demo, which has no
+ * tenant.
+ */
+function ZoneNotice() {
+  const t = useT();
+  const notice = timezoneNotice();
+  if (notice === null) return null;
+  const fallback = notice.source === 'fallback';
+  return (
+    <div
+      className="topbar-zone"
+      title={fallback ? t('topbar.utcWhy') : t('topbar.zoneWhy')}
+      style={css('display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);color:var(--fg-muted);font-size:13px;font-weight:700;white-space:nowrap;')}
+    >
+      <Icon name="clock" size={16} />
+      <span>{fallback ? t('topbar.utcNotice') : t('topbar.zoneNotice', { zone: notice.zone })}</span>
+    </div>
+  );
+}
 
 export function TopBar() {
   const s = usePos();
@@ -70,6 +101,7 @@ export function TopBar() {
       {s.view === 'floor' && <div style={css('flex:1;')} />}
 
       <div style={css('display:flex;align-items:center;gap:10px;flex-shrink:0;')}>
+        <ZoneNotice />
         {!s.online && (
           <div style={css('display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border-radius:12px;background:var(--warn-soft);color:var(--warn);font-size:13px;font-weight:700;')}>
             <Icon name="cloud-off" size={16} />

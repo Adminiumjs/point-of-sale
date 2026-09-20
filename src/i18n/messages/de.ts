@@ -101,6 +101,18 @@ export const de: Translated<typeof enUS> = {
   'topbar.workingOffline': 'Offline-Modus',
   'topbar.held': 'Geparkt',
   'topbar.shiftOpen': 'Offen {d}',
+  'topbar.utcNotice': 'Uhrzeiten in UTC',
+  'topbar.utcWhy':
+    'Für diese Verbindung ist in Adminium keine Zeitzone hinterlegt; die Kasse zeigt Uhrzeiten daher in UTC statt in der Zeitzone des Geschäfts.',
+  'topbar.zoneNotice': 'Uhrzeiten in {zone}',
+  'topbar.zoneWhy':
+    'Diese Zeitzone stammt vom Server, auf dem Adminium läuft, und wurde hier von niemandem gewählt. Bestätigen Sie sie an der Verbindung (Verbindungen → diese Datenbank), wenn es die Zeitzone des Geschäfts ist.',
+
+  // ---- hosted surface: the sections Adminium's sidebar offers (see src/surface-nav.ts) ----
+  'nav.app': 'Kassensystem',
+  'nav.register': 'Kasse',
+  'nav.floor': 'Tischübersicht',
+  'nav.kitchen': 'Küche',
 
   // ---- login / open shift ----
   'login.goodMorning': 'Guten Morgen',

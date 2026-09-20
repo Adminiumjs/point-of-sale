@@ -16,6 +16,12 @@
  * needs a `staff` table with a credential before it can be connected, and that
  * is 28-T36's first item for this repo.
  *
+ * The HOSTED staff build is the one exception, and it is not a relaxation. It
+ * runs on Adminium's own origin behind the operator's session, so the roster
+ * is the one person that session names (`sessionOperator.ts`) — with an empty
+ * PIN the pad can never match. The credential is the Adminium sign-in, which
+ * already governs every row this till reads.
+ *
  * WS-I G-2. THE MODIFIER CATALOGUE HAS NO SCHEMA EITHER — this is §5.3's "pricing has
  * no schema" and it is open decision O6. Sizes, milk surcharges and extras are
  * arrays in `demo.ts`; `ticket_items` has a `notes` column and no modifier
@@ -34,6 +40,12 @@
  * ── READS DO NOT BECOME ASYNC ──────────────────────────────────────────────
  * `loadSnapshot` fetches the read-set once, before React mounts, and hands back
  * the same SYNCHRONOUS shapes `demoSource` returns.
+ *
+ * ── ONE MAPPING, TWO TRANSPORTS ────────────────────────────────────────────
+ * `loadSnapshot` takes a `SnapshotPort`, not a `PublicClient`: a standalone
+ * build drives it with the public client and a publishable key, a hosted staff
+ * build with `sessionSource.ts` and the operator's session. Forking the mapping
+ * per transport would be two copies of every rule below.
  */
 
 import {
@@ -56,6 +68,7 @@ import type {
   TableInfo,
   Ticket,
 } from './types';
+import type { SnapshotPort } from './snapshotPort';
 import type { DataSource } from './source';
 
 /* --------------------------------------------------------------- the wire */
@@ -109,8 +122,14 @@ interface WireShift {
   ended_at: string | null;
 }
 
-/** The columns the scope must expose, checked at boot. */
-const REQUIRED = {
+/**
+ * The columns the backend must expose, checked at boot.
+ *
+ * Exported because `refCoverage.test.ts` holds `tableOfRef.ts` to exactly this
+ * set: the hosted transport reads each ref from a table, and a ref with no
+ * mapping would throw on the first load in production with every suite green.
+ */
+export const REQUIRED = {
   menuItems: ['id', 'name', 'price', 'category', 'image_url', 'available'],
   restaurantTables: ['id', 'label', 'seats', 'zone'],
   tickets: ['id', 'number', 'table_id', 'status', 'total', 'opened_at', 'closed_at'],
@@ -122,7 +141,24 @@ const REQUIRED = {
 /** A ticket the kitchen is working: sent, not yet paid or voided. */
 const KITCHEN = 'sent';
 
+let lastSnapshotError: Error | null = null;
+
+/** Why the last {@link loadSnapshot} returned null, or null if it did not. */
+export function snapshotFailure(): Error | null {
+  return lastSnapshotError;
+}
+
 export interface Snapshot {
+  /** The tenant's ISO-4217 code, or null (28-T34). Drives every money figure. */
+  currency: string | null;
+  /** The zone "today" was computed in, and the receipt's clock renders in. */
+  timezone: string;
+  /**
+   * Who chose {@link timezone}. Carried so the top bar can SAY which zone the
+   * clock is in when nobody confirmed it — an unconfirmed zone and a UTC
+   * substitute are otherwise silent (a console line is not an operator surface).
+   */
+  timezoneSource: 'operator' | 'host' | 'fallback' | null;
   menu: MenuItem[];
   categories: Category[];
   tables: TableInfo[];
@@ -143,15 +179,19 @@ export interface Snapshot {
  * copy of that rule is a second place for it to drift.
  */
 export function clientFromEnv(): PublicClient | null {
+  /* DOT access, never brackets. `vite.config.ts` defines these by expression
+     text, so a bracketed read of the env object is never substituted and
+     survives into the bundle as a runtime lookup — `surfaceBuild.test.ts`
+     refuses one anywhere under src/, comments included. */
   return createPublicClient({
-    baseUrl: import.meta.env['VITE_ADMINIUM_API_BASE_URL'] as string | undefined,
-    publishableKey: import.meta.env['VITE_ADMINIUM_PUBLISHABLE_KEY'] as string | undefined,
+    baseUrl: import.meta.env.VITE_ADMINIUM_API_BASE_URL,
+    publishableKey: import.meta.env.VITE_ADMINIUM_PUBLISHABLE_KEY,
   });
 }
 
-/** Read a whole ref, a page at a time, at whatever size the scope permits. */
+/** Read a whole ref, a page at a time, at whatever size the backend permits. */
 async function listAll<T>(
-  client: PublicClient,
+  client: SnapshotPort,
   ref: string,
   size: number,
   max: number,
@@ -170,15 +210,19 @@ async function listAll<T>(
 /**
  * Fetch the read-set and map it into the app's shapes.
  *
- * Returns `null` on ANY failure so the caller falls back to demo mode
- * structurally rather than in a catch — the marketplace demos are static clones
- * with no server and must keep working byte-identically.
+ * Returns `null` on ANY failure, with the reason kept for `snapshotFailure()`.
+ * A non-demo build HARD-STOPS on null (`main.tsx`) — it never falls back to the
+ * seed, because a till full of invented tickets for a real shop is the failure
+ * the build-time split exists to remove.
  */
-export async function loadSnapshot(client: PublicClient): Promise<Snapshot | null> {
+export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | null> {
+  lastSnapshotError = null;
   try {
     await client.assertRefs(REQUIRED);
     const config = await client.config();
     const tz = config.timezone;
+    /* The per-ref page ceiling. A scope sets it; the session transport has none
+     * of its own and pages at its route's cap, so `?? 100` is only a start. */
     const cap = (ref: string): number => config.refs[ref]?.limit ?? 100;
 
     const [menu, tables, tickets, items, payments, shifts] = await Promise.all([
@@ -361,6 +405,9 @@ export async function loadSnapshot(client: PublicClient): Promise<Snapshot | nul
       .map((row) => row.id);
 
     return {
+      currency: config.currency,
+      timezone: tz,
+      timezoneSource: config.timezoneSource ?? null,
       menu: mappedMenu,
       categories,
       tables: mappedTables,
@@ -373,13 +420,23 @@ export async function loadSnapshot(client: PublicClient): Promise<Snapshot | nul
       kitchen,
     };
   } catch (error) {
-    console.warn('[adminium] connected mode unavailable, using demo data:', error);
+    /* The reason is KEPT, not swallowed. This used to log "using demo data",
+     * which stopped being true when a non-demo build began to hard-stop — the
+     * failure screen would have said something generic while the real cause sat
+     * in the console. */
+    lastSnapshotError = error instanceof Error ? error : new Error(String(error));
+    console.warn('[adminium] could not load a snapshot:', error);
     return null;
   }
 }
 
-/** A synchronous `DataSource` over an already-fetched snapshot. */
-export function snapshotSource(snap: Snapshot): DataSource {
+/**
+ * A synchronous `DataSource` over an already-fetched snapshot.
+ *
+ * `operator` is the person the hosted build's session names, and nobody
+ * anywhere else: a standalone build passes nothing and keeps its empty roster.
+ */
+export function snapshotSource(snap: Snapshot, operator: Staff | null = null): DataSource {
   return {
     // WS-I G-1: no brand column.
     brand: () => '',
@@ -395,9 +452,12 @@ export function snapshotSource(snap: Snapshot): DataSource {
     favourites: () => [...snap.favourites],
     zoneOrder: () => [...snap.zones],
     shiftStart: () => snap.shiftStart,
-    /* WS-I G-1: THE TILL CANNOT BE OPENED. There is no staff table and no PIN
-     * column, and a roster with blank PINs is a till anybody can open. */
-    staff: (): Staff[] => [],
+    /* WS-I G-1: THE TILL CANNOT BE OPENED FROM THIS ROSTER. There is no staff
+     * table and no PIN column, and a roster with blank PINs is a till anybody
+     * can open. The one entry a hosted build adds is the signed-in operator,
+     * whose empty PIN the pad can never match — the session opened the till,
+     * not the pad. */
+    staff: (): Staff[] => (operator === null ? [] : [{ ...operator }]),
     menu: () => snap.menu.map((row) => ({ ...row })),
     categories: () => snap.categories.map((row) => ({ ...row })),
     tables: () => snap.tables.map((row) => ({ ...row })),

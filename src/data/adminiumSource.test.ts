@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createPublicClient } from '@adminiumjs/public-client';
 
-import { loadSnapshot, snapshotSource } from './adminiumSource';
+import { loadSnapshot, snapshotFailure, snapshotSource } from './adminiumSource';
 import { demoSource, isConnected, setDataSource, source } from './source';
 
 const REFS = ['menuItems', 'restaurantTables', 'tickets', 'ticketItems', 'payments', 'shifts'];
@@ -101,22 +101,35 @@ const clientWith = (fetch: ReturnType<typeof fakeFetch>) =>
 const snapshot = async (overrides: FakeOptions = {}) =>
   loadSnapshot(clientWith(fakeFetch(overrides))!);
 
-describe('demo mode is the structural default', () => {
+describe('a load that cannot finish', () => {
   it('builds no client when either variable is absent', () => {
     expect(createPublicClient({ baseUrl: 'https://x.test', publishableKey: '' })).toBeNull();
     expect(createPublicClient({ baseUrl: '', publishableKey: 'adm_pub_x' })).toBeNull();
     expect(createPublicClient(undefined)).toBeNull();
   });
 
-  it('falls back rather than throwing when the server is unreachable', async () => {
+  /*
+   * Null, never a throw — and never the seed. A non-demo build hard-stops on
+   * null (`main.tsx`), so what matters is that the REASON survives for the
+   * failure screen instead of dying in a console line.
+   */
+  it('returns null and keeps the reason when the server is unreachable', async () => {
     const client = clientWith(async () => {
       throw new Error('ECONNREFUSED');
     });
     expect(await loadSnapshot(client!)).toBeNull();
+    expect(snapshotFailure()?.message).toMatch(/ECONNREFUSED/);
   });
 
-  it('falls back when the scope does not expose a column the app reads', async () => {
+  it('returns null and names the columns when the scope does not expose them', async () => {
     expect(await snapshot({ expose: () => ['id'] })).toBeNull();
+    expect(snapshotFailure()?.message).toMatch(/menuItems\.name/);
+  });
+
+  it('forgets an old failure once a load succeeds', async () => {
+    expect(await snapshot({ expose: () => ['id'] })).toBeNull();
+    expect(await snapshot()).not.toBeNull();
+    expect(snapshotFailure()).toBeNull();
   });
 });
 
@@ -128,6 +141,19 @@ describe('the three refusals', () => {
     // A connected build that refuses to open is visible and fixable; one that
     // opens for anyone is a loss nobody notices until the drawer is short.
     expect(connected.staff()).toEqual([]);
+  });
+
+  it('opens a hosted till for the signed-in operator, and for nobody through the pad', async () => {
+    // The hosted build's roster is the one person its Adminium session names
+    // (sessionOperator.ts). The EMPTY pin is the other half of that: the PIN pad
+    // compares four digits against it and can never match.
+    const operator = { id: 'session', name: 'Ada Lovelace', initials: 'AL', role: '', pin: '' };
+    const hosted = snapshotSource((await snapshot())!, operator);
+    expect(hosted.staff()).toEqual([operator]);
+    expect(hosted.staff().every((member) => member.pin === '')).toBe(true);
+    // A copy each time: a screen that edits the entry cannot rename the session.
+    hosted.staff()[0]!.name = 'Somebody Else';
+    expect(hosted.staff()[0]!.name).toBe('Ada Lovelace');
   });
 
   it('offers no size, no milk and no extra, which is O6 in one assertion', async () => {
@@ -153,6 +179,15 @@ describe('the three refusals', () => {
 });
 
 describe('what does come from real rows', () => {
+  it('carries the tenant’s currency and zone, which price and clock the till', async () => {
+    const snap = await snapshot();
+    expect(snap!.currency).toBe('USD');
+    expect(snap!.timezone).toBe('UTC');
+    // The public API has no provenance for a scope's zone — only the session
+    // transport reports one — so this is no claim, not a guess.
+    expect(snap!.timezoneSource).toBeNull();
+  });
+
   it('reads the menu and derives its sections from the rows themselves', async () => {
     const snap = await snapshot();
     expect(snap).not.toBeNull();

@@ -2,6 +2,7 @@ import { usePos, curStaffOf } from '../state/store';
 import { source } from '../data/source';
 import { demoSale, money, tableName } from '../state/calc';
 import { useI18n } from '../i18n';
+import { DEMO } from '../surface';
 import { Icon } from '../components/Icon';
 import { css } from '../components/css';
 
@@ -48,7 +49,10 @@ export function Complete() {
             <div style={css('width:300px;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 22px 24px;box-shadow:var(--shadow-lg);')}>
               <div style={css('text-align:center;margin-bottom:6px;')}>
                 <div style={css('font-size:20px;font-weight:800;letter-spacing:.04em;')}>{source.brand().toUpperCase()}</div>
-                <div style={css('font-size:11px;color:var(--fg-muted);margin-top:3px;')}>128 Alder Lane · (415) 555-0148</div>
+                {/* The demo café's street and phone number. Build-time, like the
+                    dock: a real shop's receipt must not print a made-up
+                    address, and this schema has no column for its own. */}
+                {DEMO && <div style={css('font-size:11px;color:var(--fg-muted);margin-top:3px;')}>128 Alder Lane · (415) 555-0148</div>}
               </div>
               <div style={css('border-top:1px dashed var(--border-strong);margin:13px 0;')} />
               <div style={css('display:flex;justify-content:space-between;font-size:11.5px;color:var(--fg-muted);margin-bottom:11px;' + MONO)}>

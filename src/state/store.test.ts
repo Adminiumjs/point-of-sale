@@ -741,6 +741,23 @@ describe('service mode', () => {
   });
 });
 
+describe('a theme the dashboard chose', () => {
+  it('is applied and marked as the host’s, so App does not remember it', () => {
+    // Blended into Adminium, the dashboard owns the theme (29 D11). Writing it
+    // to `pos-theme` would leave the till in the dashboard's theme the next
+    // time it is opened on its own — `themeFromHost` is what App checks.
+    const own = s().theme === 'dark' ? 'light' : 'dark';
+    s().setHostTheme(own);
+    expect(s().theme).toBe(own);
+    expect(s().themeFromHost).toBe(true);
+  });
+
+  it('is never claimed by the till’s own controls', () => {
+    s().toggleTheme();
+    expect(s().themeFromHost).toBe(false);
+  });
+});
+
 describe('the floor plan', () => {
   it('tapping the table the open ticket is on returns to that ticket', () => {
     const cur = TABLES.find((t) => t.label === s().ticket.table)!;

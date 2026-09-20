@@ -1,8 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+import { surfaceJsonPlugin } from './surface-emit';
+import { APP_KEY, APP_LABEL_KEY, SURFACE_NAV } from './src/surface-nav';
+import { MESSAGES } from './src/i18n/messages';
+
 // Base is supplied on the CLI: `/` for the default build, `/demo/point-of-sale/`
-// for the hosted demo (see the `build:demo` script in package.json).
+// for the hosted demo, `/apps/pos/staff/` for the surface Adminium serves (see
+// the `build:*` scripts in package.json).
 /*
  * Every build-time flag is defined here, ALWAYS, even when unset.
  *
@@ -62,5 +67,22 @@ const server = {
 export default defineConfig({
   define,
   server,
-  plugins: [react()],
+  plugins: [
+    react(),
+    /*
+     * `surface.json` beside `index.html`, on surface builds only
+     * (29-app-surfaces.md D7). Adminium reads it to offer the till's screens in
+     * its own sidebar; a build without `VITE_ADMINIUM_SURFACE_SIDE` writes
+     * nothing, so the demo and standalone artifacts are untouched.
+     *
+     * The nav comes from `src/surface-nav.ts` — the SAME module the till routes
+     * with — so the emitted file cannot describe a screen the bundle lacks.
+     */
+    surfaceJsonPlugin({
+      appKey: APP_KEY,
+      appLabelKey: APP_LABEL_KEY,
+      nav: SURFACE_NAV,
+      messages: MESSAGES,
+    }),
+  ],
 });

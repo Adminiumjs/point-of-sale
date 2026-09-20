@@ -6,6 +6,7 @@ import {
   chargeTarget,
   discountAmt,
   extraDelta,
+  hexToRgba,
   itemsSub,
   lineTotal,
   lineUnit,
@@ -312,6 +313,22 @@ describe('the brand is written once', () => {
   it('the mark is the first letter of the name', () => {
     expect(BRAND_INITIAL).toBe(BRAND.charAt(0));
     expect(BRAND).toBe('Daybreak Coffee');
+  });
+});
+
+describe('hexToRgba', () => {
+  it('converts a hex tint, short or long, with or without the hash', () => {
+    expect(hexToRgba('#9a6a3c', 0.24)).toBe('rgba(154,106,60,0.24)');
+    expect(hexToRgba('fff', 0.5)).toBe('rgba(255,255,255,0.5)');
+    // No tint at all keeps its documented default.
+    expect(hexToRgba('', 1)).toBe('rgba(79,70,229,1)');
+  });
+
+  it('mixes a design token instead of parsing it as black', () => {
+    // `catTint` answers `var(--accent)` for a category with no tint — every
+    // category over a real database. Parsed as hex it was NaN, so `rgba(0,0,0,…)`.
+    expect(hexToRgba('var(--accent)', 0.24)).toBe('color-mix(in srgb, var(--accent) 24%, transparent)');
+    expect(hexToRgba('var(--accent)', 0.58)).toBe('color-mix(in srgb, var(--accent) 58%, transparent)');
   });
 });
 

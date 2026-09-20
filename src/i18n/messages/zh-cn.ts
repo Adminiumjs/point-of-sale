@@ -100,6 +100,16 @@ export const zhCn: Translated<typeof enUS> = {
   'topbar.workingOffline': '离线工作中',
   'topbar.held': '已挂起',
   'topbar.shiftOpen': '已开{d}',
+  'topbar.utcNotice': '时间以 UTC 显示',
+  'topbar.utcWhy': '此连接在 Adminium 中未设置时区，收银台因此以 UTC 显示时间，而非店铺所在时区。',
+  'topbar.zoneNotice': '时间以 {zone} 显示',
+  'topbar.zoneWhy': '此时区来自运行 Adminium 的服务器，并非有人在此选择。若它确实是店铺所在时区，请在连接上确认（连接 → 此数据库）。',
+
+  // ---- hosted surface: the sections Adminium's sidebar offers (see src/surface-nav.ts) ----
+  'nav.app': '收银系统',
+  'nav.register': '收银',
+  'nav.floor': '桌位',
+  'nav.kitchen': '后厨',
 
   // ---- login / open shift ----
   'login.goodMorning': '早上好',

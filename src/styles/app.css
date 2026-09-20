@@ -275,7 +275,8 @@ a:hover {
 
 @media (max-width: 720px) {
   .topbar-search,
-  .topbar-staff {
+  .topbar-staff,
+  .topbar-zone {
     display: none !important;
   }
 }

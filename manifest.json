@@ -17,7 +17,7 @@
     "hospitality"
   ],
   "compatibility": {
-    "minAdminiumVersion": "1.0.0",
+    "minAdminiumVersion": "0.2.8",
     "engines": [
       "sqlite",
       "postgres"
@@ -29,11 +29,12 @@
   "requiredSchema": {
     "tables": [
       {
-        "ref": "menuitems",
+        "ref": "menu_items",
         "columns": [
           {
             "ref": "id",
-            "type": "int"
+            "type": "int",
+            "role": "pk"
           },
           {
             "ref": "name",
@@ -48,9 +49,10 @@
             "type": "text"
           },
           {
-            "ref": "imageurl",
+            "ref": "image_url",
             "type": "text",
-            "semantic": "image"
+            "semantic": "image",
+            "nullable": true
           },
           {
             "ref": "available",
@@ -59,11 +61,12 @@
         ]
       },
       {
-        "ref": "tables",
+        "ref": "restaurant_tables",
         "columns": [
           {
             "ref": "id",
-            "type": "int"
+            "type": "int",
+            "role": "pk"
           },
           {
             "ref": "label",
@@ -84,17 +87,18 @@
         "columns": [
           {
             "ref": "id",
-            "type": "int"
+            "type": "int",
+            "role": "pk"
           },
           {
             "ref": "number",
             "type": "text"
           },
           {
-            "ref": "tables",
+            "ref": "table_id",
             "type": "fk",
             "nullable": true,
-            "references": "tables"
+            "references": "restaurant_tables"
           },
           {
             "ref": "status",
@@ -111,39 +115,41 @@
             "type": "money"
           },
           {
-            "ref": "openedat",
+            "ref": "opened_at",
             "type": "timestamptz"
           },
           {
-            "ref": "closedat",
+            "ref": "closed_at",
             "type": "timestamptz",
             "nullable": true
           }
         ]
       },
       {
-        "ref": "ticketitems",
+        "ref": "ticket_items",
         "columns": [
           {
             "ref": "id",
-            "type": "int"
+            "type": "int",
+            "role": "pk"
           },
           {
-            "ref": "tickets",
+            "ref": "ticket_id",
             "type": "fk",
             "references": "tickets"
           },
           {
-            "ref": "menuitems",
+            "ref": "menu_item_id",
             "type": "fk",
-            "references": "menuitems"
+            "nullable": true,
+            "references": "menu_items"
           },
           {
             "ref": "qty",
             "type": "int"
           },
           {
-            "ref": "unitprice",
+            "ref": "unit_price",
             "type": "money"
           },
           {
@@ -158,10 +164,11 @@
         "columns": [
           {
             "ref": "id",
-            "type": "int"
+            "type": "int",
+            "role": "pk"
           },
           {
-            "ref": "tickets",
+            "ref": "ticket_id",
             "type": "fk",
             "references": "tickets"
           },
@@ -179,7 +186,7 @@
             "type": "money"
           },
           {
-            "ref": "paidat",
+            "ref": "paid_at",
             "type": "timestamptz"
           }
         ]
@@ -189,18 +196,19 @@
         "columns": [
           {
             "ref": "id",
-            "type": "int"
+            "type": "int",
+            "role": "pk"
           },
           {
             "ref": "staff",
             "type": "text"
           },
           {
-            "ref": "startedat",
+            "ref": "started_at",
             "type": "timestamptz"
           },
           {
-            "ref": "endedat",
+            "ref": "ended_at",
             "type": "timestamptz",
             "nullable": true
           }
@@ -273,7 +281,7 @@
   "frontends": [
     {
       "side": "staff",
-      "kind": "electron",
+      "kind": "spa",
       "entry": "index.html",
       "env": {
         "VITE_ADMINIUM_API_BASE_URL": {

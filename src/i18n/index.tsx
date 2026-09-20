@@ -33,6 +33,7 @@ import {
   type LocaleTag,
 } from './locales';
 import { MESSAGES, type MessageKey } from './messages';
+import { tenantCurrency, tenantZone } from './ambient';
 
 const STORAGE_KEY = 'pos-locale';
 
@@ -67,7 +68,27 @@ interface I18nValue {
 
 const I18nContext = createContext<I18nValue | null>(null);
 
+/**
+ * The locale the Adminium host frame pushed, and the live setter that applies
+ * it (29-app-surfaces.md D11).
+ *
+ * Module scope because it arrives from the embed bridge BEFORE React mounts —
+ * the dashboard hands its locale over during the handshake — and again later
+ * when an operator switches language there. Neither is persisted: the host's
+ * language is the host's setting, and writing it here would leave the till
+ * stuck in it once opened on its own.
+ */
+let hostLocale: LocaleTag | null = null;
+let applyLocale: ((next: LocaleTag) => void) | null = null;
+
+export function setHostLocale(tag: string): void {
+  if (!isLocaleTag(tag)) return; // an unknown tag leaves the till's own choice
+  hostLocale = tag;
+  applyLocale?.(tag);
+}
+
 function initialLocale(): LocaleTag {
+  if (hostLocale !== null) return hostLocale;
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (isLocaleTag(stored)) return stored;
@@ -80,6 +101,15 @@ function initialLocale(): LocaleTag {
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<LocaleTag>(initialLocale);
   const dir = dirFor(locale);
+
+  // Register the un-persisted setter for `setHostLocale`, so a language switch
+  // in the dashboard re-renders this frame live rather than on the next load.
+  useEffect(() => {
+    applyLocale = setLocaleState;
+    return () => {
+      applyLocale = null;
+    };
+  }, []);
 
   // Stamp <html> so CSS logical properties resolve and screen readers announce
   // the right language. This is the single switch that turns RTL on.
@@ -126,10 +156,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       dir,
       setLocale,
       t,
-      money: (v, currency = 'USD') =>
+      money: (v, currency = tenantCurrency()) =>
         new Intl.NumberFormat(locale, { style: 'currency', currency }).format(v),
       number: (n, opts) => (opts ? new Intl.NumberFormat(locale, opts).format(n) : nf.format(n)),
-      date: (d, opts) => new Intl.DateTimeFormat(locale, opts).format(d),
+      /* The TENANT's clock when there is a tenant: a receipt prints the shop's
+       * time, not the zone of whoever has the page open. `undefined` in the demo
+       * keeps the reader's clock, which is all a demo has. */
+      date: (d, opts) => new Intl.DateTimeFormat(locale, { timeZone: tenantZone(), ...opts }).format(d),
     };
   }, [locale, dir, setLocale]);
 

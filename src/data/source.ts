@@ -143,8 +143,10 @@ export function setDataSource(next: DataSource): void {
 /**
  * True once a real backend is behind the seam.
  *
- * Read by the demo dock, which resets the shift and invents sales: against a
- * real till those controls either lie or do damage, so it does not render.
+ * NOT what gates the demo dock any more. That was a runtime comparison no
+ * bundler can fold, so the dock shipped in every build and was merely hidden;
+ * `App.tsx` now gates it on the build-time `DEMO` constant (`surface.ts`), which
+ * removes it from every non-demo bundle. Kept as the seam's own answer.
  */
 export function isConnected(): boolean {
   return current !== demoSource;

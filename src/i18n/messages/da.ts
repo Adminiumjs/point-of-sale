@@ -98,6 +98,18 @@ export const da: Translated<typeof enUS> = {
   'topbar.workingOffline': 'Arbejder offline',
   'topbar.held': 'Parkeret',
   'topbar.shiftOpen': 'Åben {d}',
+  'topbar.utcNotice': 'Tidspunkter vises i UTC',
+  'topbar.utcWhy':
+    'Denne forbindelse har ingen tidszone angivet i Adminium, så kassen viser tidspunkter i UTC i stedet for butikkens tidszone.',
+  'topbar.zoneNotice': 'Tidspunkter vises i {zone}',
+  'topbar.zoneWhy':
+    'Denne tidszone kom fra serveren, der kører Adminium — ingen her har valgt den. Bekræft den på forbindelsen (Forbindelser → denne database), hvis det er butikkens tidszone.',
+
+  // ---- hosted surface: the sections Adminium's sidebar offers (see src/surface-nav.ts) ----
+  'nav.app': 'Kassesystem',
+  'nav.register': 'Kasse',
+  'nav.floor': 'Bordoversigt',
+  'nav.kitchen': 'Køkken',
 
   // ---- login / open shift ----
   'login.goodMorning': 'Godmorgen',

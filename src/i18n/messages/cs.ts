@@ -99,6 +99,18 @@ export const cs: Translated<typeof enUS> = {
   'topbar.workingOffline': 'Režim offline',
   'topbar.held': 'Odloženo',
   'topbar.shiftOpen': 'Otevřeno {d}',
+  'topbar.utcNotice': 'Časy se zobrazují v UTC',
+  'topbar.utcWhy':
+    'Toto připojení nemá v Adminiu nastavené časové pásmo, pokladna proto ukazuje časy v UTC místo v pásmu provozovny.',
+  'topbar.zoneNotice': 'Časy se zobrazují v pásmu {zone}',
+  'topbar.zoneWhy':
+    'Toto pásmo pochází ze serveru, na kterém běží Adminium, nikdo je zde nezvolil. Pokud jde o pásmo provozovny, potvrďte je u připojení (Připojení → tato databáze).',
+
+  // ---- hosted surface: the sections Adminium's sidebar offers (see src/surface-nav.ts) ----
+  'nav.app': 'Pokladní systém',
+  'nav.register': 'Pokladna',
+  'nav.floor': 'Sál',
+  'nav.kitchen': 'Kuchyně',
 
   // ---- login / open shift ----
   'login.goodMorning': 'Dobré ráno',

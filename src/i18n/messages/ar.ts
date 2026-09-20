@@ -101,6 +101,18 @@ export const ar: Translated<typeof enUS> = {
   'topbar.workingOffline': 'العمل دون اتصال',
   'topbar.held': 'معلّقة',
   'topbar.shiftOpen': 'مفتوحة {d}',
+  'topbar.utcNotice': 'الأوقات معروضة بتوقيت UTC',
+  'topbar.utcWhy':
+    'لا توجد منطقة زمنية محدّدة لهذا الاتصال في Adminium، لذا تعرض نقطة البيع الأوقات بتوقيت UTC بدلاً من المنطقة الزمنية للمتجر.',
+  'topbar.zoneNotice': 'الأوقات معروضة بتوقيت {zone}',
+  'topbar.zoneWhy':
+    'جاءت هذه المنطقة الزمنية من الخادم الذي يشغّل Adminium، ولم يخترها أحد هنا. أكّدها على الاتصال (الاتصالات → قاعدة البيانات هذه) إذا كانت المنطقة الزمنية للمتجر.',
+
+  // ---- hosted surface: the sections Adminium's sidebar offers (see src/surface-nav.ts) ----
+  'nav.app': 'نقطة بيع',
+  'nav.register': 'الكاشير',
+  'nav.floor': 'الصالة',
+  'nav.kitchen': 'المطبخ',
 
   // ---- login / open shift ----
   'login.goodMorning': 'صباح الخير',

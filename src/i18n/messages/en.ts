@@ -101,6 +101,18 @@ export const enUS = {
   'topbar.workingOffline': 'Working offline',
   'topbar.held': 'Held',
   'topbar.shiftOpen': 'Open {d}',
+  'topbar.utcNotice': 'Times shown in UTC',
+  'topbar.utcWhy':
+    'This connection has no timezone set in Adminium, so the till keeps time in UTC instead of the shop’s own zone.',
+  'topbar.zoneNotice': 'Times shown in {zone}',
+  'topbar.zoneWhy':
+    'This zone came from the server running Adminium, not from anyone here. Confirm it on the connection (Connections → this database) if it is the shop’s zone.',
+
+  // ---- hosted surface: the sections Adminium's sidebar offers (see src/surface-nav.ts) ----
+  'nav.app': 'Point of Sale',
+  'nav.register': 'Register',
+  'nav.floor': 'Floor',
+  'nav.kitchen': 'Kitchen',
 
   // ---- login / open shift ----
   'login.goodMorning': 'Good morning',

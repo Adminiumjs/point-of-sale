@@ -54,6 +54,8 @@ type SplitMode = 'none' | 'even' | 'amount';
 export interface PosState {
   // display / behaviour
   theme: Theme;
+  /** True once the Adminium host frame chose the theme (29 D11) — never persisted. */
+  themeFromHost: boolean;
   mode: ServiceMode;
   online: boolean;
   view: View;
@@ -115,6 +117,8 @@ export interface PosState {
   // actions
   toggleTheme: () => void;
   setTheme: (t: Theme) => void;
+  /** Theme pushed by the Adminium host frame. Applied, never written to storage. */
+  setHostTheme: (t: Theme) => void;
   setMode: (m: ServiceMode) => void;
   toggleOnline: () => void;
   toggleDeclined: () => void;
@@ -318,6 +322,7 @@ export const usePos = create<PosState>()((set, get) => {
 
   return {
     theme: initialTheme(),
+    themeFromHost: false,
     mode: 'restaurant',
     online: true,
     view: 'login',
@@ -373,6 +378,13 @@ export const usePos = create<PosState>()((set, get) => {
     // ---- display / behaviour ----
     toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
     setTheme: (next) => set({ theme: next }),
+    /*
+     * The HOST owns the theme while the till is blended into the dashboard: it
+     * is the operator's dashboard setting, not this app's. `themeFromHost` is
+     * what stops `App` writing it to `pos-theme` — persisting it would leave the
+     * till stuck in the dashboard's theme the next time it is opened on its own.
+     */
+    setHostTheme: (next) => set({ theme: next, themeFromHost: true }),
     setMode: (m) =>
       set((s) => ({ mode: m, view: m === 'retail' && s.view === 'floor' ? 'register' : s.view })),
     toggleOnline: () => set((s) => ({ online: !s.online })),

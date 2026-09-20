@@ -64,7 +64,7 @@ export function ModifierSheet() {
           <div style={css('width:44px;height:5px;border-radius:3px;background:var(--border-strong);')} />
         </div>
         <div style={css('flex-shrink:0;display:flex;align-items:center;gap:14px;padding:10px 24px 18px;border-bottom:1px solid var(--border);')}>
-          <MenuThumb item={m} dark={dark} radius="16px" box="width:60px;height:60px;flex-shrink:0;" />
+          <MenuThumb item={m} dark={dark} radius="16px" box="width:60px;height:60px;flex-shrink:0;" iconSize={30} />
           <div style={css('flex:1;min-width:0;')}>
             <div style={css('font-size:21px;font-weight:800;letter-spacing:-.02em;')}>{m.name}</div>
             <div style={css('font-size:14px;color:var(--fg-muted);' + MONO + 'margin-top:2px;')}>{t('sheet.base', { amount: money(m.price) })}</div>

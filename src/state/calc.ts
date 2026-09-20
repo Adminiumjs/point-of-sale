@@ -24,14 +24,25 @@ export interface PricingState {
  * The one money formatter.
  *
  * The currency is a property of the till, not of the reader — a New York cafe
- * charges dollars to a German tourist too — so it stays USD while the *locale*
- * decides grouping, decimal separator, digit shapes and where the symbol sits
- * ($1,234.50 / 1.234,50 $ / ‏US$ ١٬٢٣٤٫٥٠). Before `<App>` mounts this falls
- * back to en-US, which is what the unit tests assert against.
+ * charges dollars to a German tourist too — so it is the TENANT's currency
+ * (USD in the demo, which has no tenant) while the *locale* decides grouping,
+ * decimal separator, digit shapes and where the symbol sits ($1,234.50 /
+ * 1.234,50 $ / ‏US$ ١٬٢٣٤٫٥٠). Before `<App>` mounts this falls back to en-US,
+ * which is what the unit tests assert against.
  */
 export const money = (n: number, currency?: string): string => fmtMoney(Number(n || 0), currency);
 
 export const hexToRgba = (hex: string, a: number): string => {
+  /*
+   * A colour that is not hex is mixed, not parsed. `catTint` falls back to
+   * `var(--accent)` for a category with no tint of its own — which is every
+   * category over a real database, where there is no tint column — and read as
+   * hex that came out NaN, i.e. black: every tile washed grey, and its
+   * placeholder glyph close to invisible on a dark till.
+   */
+  if (hex && !/^#?(?:[0-9a-f]{3}){1,2}$/i.test(hex)) {
+    return 'color-mix(in srgb, ' + hex + ' ' + Math.round(a * 100) + '%, transparent)';
+  }
   let h = (hex || '#4f46e5').replace('#', '');
   if (h.length === 3) h = h.split('').map((c) => c + c).join('');
   const n = parseInt(h, 16);

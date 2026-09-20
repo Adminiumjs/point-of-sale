@@ -96,6 +96,16 @@ export const zhTw: Translated<typeof enUS> = {
   'topbar.workingOffline': '離線作業中',
   'topbar.held': '保留中',
   'topbar.shiftOpen': '已開 {d}',
+  'topbar.utcNotice': '時間以 UTC 顯示',
+  'topbar.utcWhy': '此連線在 Adminium 中未設定時區，收銀台因此以 UTC 顯示時間，而非店家所在時區。',
+  'topbar.zoneNotice': '時間以 {zone} 顯示',
+  'topbar.zoneWhy': '此時區來自執行 Adminium 的伺服器，並非有人在此選擇。若它確實是店家所在時區，請在連線上確認（連線 → 此資料庫）。',
+
+  // ---- hosted surface: the sections Adminium's sidebar offers (see src/surface-nav.ts) ----
+  'nav.app': '銷售點系統',
+  'nav.register': '收銀',
+  'nav.floor': '桌況',
+  'nav.kitchen': '廚房',
 
   // ---- login / open shift ----
   'login.goodMorning': '早安',

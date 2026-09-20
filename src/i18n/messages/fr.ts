@@ -99,6 +99,18 @@ export const fr: Translated<typeof enUS> = {
   'topbar.workingOffline': 'Mode hors ligne',
   'topbar.held': 'En attente',
   'topbar.shiftOpen': 'Ouvert depuis {d}',
+  'topbar.utcNotice': 'Heures affichées en UTC',
+  'topbar.utcWhy':
+    'Aucun fuseau horaire n’est défini pour cette connexion dans Adminium ; la caisse affiche donc les heures en UTC plutôt que dans le fuseau du commerce.',
+  'topbar.zoneNotice': 'Heures affichées en {zone}',
+  'topbar.zoneWhy':
+    'Ce fuseau vient du serveur qui exécute Adminium ; personne ne l’a choisi ici. Confirmez-le sur la connexion (Connexions → cette base de données) s’il s’agit du fuseau du commerce.',
+
+  // ---- hosted surface: the sections Adminium's sidebar offers (see src/surface-nav.ts) ----
+  'nav.app': 'Point de vente',
+  'nav.register': 'Caisse',
+  'nav.floor': 'Salle',
+  'nav.kitchen': 'Cuisine',
 
   // ---- login / open shift ----
   'login.goodMorning': 'Bonjour',
