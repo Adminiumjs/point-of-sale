@@ -94,6 +94,31 @@ const fallbackMoney: MoneyFn = (value, currency = activeCurrency) =>
 const fallbackNumber: NumberFn = (value, opts) =>
   new Intl.NumberFormat(DEFAULT_LOCALE, opts).format(value);
 
+/**
+ * The name the OPERATOR gave this app in Adminium, or null for "use ours".
+ *
+ * Every build bakes a name into its bundle, and that name belongs to the
+ * sample this app shipped as, not to the business running it. An operator can
+ * now set their own in Studio; it arrives on the served `surface-config.json`
+ * at boot and lands here.
+ *
+ * Held beside the currency and the zone for the same reason: it is a boot-time
+ * tenant fact, and the shell that renders it is not the only reader.
+ *
+ * Null is the normal case and means exactly "nobody overrode it" — the app
+ * keeps its own name. The server deliberately does not echo the app's own
+ * label back, so there is nothing to unpick here.
+ */
+let activeAppName: string | null = null;
+
+/** Set once at boot, from the served surface config. */
+export function setAppName(name: string | null | undefined): void {
+  activeAppName = typeof name === "string" && name.trim() !== "" ? name.trim() : null;
+}
+
+/** The operator's name for this app, or null to fall back to the baked one. */
+export const appName = (): string | null => activeAppName;
+
 let activeLocale: LocaleTag = DEFAULT_LOCALE;
 let activeT: TFunction = fallbackT;
 let activeMoney: MoneyFn = fallbackMoney;

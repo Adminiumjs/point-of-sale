@@ -12,7 +12,7 @@ import { createSessionTransport } from './data/sessionSource';
 import { readSessionOperator } from './data/sessionOperator';
 import { TABLE_OF_REF } from './data/tableOfRef';
 import { resolveStaffConnectionId } from './staffConnection';
-import { setTenantCurrency, setTimezoneClaim } from './i18n/ambient';
+import { appName, setTenantCurrency, setTimezoneClaim } from './i18n/ambient';
 import { DEMO, HOSTED, SURFACE_SIDE } from './surface';
 
 const container = document.getElementById('root');
@@ -253,6 +253,21 @@ async function boot(): Promise<void> {
 
     usePos.subscribe(sync.reflect);
   }
+
+  /*
+   * THE BROWSER TAB carries the operator's name too.
+   *
+   * Everything on screen resolves through `useBrand()`, but the tab is not on
+   * screen — it is the static `<title>` in index.html, which is the name this
+   * app was BUILT with. Rename the app in Adminium and every heading changes
+   * while the tab still says "Client Portal", which is the same half-applied
+   * rename this whole change exists to remove.
+   *
+   * Only when an override is set: with none, index.html's own title is already
+   * the right answer and rewriting it with the same string is noise.
+   */
+  const named = appName();
+  if (named !== null) document.title = named;
 
   createRoot(mount).render(
     <StrictMode>

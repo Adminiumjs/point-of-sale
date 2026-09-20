@@ -48,6 +48,7 @@
  * per transport would be two copies of every rule below.
  */
 
+import { appName } from '../i18n/ambient';
 import {
   createPublicClient,
   toTenantDay,
@@ -438,8 +439,19 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
  */
 export function snapshotSource(snap: Snapshot, operator: Staff | null = null): DataSource {
   return {
-    // WS-I G-1: no brand column.
-    brand: () => '',
+    /*
+     * WS-I G-1: no brand column — and now, no need for one.
+     *
+     * A real shop's name had nowhere to come from, so this returned the empty
+     * string and the till showed the product name. The operator now names the
+     * app in Adminium (Studio → Hosted apps → App names) and it arrives on the
+     * served surface config, which is a better source than a column would have
+     * been: it is the same name Adminium's own sidebar uses for this app.
+     *
+     * Still empty when nobody set one, which is what the screens already
+     * handle.
+     */
+    brand: () => appName() ?? '',
     // WS-I G-3: no tax column. A visible zero beats a plausible 8.25% nobody set.
     taxRate: () => 0,
     /* Tip presets are BUTTONS a cashier taps, not a charge this app applies, so

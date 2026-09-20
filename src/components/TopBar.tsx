@@ -2,41 +2,25 @@ import { usePos, curStaffOf } from '../state/store';
 import { source } from '../data/source';
 import { dur, tableName } from '../state/calc';
 import { useT } from '../i18n';
-import { timezoneNotice } from '../i18n/ambient';
 import { Icon } from './Icon';
 import { css } from './css';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
 
-/**
- * The one VISIBLE trace of a zone nobody confirmed (`data/sessionSource.ts`).
+/*
+ * THE ZONE CHIP IS GONE, and the warning it carried now lives in Adminium.
  *
- * Two states, one chip. `fallback` — the connection has no zone at all, so the
- * receipt clock reads UTC. `host` — a real zone, but the one Adminium took from
- * the machine it runs on: plausible and unverified, and so the more dangerous
- * of the two, because UTC announces itself and a wrong city does not.
+ * It rendered "Dates shown in UTC" — or a city nobody confirmed — permanently,
+ * in the header of every screen, for everyone. But an unset timezone is the
+ * OPERATOR's to fix, on the connection, in Adminium; staff and customers
+ * reading this app can do nothing about it and were shown it on every page
+ * anyway. Studio's Connections card now names the zone dates actually render
+ * in whenever a connection has none, which is both where the fix is and the
+ * only audience that can apply it.
  *
- * A chip beside the offline one, not a banner: the till works either way, and
- * the fix lives in the tooltip. Renders nothing for an operator-set zone, which
- * is what nearly every boot should be, and nothing in the demo, which has no
- * tenant.
+ * `timezoneNotice()` stays in `i18n/ambient.ts`: the claim is still worth
+ * carrying and still logged at boot. Nothing renders it.
  */
-function ZoneNotice() {
-  const t = useT();
-  const notice = timezoneNotice();
-  if (notice === null) return null;
-  const fallback = notice.source === 'fallback';
-  return (
-    <div
-      className="topbar-zone"
-      title={fallback ? t('topbar.utcWhy') : t('topbar.zoneWhy')}
-      style={css('display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);color:var(--fg-muted);font-size:13px;font-weight:700;white-space:nowrap;')}
-    >
-      <Icon name="clock" size={16} />
-      <span>{fallback ? t('topbar.utcNotice') : t('topbar.zoneNotice', { zone: notice.zone })}</span>
-    </div>
-  );
-}
 
 export function TopBar() {
   const s = usePos();
@@ -101,7 +85,6 @@ export function TopBar() {
       {s.view === 'floor' && <div style={css('flex:1;')} />}
 
       <div style={css('display:flex;align-items:center;gap:10px;flex-shrink:0;')}>
-        <ZoneNotice />
         {!s.online && (
           <div style={css('display:flex;align-items:center;gap:8px;height:42px;padding:0 14px;border-radius:12px;background:var(--warn-soft);color:var(--warn);font-size:13px;font-weight:700;')}>
             <Icon name="cloud-off" size={16} />
