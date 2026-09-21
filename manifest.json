@@ -241,6 +241,9 @@
         "group": "manifest:pos",
         "icon": "utensils",
         "order": 2
+      },
+      "bindings": {
+        "rows": "menu_items"
       }
     },
     {
@@ -254,11 +257,14 @@
         "group": "manifest:pos",
         "icon": "receipt",
         "order": 3
+      },
+      "bindings": {
+        "rows": "tickets"
       }
     },
     {
       "ref": "pos-shifts",
-      "template": "page-scheduler",
+      "template": "page-calendar",
       "title": {
         "key": "mft.pos.page.shifts",
         "fallback": "Shifts"
@@ -267,6 +273,9 @@
         "group": "manifest:pos",
         "icon": "calendar-clock",
         "order": 4
+      },
+      "bindings": {
+        "rows": "shifts"
       }
     }
   ],
