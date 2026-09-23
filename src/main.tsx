@@ -7,11 +7,14 @@ import './styles/app.css';
 
 import { I18nProvider, setHostLocale } from './i18n';
 import { setDataSource } from './data/source';
-import { clientFromEnv, loadSnapshot, snapshotFailure, snapshotSource } from './data/adminiumSource';
+import { clientFromEnv, loadSnapshot, readReservation, snapshotFailure, snapshotSource } from './data/adminiumSource';
 import { createSessionTransport } from './data/sessionSource';
-import { readSessionOperator } from './data/sessionOperator';
-import { TABLE_OF_REF } from './data/tableOfRef';
-import { resolveStaffConnectionId } from './staffConnection';
+import { sessionSink } from './data/sink';
+import { setSink, WRITE_TABLES } from './state/writes';
+import { initialsOf, readSessionOperator, SESSION_STAFF_ID } from './data/sessionOperator';
+import { realTables } from './data/tableOfRef';
+import { setServerZone } from './data/venueTime';
+import { loadStaffConfig } from './staffConnection';
 import { appName, setTenantCurrency, setTimezoneClaim } from './i18n/ambient';
 import { DEMO, HOSTED, SURFACE_SIDE } from './surface';
 
@@ -99,7 +102,81 @@ function codeOf(reason: Error | null): string | null {
  * resolve, and the till would price a real shop's sales with the demo's rates.
  * The seam's `setDataSource` throws if that ordering is ever broken.
  */
+/**
+ * THE GUESTS SIDE — a customer surface: book a table, and "Manage my booking".
+ *
+ * It has no till, no staff and no session: only the public API, through the
+ * browser key Adminium made at install and serves beside the bundle
+ * (`surface-config.json`). So it is decided before any of the till's checks,
+ * the "nobody can open this till" refusal among them, and nothing of the
+ * till's is imported. `SURFACE_SIDE` folds to a literal, so the till's half of
+ * this file is gone from the customer bundle, and this half from every other.
+ */
+async function bootGuests(): Promise<void> {
+  const { resolveSurfaceConfig } = await import('./publicConfig');
+  const config = await resolveSurfaceConfig();
+  const client =
+    config === null ? null : (await import('@adminiumjs/public-client')).createPublicClient({ baseUrl: config.baseUrl, publishableKey: config.publishableKey });
+  if (config === null || client === null) {
+    showStartupFailure(
+      'Adminium served no booking key for this page. Allow the public access when installing the app, ' +
+        'or check that its browser key is still live on the API keys page.',
+      'NO_BACKEND',
+    );
+    return;
+  }
+  const { publicGuestsPort } = await import('./guests/api');
+  let port: Awaited<ReturnType<typeof publicGuestsPort>>;
+  try {
+    port = await publicGuestsPort(client, config.tables ?? {});
+  } catch (error) {
+    showStartupFailure(error instanceof Error ? error.message : String(error), codeOf(error instanceof Error ? error : null));
+    return;
+  }
+  // Every day and time the pages show is the venue's.
+  setTimezoneClaim(port.timeZone() ?? 'UTC', 'operator');
+
+  const [{ useGuests }, { attachUrlSync }, { connectToHost }, { SURFACE_NAV, APP_KEY }, { GuestsApp }] = await Promise.all([
+    import('./guests/store'),
+    import('./urlSync'),
+    import('./embed'),
+    import('./surface-nav'),
+    import('./guests/GuestsApp'),
+  ]);
+  // The confirmation email's link: `…/customer/manage?code=MR-4829` opens Find with the code in.
+  const code = new URLSearchParams(window.location.search).get('code');
+  if (code !== null) useGuests.setState({ code });
+  let bridge: { navigated: (path: string) => void } | null = null;
+  const sync = attachUrlSync({
+    nav: SURFACE_NAV,
+    side: 'customer',
+    go: (view) => useGuests.setState({ view: view === 'manage' ? 'manage' : 'book' }),
+    current: () => useGuests.getState().view,
+    onPath: (path) => bridge?.navigated(path),
+  });
+  bridge = await connectToHost(APP_KEY, 'customer', sync.path(), {
+    onLocale: setHostLocale,
+    onPath: (path) => sync.applyPath(path),
+  });
+  useGuests.subscribe(sync.reflect);
+  void useGuests.getState().start(port);
+
+  const named = appName();
+  if (named !== null) document.title = named;
+  createRoot(mount).render(
+    <StrictMode>
+      <I18nProvider>
+        <GuestsApp />
+      </I18nProvider>
+    </StrictMode>,
+  );
+}
+
 async function boot(): Promise<void> {
+  if (SURFACE_SIDE === 'customer') {
+    await bootGuests();
+    return;
+  }
   /*
    * A NON-DEMO BUILD NEVER RENDERS DEMO DATA.
    *
@@ -117,14 +194,38 @@ async function boot(): Promise<void> {
      * (29 D9). Null — unbound, or an Adminium too old to answer — keeps the
      * old inference, so this is additive on every single-connection instance.
      */
-    const boundConnection = hostedStaff ? await resolveStaffConnectionId() : null;
+    /*
+     * THE STAFF CONFIG is everything the till boots from: the database, the
+     * tables' real names, who is signed in, their token, and the venue's zone
+     * and money. With it the till reads neither the dashboard's bootstrap nor
+     * its connections list, which a screens-only cashier may not read.
+     */
+    const staffConfig = hostedStaff ? await loadStaffConfig() : null;
+    // A bare wall time from the server is its clock, not this device's.
+    if (staffConfig?.serverTimezone) setServerZone(staffConfig.serverTimezone);
+    const boundConnection = staffConfig?.connectionId ?? null;
 
-    const client = hostedStaff
+    // The whole transport, not just its reading half: the till also saves through it.
+    const transport = hostedStaff
       ? createSessionTransport({
-          tableOfRef: TABLE_OF_REF,
+          tableOfRef: realTables(staffConfig?.tables ?? {}),
           connectionId: boundConnection ?? undefined,
-        }).port
-      : clientFromEnv();
+          ...(staffConfig?.csrfToken
+            ? {
+                staff: {
+                  csrfToken: staffConfig.csrfToken,
+                  timezone: staffConfig.timezone,
+                  timezoneSource: staffConfig.timezoneSource,
+                  serverTimezone: staffConfig.serverTimezone,
+                  currency: staffConfig.currency,
+                },
+                // A rotated token comes from the staff config again.
+                refreshToken: async () => (await loadStaffConfig())?.csrfToken ?? null,
+              }
+            : {}),
+        })
+      : null;
+    const client = transport !== null ? transport.port : clientFromEnv();
     if (client === null) {
       showStartupFailure(
         'This build has no backend configured. Set VITE_ADMINIUM_API_BASE_URL and ' +
@@ -155,7 +256,14 @@ async function boot(): Promise<void> {
       return;
     }
 
-    const [snap, operator] = await Promise.all([loadSnapshot(client), readSessionOperator()]);
+    const signedIn = staffConfig?.user ?? null;
+    const [snap, operator] = await Promise.all([
+      loadSnapshot(client),
+      // The staff config names who is signed in; an older Adminium only answers `me`.
+      signedIn !== null
+        ? Promise.resolve({ id: SESSION_STAFF_ID, name: signedIn.name, initials: initialsOf(signedIn.name), role: '', pin: '' })
+        : readSessionOperator(),
+    ]);
     if (snap === null) {
       const reason = snapshotFailure();
       showStartupFailure(
@@ -183,7 +291,52 @@ async function boot(): Promise<void> {
     setTenantCurrency(snap.currency);
     // Same timing, same reason: the zone notice is there on the first paint.
     setTimezoneClaim(snap.timezone, snap.timezoneSource);
-    setDataSource(snapshotSource(snap, operator));
+    setDataSource(snapshotSource(snap, operator, signedIn?.email ?? null));
+    // Refund reads closed sales on demand, through the same transport.
+    const { setHistory, portHistory } = await import('./data/history');
+    const optionNames = new Map(snap.groups.flatMap((g) => g.options.map((o) => [o.id, o.name] as const)));
+    setHistory(
+      portHistory(client, {
+        timeZone: snap.timezone,
+        optionName: (id) => optionNames.get(id) ?? null,
+        tableLabel: (id) => snap.tables.find((x) => x.id === id)?.label ?? null,
+      }),
+    );
+    // Loyalty's members and history are read on demand too; the rewards now, since a ticket may already hold one.
+    const { setLoyalty, portLoyalty } = await import('./data/loyalty');
+    const book = portLoyalty(client);
+    setLoyalty(book);
+    const [rewards, member] = await Promise.all([
+      book.rewards().catch(() => []),
+      snap.openTicket.customerId === undefined ? Promise.resolve(null) : book.member(snap.openTicket.customerId).catch(() => null),
+    ]);
+    // Gift cards are looked up by their code, on demand.
+    const { setGiftCards, portGiftCards } = await import('./data/giftCards');
+    setGiftCards(portGiftCards(client));
+    const { usePos } = await import('./state/store');
+    usePos.setState((st) => ({ rewards, members: member === null ? st.members : { ...st.members, [member.id]: member } }));
+    // Every action at the till is saved as the signed-in staff member, from here on.
+    if (transport !== null) {
+      const tables = { ...WRITE_TABLES, ...(staffConfig?.tables ?? {}) };
+      setSink(sessionSink(transport, tables));
+      /*
+       * LIVE UPDATES: other tills, the kitchen screen and guests' bookings. The
+       * store reads the source at module scope, so it (and what writes into it)
+       * is imported only now, after `setDataSource`.
+       */
+      const [{ applyFrame, resync }, { startLive }] = await Promise.all([import('./state/live'), import('./data/live')]);
+      void startLive({
+        transport,
+        tables,
+        onFrame: (frame) => applyFrame(frame, { fetchReservation: (id) => readReservation(client, id) }),
+        // Whatever was announced while the connection was down is gone: read again.
+        onReconnect: () => {
+          void loadSnapshot(client).then((fresh) => {
+            if (fresh !== null) resync(fresh);
+          });
+        },
+      }).catch((error: unknown) => console.warn('[adminium] live updates are off:', error));
+    }
     console.info(
       `[adminium] connected: ${String(snap.menu.length)} menu items, ` +
         `${String(snap.tables.length)} tables; the till is open for ${operator.name}.`,
@@ -191,6 +344,23 @@ async function boot(): Promise<void> {
   }
 
   const { App } = await import('./app/App');
+
+  /*
+   * The demo shows the Guests pages too, as two of the till's screens, over the
+   * till's own bookings: a table booked there is on Reservations a tap later.
+   */
+  if (DEMO) {
+    const [{ useGuests, onGuestsNavigate }, { demoGuestsPort }, { usePos }] = await Promise.all([
+      import('./guests/store'),
+      import('./guests/demoPort'),
+      import('./state/store'),
+    ]);
+    onGuestsNavigate((view) => usePos.getState().go(view));
+    void useGuests.getState().start(demoGuestsPort());
+    // The website's demo card drives the demo through its protocol (D58).
+    const { startDemoBridge } = await import('./demoBridge');
+    startDemoBridge();
+  }
 
   /*
    * The side → entry line: the ONE app-specific line here, which is why it is

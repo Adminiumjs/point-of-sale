@@ -1,7 +1,8 @@
 import { usePos } from '../state/store';
 import type { LineItem } from '../data/types';
-import { discountAmt, itemById, lineTotal, modLabel, money, regTotal, subtotal, tableName, tax, taxLabel } from '../state/calc';
-import { useT } from '../i18n';
+import { discountAmt, itemById, lineName, lineTotal, modLabel, money, regTotal, subtotal, tableName, tax, taxLabel } from '../state/calc';
+import { useI18n, useT, type MessageKey } from '../i18n';
+import { pointsLeft } from '../state/points';
 import { Icon } from './Icon';
 import { css } from './css';
 
@@ -17,12 +18,16 @@ interface Group {
 export function TicketPane() {
   const s = usePos();
   const t = useT();
+  const { number } = useI18n();
   const retail = s.mode === 'retail';
+  const member = s.ticket.customerId === undefined ? undefined : s.members[s.ticket.customerId];
+  const pickup = s.ticket.rid === undefined ? undefined : s.pickups.find((p) => p.rid === s.ticket.rid);
   const items = s.ticket.items;
   const empty = items.length === 0;
   const canAct = !empty;
   const hasDisc = !!s.discount;
-  const unsent = items.filter((x) => !x.sent).reduce((a, x) => a + x.qty, 0);
+  // A gift card load never goes to the kitchen, so Send does not count it.
+  const unsent = items.filter((x) => !x.sent && x.giftCard === undefined).reduce((a, x) => a + x.qty, 0);
 
   let groups: Group[];
   if (s.coursing && !retail && items.length) {
@@ -93,6 +98,9 @@ export function TicketPane() {
             <Icon name="rows-3" size={17} />
             {t('ticket.seats')}
           </button>
+          <button className="pos-press" onClick={() => s.setPickupSheet(true)} title={t('ticket.forPickup')} aria-label={t('ticket.forPickup')} style={css(hdrBtn + (pickup === undefined ? '' : 'color:var(--accent);border-color:color-mix(in srgb, var(--accent) 45%, transparent);'))}>
+            <Icon name="shopping-bag" size={18} />
+          </button>
           <button className="pos-press" onClick={s.openMove} title={t('ticket.moveMerge')} aria-label={t('ticket.moveMerge')} style={css(hdrBtn)}>
             <Icon name="arrow-left-right" size={18} />
           </button>
@@ -101,6 +109,26 @@ export function TicketPane() {
           </button>
         </div>
       </div>
+
+      {/* A pickup order (wave 2): who collects it, and where it stands. */}
+      {pickup !== undefined && (
+        <button className="pos-press" onClick={() => s.go('pickup')} style={css('flex-shrink:0;display:flex;align-items:center;gap:9px;margin:10px 12px 0;padding:10px 12px;border-radius:13px;border:none;background:var(--warn-soft);color:var(--warn);font-family:inherit;font-size:13.5px;font-weight:800;text-align:start;cursor:pointer;')}>
+          <Icon name="shopping-bag" size={17} />
+          {t('ticket.pickupFor', { name: pickup.name, stage: t(('pickup.' + pickup.stage) as MessageKey) })}
+        </button>
+      )}
+      {/* The ticket's loyalty member (wave 2): who earns from it, and what they can still spend. */}
+      {s.ticket.customerId !== undefined && (
+        <div style={css('flex-shrink:0;display:flex;align-items:center;gap:9px;margin:10px 12px 0;padding:8px 8px 8px 12px;border-radius:13px;background:var(--accent-soft);color:var(--accent);')}>
+          <Icon name="award" size={17} />
+          <button className="pos-press" onClick={s.openLoyalty} style={css('flex:1;min-width:0;border:none;background:transparent;color:inherit;font-family:inherit;font-size:13.5px;font-weight:800;text-align:start;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0;')}>
+            {member === undefined ? t('ticket.member') : t('ticket.memberPoints', { name: member.name, n: number(pointsLeft(member, s.ticket.items, s.rewards)) })}
+          </button>
+          <button className="pos-press" onClick={s.detachMember} aria-label={t('ticket.removeMember')} style={css('width:30px;height:30px;border-radius:9px;border:none;background:transparent;color:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;')}>
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+      )}
 
       <div className="pos-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:8px 12px;')}>
         {empty && (
@@ -123,7 +151,6 @@ export function TicketPane() {
               </div>
             )}
             {g.rows.map((li) => {
-              const m = itemById(li.id);
               const ml = modLabel(li);
               return (
                 <div key={li.key} style={css('display:flex;align-items:flex-start;gap:11px;padding:12px 10px;border-radius:15px;margin-bottom:2px;' + (li.sent ? '' : 'background:var(--surface-2);'))}>
@@ -132,13 +159,20 @@ export function TicketPane() {
                       <Icon name={li.qty <= 1 ? 'trash-2' : 'minus'} size={19} />
                     </button>
                     <span style={css('min-width:26px;text-align:center;font-size:17px;font-weight:800;' + MONO)}>{li.qty}</span>
-                    <button className="pos-press" onClick={() => s.inc(li.key)} aria-label={t('ticket.increase')} style={css('width:40px;height:40px;border-radius:9px;border:none;background:transparent;color:var(--fg);display:flex;align-items:center;justify-content:center;cursor:pointer;')}>
+                    {/* A reward is one of it: points buy one, and another is another reward. */}
+                    <button className="pos-press" disabled={li.rewardId !== undefined || li.giftCard !== undefined} onClick={() => s.inc(li.key)} aria-label={t('ticket.increase')} style={css('width:40px;height:40px;border-radius:9px;border:none;background:transparent;color:' + (li.rewardId === undefined && li.giftCard === undefined ? 'var(--fg)' : 'var(--fg-subtle)') + ';display:flex;align-items:center;justify-content:center;cursor:' + (li.rewardId === undefined && li.giftCard === undefined ? 'pointer' : 'default') + ';')}>
                       <Icon name="plus" size={19} />
                     </button>
                   </div>
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('display:flex;align-items:center;gap:7px;')}>
-                      <span style={css('font-size:15.5px;font-weight:700;letter-spacing:-.01em;')}>{m ? m.name : li.id}</span>
+                      <span style={css('font-size:15.5px;font-weight:700;letter-spacing:-.01em;')}>{lineName(li)}</span>
+                      {li.rewardId !== undefined && (
+                        <span style={css('display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--accent-soft);color:var(--accent);')}>
+                          <Icon name="gift" size={11} />
+                          {t('ticket.reward')}
+                        </span>
+                      )}
                       {li.sent && (
                         <span style={css('display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--pos-soft);color:var(--pos);')}>
                           <Icon name="check" size={11} />

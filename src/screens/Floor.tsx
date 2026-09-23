@@ -1,7 +1,7 @@
 import { usePos } from '../state/store';
 import { source } from '../data/source';
 import type { TableInfo } from '../data/types';
-import { money, regTotal, zoneName } from '../state/calc';
+import { linesTotal, mins, money, regTotal, zoneName } from '../state/calc';
 import { useT, type MessageKey } from '../i18n';
 import { Icon } from '../components/Icon';
 import { css } from '../components/css';
@@ -38,6 +38,13 @@ export function Floor() {
     );
   }
 
+  /* A table's running total: the register's, or its own ticket's on the tray, else what the boot read said. */
+  const tableTotal = (tb: TableInfo): number => {
+    if (tb.label === s.ticket.table) return regTotal(s);
+    const held = s.held.find((h) => h.table === tb.label);
+    return held !== undefined ? linesTotal(held.items) : tb.total || 0;
+  };
+
   return (
     <div className="pos-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:20px 22px;background:var(--bg);')}>
       <div style={css('display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px;')}>
@@ -50,7 +57,7 @@ export function Floor() {
       </div>
 
       {source.zoneOrder().map((zn) => {
-        const all = source.tables().filter((tb) => tb.zone === zn);
+        const all = s.floor.filter((tb) => tb.zone === zn);
         const seated = all.filter((tb) => tb.status !== 'open').length;
         return (
           <div key={zn} style={css('margin-bottom:16px;border:1px solid var(--border);border-radius:20px;background:var(--surface-2);padding:14px 16px 16px;')}>
@@ -66,7 +73,7 @@ export function Floor() {
                   key={tb.label}
                   t={tb}
                   cur={tb.label === s.ticket.table}
-                  total={tb.label === s.ticket.table ? regTotal(s) : tb.total || 0}
+                  total={tableTotal(tb)}
                   onClick={() => s.openTable(tb)}
                 />
               ))}
@@ -133,7 +140,7 @@ function TableTile({ t, cur, total, onClick }: { t: TableInfo; cur: boolean; tot
             <div style={css('display:flex;flex-direction:column;align-items:flex-end;gap:7px;')}>
               <span style={css('display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:' + (t.status === 'attention' ? 'var(--danger)' : 'var(--fg-muted)') + ';')}>
                 <Icon name="clock" size={13} />
-                {t.since != null ? tr('common.minutesShort', { m: t.since }) : ''}
+                {t.since != null ? tr('common.minutesShort', { m: mins(t.since) }) : ''}
               </span>
               {t.server && (
                 <span style={css('width:26px;height:26px;border-radius:8px;background:var(--surface-3);color:var(--fg-muted);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;')}>{t.server}</span>
@@ -145,7 +152,7 @@ function TableTile({ t, cur, total, onClick }: { t: TableInfo; cur: boolean; tot
               <Icon name="bell-ring" size={14} />
               {/* `note` is a message key; the ones that quote a time take the
                   table's own `since`. */}
-              {tr(t.note as MessageKey, { m: t.since ?? 0 })}
+              {tr(t.note as MessageKey, { m: t.since == null ? 0 : mins(t.since) })}
             </div>
           )}
         </>

@@ -6,29 +6,28 @@
 // of the eight had drifted a field, so a seeded line could never be merged into
 // by the register.
 
-import type { Size } from './types';
+import type { Selection } from './types';
 
 /**
- * A line's identity: two lines merge if and only if this string matches.
- *
- * Every field is delimited, so a value that happens to look like the next
- * field's content cannot shift the meaning of the key. `extras` is sorted so
- * that the same set chosen in a different order is the same line.
+ * A canonical string for a selection: groups and the options within each are
+ * sorted, so the order a cashier tapped them in is not part of what was
+ * ordered (the rule Online ordering's cart uses).
  */
-export function keyOf(
-  id: string,
-  size?: Size | null,
-  milk?: string | null,
-  extras?: string[],
-  note?: string,
-  seat?: number,
-): string {
-  return [
-    id,
-    size || '',
-    milk || '',
-    (extras || []).slice().sort().join('+'),
-    note ? 'n:' + note : '',
-    seat ? 's' + seat : '',
-  ].join('|');
+export function selectionKey(selection: Selection): string {
+  return Object.keys(selection)
+    .filter((group) => (selection[group] ?? []).length > 0)
+    .sort()
+    .map((group) => `${group}:${[...(selection[group] ?? [])].sort().join('+')}`)
+    .join(';');
+}
+
+/**
+ * A line's identity: the item, what was chosen, its note and its seat — and,
+ * for a free line a member's points paid for, the reward, so it never merges
+ * with the same item bought.
+ */
+export function keyOf(id: string, selection: Selection = {}, note?: string, seat?: number, rewardId?: string): string {
+  const parts = [id, selectionKey(selection), note ? 'n:' + note : '', seat ? 's' + seat : ''];
+  if (rewardId) parts.push('r:' + rewardId);
+  return parts.join('|');
 }

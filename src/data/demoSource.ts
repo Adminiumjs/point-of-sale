@@ -1,0 +1,56 @@
+/**
+ * The demo's `DataSource`: the built-in catalogue of `demo.ts`. Imported by
+ * `source.ts` behind the build-time `DEMO` flag only.
+ */
+import {
+  BOOKING_RULES,
+  BRAND,
+  CATS,
+  FAVOURITES,
+  MENU,
+  OPENING_FLOAT,
+  SHIFT,
+  SHIFT_START,
+  STAFF,
+  TABLES,
+  TAX,
+  TIP_PRESETS,
+  VENUE_ADDRESS,
+  VENUE_PHONE,
+  ZONE_ORDER,
+  demoGroups,
+  seedClock,
+  seedHeld,
+  seedKds,
+  seedPickups,
+  seedReservations,
+  seedTicket,
+} from './demo';
+import type { DataSource } from './source';
+
+export const demoSource: DataSource = {
+  brand: () => BRAND,
+  venue: () => ({ name: BRAND, address: VENUE_ADDRESS, phone: VENUE_PHONE, footer: null }),
+  taxRate: () => TAX,
+  tipPresets: () => [...TIP_PRESETS],
+  favourites: () => [...FAVOURITES],
+  zoneOrder: () => [...ZONE_ORDER],
+  shiftStart: () => SHIFT_START,
+  openShiftId: () => null,
+  openingFloat: () => OPENING_FLOAT,
+  bookingRules: () => ({ ...BOOKING_RULES, occasions: [...BOOKING_RULES.occasions] }),
+  modifierGroups: () => demoGroups(),
+  staff: () => STAFF,
+  roster: () => STAFF.map((x) => ({ ...x })),
+  timeClock: () => seedClock(),
+  menu: () => MENU,
+  categories: () => CATS,
+  tables: () => TABLES,
+  shift: () => SHIFT,
+  openTicket: () => seedTicket(),
+  openSplits: () => [],
+  heldTickets: () => seedHeld(),
+  kitchenOrders: () => seedKds(),
+  reservations: () => seedReservations(),
+  pickups: () => seedPickups(),
+};

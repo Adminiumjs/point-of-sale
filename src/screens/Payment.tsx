@@ -1,3 +1,4 @@
+import { source } from '../data/source';
 import { usePos } from '../state/store';
 import type { PayMethod } from '../data/types';
 import {
@@ -14,6 +15,7 @@ import {
   tipFor,
   total,
 } from '../state/calc';
+import { DEMO } from '../surface';
 import { useT, type MessageKey } from '../i18n';
 import { Icon } from '../components/Icon';
 import { css } from '../components/css';
@@ -188,9 +190,9 @@ export function Payment() {
             <div style={css('margin-top:16px;display:flex;flex-direction:column;gap:8px;')}>
               {s.splits.map((sp, i) => (
                 <div key={i} style={css('display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:13px;background:var(--surface);border:1px solid var(--border);')}>
-                  <Icon name={sp.method === 'cash' ? 'banknote' : sp.method === 'card' ? 'credit-card' : 'qr-code'} size={17} color="var(--pos)" />
+                  <Icon name={sp.method === 'cash' ? 'banknote' : sp.method === 'card' ? 'credit-card' : sp.method === 'gift_card' ? 'gift' : 'qr-code'} size={17} color="var(--pos)" />
                   <span style={css('font-size:14px;font-weight:700;')}>
-                    {t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : 'payment.qrPay')}
+                    {sp.method === 'gift_card' ? t('gift.paidFrom', { code: sp.reference ?? '' }) : t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : 'payment.qrPay')}
                   </span>
                   <span style={css('margin-inline-start:auto;' + MONO + 'font-weight:700;')}>{money(sp.amount)}</span>
                   <Icon name="check" size={16} color="var(--pos)" />
@@ -201,20 +203,22 @@ export function Payment() {
 
           <div style={css('margin-top:24px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin-bottom:11px;')}>{t('common.tip')}</div>
           <div style={css('display:flex;gap:8px;')}>
-            {[
-              { l: t('payment.noTip'), i: 0 },
-              { l: t('payment.tipPct', { pct: 10 }), i: 1 },
-              { l: t('payment.tipPct', { pct: 15 }), i: 2 },
-              { l: t('payment.tipPct', { pct: 20 }), i: 3 },
-            ].map((x) => (
+            {/* The buttons ARE the venue's presets (`settings.tip_presets`, DP18): the label and
+                the amount under it come from the same number, never a 10/15/20 written here. */}
+            {source.tipPresets().map((p, i) => ({ l: p === 0 ? t('payment.noTip') : t('payment.tipPct', { pct: Math.round(p * 1000) / 10 }), i, p })).map((x) => (
               <button key={x.i} className="pos-press" onClick={() => s.setTip(x.i)} style={css(tipStyle(s.tip === x.i))}>
                 <span style={css('font-size:15px;font-weight:800;')}>{x.l}</span>
                 {/* `tipFor`, not `subtotal * TIP_PRESETS[i]` — the tip is
                     assessed on the discounted goods, so the second spelling
                     quoted a figure the Tip row below contradicted. */}
-                {x.i > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-top:2px;')}>{money(tipFor(s, x.i))}</span>}
+                {x.p > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-top:2px;')}>{money(tipFor(s, x.i))}</span>}
               </button>
             ))}
+            {/* Custom: the customer display's pad (the plan's fix 7 — the same buttons on both). */}
+            <button className="pos-press" onClick={s.openTipPad} style={css(tipStyle(s.tip === 'c'))}>
+              <span style={css('font-size:15px;font-weight:800;')}>{t('display.custom')}</span>
+              {s.tip === 'c' && tipAmt(s) > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-top:2px;')}>{money(tipAmt(s))}</span>}
+            </button>
           </div>
 
           <div style={css('margin-top:22px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin-bottom:11px;')}>
@@ -340,7 +344,8 @@ export function Payment() {
                   <div style={css('font-size:13.5px;color:var(--fg-muted);margin-top:6px;')}>{cardSub}</div>
                   {s.card === 'reading' && <div style={css('width:34px;height:34px;border:3px solid var(--surface-3);border-top-color:var(--accent);border-radius:50%;animation:pos-spin .8s linear infinite;margin:18px auto 0;')} />}
                 </div>
-                <div style={css('margin-top:14px;font-size:12.5px;color:var(--fg-subtle);')}>{t('payment.cardDemo')}</div>
+                {/* No card reader is driven from here: a real till records a payment taken on the venue's own terminal. */}
+                <div style={css('margin-top:14px;font-size:12.5px;color:var(--fg-subtle);')}>{t(DEMO ? 'payment.cardDemo' : 'payment.cardTerminal')}</div>
                 <div style={css('display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;font-size:12.5px;color:var(--fg-subtle);')}>
                   <Icon name="shield-check" size={15} />
                   {t('payment.encrypted')}

@@ -14,11 +14,11 @@
  * another — a sidebar row for a screen the bundle does not have, or a deep link
  * that lands on the wrong one. So there is one copy, here.
  *
- * ── Staff only ───────────────────────────────────────────────────────────────
+ * ── Two sides ────────────────────────────────────────────────────────────────
  *
- * Every screen is the till's. There is no customer side (`surface-build.sh`
- * builds `staff` only): an ordering page for guests is 28 §4.1's separate
- * frontend, gated on a schema this repo does not have yet.
+ * The till is the staff side. The customer side is the Guests pages — book a
+ * table, and "Manage my booking" — built as their own bundle
+ * (`build:surface:customer`), which carries nothing of the till.
  */
 
 import type { View } from './data/types';
@@ -57,6 +57,12 @@ export const SURFACE_NAV = [
   { id: 'register', path: '', view: 'register', side: 'staff', icon: 'layout-grid', labelKey: 'nav.register' },
   { id: 'floor', path: 'floor', view: 'floor', side: 'staff', icon: 'grid-3x3', labelKey: 'nav.floor' },
   { id: 'kitchen', path: 'kitchen', view: 'kitchen', side: 'staff', icon: 'cooking-pot', labelKey: 'nav.kitchen' },
+  { id: 'reservations', path: 'reservations', view: 'reservations', side: 'staff', icon: 'calendar-days', labelKey: 'nav.reservations' },
+  // Wave 2: the pickup queue is a place a shift is worked from, like the kitchen.
+  { id: 'pickup', path: 'pickup', view: 'pickup', side: 'staff', icon: 'bell-ring', labelKey: 'nav.pickup' },
+  // The Guests side: book a table, and "Manage my booking" (the email's link is `manage?code=…`).
+  { id: 'book', path: '', view: 'book', side: 'customer', icon: 'calendar-plus', labelKey: 'nav.book' },
+  { id: 'manage', path: 'manage', view: 'manage', side: 'customer', icon: 'calendar-clock', labelKey: 'nav.manage' },
 ] as const satisfies readonly Entry[];
 
 /**
@@ -68,14 +74,25 @@ export const SURFACE_NAV = [
  * of them would promise a screen the store cannot rebuild from a link.
  */
 export const SURFACE_EXTRAS = {
-  staff: ['login', 'payment', 'complete'],
-  customer: [],
+  /*
+   * The tools behind the till's menu are extras too: each is reached from the
+   * till itself, and none is a place a shift is worked from — Refund and Close
+   * shift start from what the till holds now, which a link cannot rebuild.
+   */
+  staff: ['login', 'payment', 'complete', 'refund', 'shiftclose', 'eod', 'staff', 'menu86', 'loyalty', 'giftcards', 'display'],
+  /* The confirmation email's preview: the demo's only (DP27) — a guest reads the real one in their mail. */
+  customer: ['email'],
 } as const satisfies Record<'staff' | 'customer', readonly View[]>;
 
 /** Every view the staff side renders, as a TYPE — nav entries plus extras. */
 export type StaffView =
   | Extract<(typeof SURFACE_NAV)[number], { side: 'staff' }>['view']
   | (typeof SURFACE_EXTRAS)['staff'][number];
+
+/** Every view the customer side renders. */
+export type CustomerView =
+  | Extract<(typeof SURFACE_NAV)[number], { side: 'customer' }>['view']
+  | (typeof SURFACE_EXTRAS)['customer'][number];
 
 /*
  * Every view is placed. A view added to the union with neither a nav entry nor
@@ -84,4 +101,4 @@ export type StaffView =
  * quietly missing from the sidebar, in every hosted build. `App.tsx` holds the
  * other half: its screen record must cover the whole union.
  */
-export const EVERY_VIEW_PLACED: Record<Exclude<View, StaffView>, never> = {};
+export const EVERY_VIEW_PLACED: Record<Exclude<View, StaffView | CustomerView>, never> = {};

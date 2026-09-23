@@ -1,5 +1,4 @@
 import { usePos } from '../state/store';
-import { source } from '../data/source';
 import { linesTotal, money, tableName } from '../state/calc';
 import { useT } from '../i18n';
 import { Icon } from './Icon';
@@ -11,7 +10,7 @@ export function MoveModal() {
   const s = usePos();
   const t = useT();
   if (!s.moveOpen) return null;
-  const openTables = source.tables().filter((tb) => tb.status === 'open' && tb.label !== s.ticket.table);
+  const openTables = s.floor.filter((tb) => tb.status === 'open' && tb.label !== s.ticket.table);
   // Split on the placeholder so the table keeps its emphasis without cutting
   // the sentence into two half-translatable fragments.
   const [atBefore, atAfter] = t('move.at').split('{table}');

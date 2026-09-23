@@ -1,17 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { BRAND, BRAND_INITIAL, MILKS, TAX, TIP_PRESETS, seedTicket } from '../data/demo';
+import { BRAND, BRAND_INITIAL, TAX, TIP_PRESETS, demoGroupId, demoGroups, demoSelection, seedTicket, type DemoSize } from '../data/demo';
 import { keyOf } from '../data/key';
-import type { Discount, LineItem, Size, Split } from '../data/types';
+import type { Discount, LineItem, Split } from '../data/types';
 import {
   chargeTarget,
   discountAmt,
-  extraDelta,
   hexToRgba,
   itemsSub,
   lineTotal,
   lineUnit,
   linesTotal,
-  milkDelta,
   modLabel,
   money,
   netSub,
@@ -19,7 +17,6 @@ import {
   regTotal,
   remaining,
   round2,
-  sizeDelta,
   subtotal,
   tableName,
   tax,
@@ -35,11 +32,16 @@ import type { PricingState } from './calc';
 const line = (
   id: string,
   qty = 1,
-  mods: { size?: Size | null; milk?: string | null; extras?: string[]; note?: string; seat?: number } = {},
+  mods: { size?: DemoSize | null; milk?: string | null; extras?: string[]; note?: string; seat?: number } = {},
 ): LineItem => {
-  const { size = null, milk = null, extras = [], note = '', seat = 0 } = mods;
-  return { key: keyOf(id, size, milk, extras, note, seat), id, qty, size, milk, extras, note, seat, sent: false };
+  const { note = '', seat = 0 } = mods;
+  const selection = demoSelection(id, mods);
+  return { key: keyOf(id, selection, note, seat), id, qty, selection, note, seat, sent: false };
 };
+
+/** A demo group's option deltas by the option's own name. */
+const deltas = (itemId: string, group: 'size' | 'milk' | 'extras'): Record<string, number> =>
+  Object.fromEntries(demoGroups().find((g) => g.id === demoGroupId(itemId, group))!.options.map((o) => [o.slug, o.delta]));
 
 const state = (over: Partial<PricingState> & { items?: LineItem[] } = {}): PricingState => ({
   ticket: { items: over.items || [], table: 'T12', seats: 4 },
@@ -59,28 +61,32 @@ const read = (s: string): number => Number(s.replace(/[$,]/g, ''));
 
 // ---- unit prices ----
 
-describe('modifier deltas', () => {
+describe('the demo menu’s option groups (menu v1)', () => {
   it('sizes', () => {
-    expect(sizeDelta('S')).toBe(-0.4);
-    expect(sizeDelta('M')).toBe(0);
-    expect(sizeDelta('L')).toBe(0.7);
-    expect(sizeDelta(null)).toBe(0);
-    expect(sizeDelta()).toBe(0);
+    expect(deltas('latte', 'size')).toEqual({ s: -0.4, m: 0, l: 0.7 });
   });
 
   it('milks — only the alternatives cost extra', () => {
-    expect(milkDelta('Whole')).toBe(0);
-    expect(milkDelta('Skim')).toBe(0);
-    expect(milkDelta('Oat')).toBe(0.6);
-    expect(milkDelta('Almond')).toBe(0.6);
-    expect(milkDelta(null)).toBe(0);
+    expect(deltas('latte', 'milk')).toEqual({ whole: 0, oat: 0.6, almond: 0.6, skim: 0 });
   });
 
   it('extras — an extra shot costs more, decaf is free, the syrups are flat', () => {
-    expect(extraDelta('Extra shot')).toBe(0.9);
-    expect(extraDelta('Decaf')).toBe(0);
-    expect(extraDelta('Vanilla')).toBe(0.5);
-    expect(extraDelta('Caramel')).toBe(0.5);
+    expect(deltas('latte', 'extras')).toEqual({ 'extra-shot': 0.9, vanilla: 0.5, caramel: 0.5, hazelnut: 0.5, decaf: 0 });
+  });
+
+  it('gives each item only its own sets: tea has no extras, cold drinks no milk, food nothing', () => {
+    const slugs = (itemId: string) => demoGroups().filter((g) => g.itemId === itemId).map((g) => g.slug);
+    expect(slugs('flatwhite')).toEqual(['size', 'milk', 'extras']);
+    expect(slugs('chai')).toEqual(['size', 'milk']);
+    expect(slugs('coldbrew')).toEqual(['size', 'extras']);
+    expect(slugs('croissant')).toEqual([]);
+  });
+
+  it('a size and a milk are a required single choice; extras are optional, several at once', () => {
+    const [size, milk, extras] = demoGroups().filter((g) => g.itemId === 'latte');
+    expect([size!.kind, size!.min, size!.max]).toEqual(['radio', 1, 1]);
+    expect([milk!.kind, milk!.min, milk!.max]).toEqual(['radio', 1, 1]);
+    expect([extras!.kind, extras!.min, extras!.max]).toEqual(['check', 0, 5]);
   });
 });
 
@@ -295,17 +301,18 @@ describe('the held tray and the register agree', () => {
   });
 });
 
-describe('the milk list is the pricing rule', () => {
-  it('every milk the sheet offers has a price the till knows', () => {
-    MILKS.forEach((m) => {
-      expect(milkDelta(m.v)).toBe(m.delta);
-    });
+describe('a line prices only what it chose', () => {
+  /* The old rule charged for "Soy", which the sheet never offered. An option is now priced by its own row. */
+  it('an option id the item does not offer adds nothing', () => {
+    const li = line('flatwhite');
+    li.selection = { [demoGroupId('flatwhite', 'milk')]: ['flatwhite:milk:soy'] };
+    expect(lineUnit(li)).toBe(line('flatwhite').qty * lineUnit(line('flatwhite')));
   });
 
-  /* The rule used to charge for "Soy", which the sheet has never offered. */
-  it('a milk that is not offered costs nothing rather than silently charging', () => {
-    expect(MILKS.some((m) => m.v === 'Soy')).toBe(false);
-    expect(milkDelta('Soy')).toBe(0);
+  it('another item’s option is not this item’s', () => {
+    const li = line('flatwhite');
+    li.selection = demoSelection('latte', { milk: 'Oat' });
+    expect(lineUnit(li)).toBe(lineUnit(line('flatwhite')));
   });
 });
 
@@ -428,8 +435,9 @@ describe('labels', () => {
     expect(tableName('—', 'retail')).toBe('Walk-in sale');
   });
 
-  it('modLabel spells out the configuration and omits the defaults', () => {
-    expect(modLabel(line('flatwhite', 1, { size: 'M', milk: 'Whole' }))).toBe('Medium');
+  it('modLabel names every chosen option, in the order the groups list them', () => {
+    expect(modLabel(line('flatwhite', 1, { size: 'M', milk: 'Whole' }))).toBe('Medium · Whole milk');
+    expect(modLabel(line('flatwhite', 1, { extras: ['Vanilla'], milk: 'Oat', size: 'L' }))).toBe('Large · Oat milk · Vanilla');
     expect(modLabel(line('flatwhite', 1, { size: 'L', milk: 'Oat', extras: ['Vanilla'] }))).toBe(
       'Large · Oat milk · Vanilla',
     );

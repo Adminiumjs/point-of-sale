@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { usePos } from '../state/store';
+import { createScanDetector } from '../state/scanner';
 import { source } from '../data/source';
-import { catName, itemById, money } from '../state/calc';
+import { catName, groupsOf, itemById, money } from '../state/calc';
 import { useT } from '../i18n';
 import { Icon } from '../components/Icon';
 import { MenuThumb } from '../components/MenuThumb';
@@ -13,6 +15,24 @@ export function Register() {
   const s = usePos();
   const t = useT();
   const dark = s.theme === 'dark';
+
+  /*
+   * THE SCANNER (T74, §9 O4): it types like a keyboard, only far faster, and
+   * ends with Enter. A burst like that anywhere on the register — the search
+   * field included — is a scan; the item whose barcode it is joins the ticket.
+   */
+  useEffect(() => {
+    const detector = createScanDetector();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const code = detector.key(e.key, e.timeStamp);
+      if (code === null) return;
+      e.preventDefault();
+      usePos.getState().scanCode(code);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
   const dense = s.menuDensity === 'dense';
 
   const q = s.search.trim().toLowerCase();
@@ -80,7 +100,8 @@ export function Register() {
                 >
                   <Icon name={c.icon} size={17} />
                   {catName(c)}
-                  <span style={css('font-size:12px;font-weight:800;' + MONO + 'padding:1px 8px;border-radius:20px;background:' + (on ? 'rgba(255,255,255,.22)' : 'var(--surface-3)') + ';color:' + (on ? 'var(--accent-fg)' : 'var(--fg-muted)') + ';')}>
+                  {/* The comp lightens the accent under the count (white .22); that drops white 12px text below 4.5:1, so it darkens instead (DP-A11Y1). */}
+                  <span style={css('font-size:12px;font-weight:800;' + MONO + 'padding:1px 8px;border-radius:20px;background:' + (on ? 'rgba(0,0,0,.2)' : 'var(--surface-3)') + ';color:' + (on ? 'var(--accent-fg)' : 'var(--fg-muted)') + ';')}>
                     {cnt}
                   </span>
                 </button>
@@ -124,7 +145,7 @@ export function Register() {
                             </span>
                           </div>
                         )}
-                        {!!m.mods && (
+                        {groupsOf(m.id).length > 0 && (
                           <span title={t('register.hasOptions')} style={css('position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);')}>
                             <Icon name="sliders-horizontal" size={13} color="var(--fg-muted)" />
                           </span>

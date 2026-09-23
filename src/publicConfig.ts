@@ -37,6 +37,12 @@ export interface SurfaceConfig {
   /** Absolute origin to call, never empty once resolved. */
   baseUrl: string;
   publishableKey: string;
+  /**
+   * The app's tables' real names by their short ones, when Adminium named them
+   * at install (`reservations` → `pos_reservations`) — what the app's public
+   * refs are called. Absent for a baked build and an older server.
+   */
+  tables?: Record<string, string>;
 }
 
 /** Test seams only — production call sites pass nothing. */
@@ -100,10 +106,21 @@ export async function resolveSurfaceConfig(
       typeof served === "string" && served !== ""
         ? served
         : (opts.origin ?? window.location.origin);
-    return { baseUrl, publishableKey: key };
+    const tables = tablesOf((doc as { tables?: unknown }).tables);
+    return { baseUrl, publishableKey: key, ...(tables === null ? {} : { tables }) };
   } catch {
     // Network failure, or the SPA fallback answered with HTML (an instance
     // whose server predates the config route): both are "not configured".
     return null;
   }
+}
+
+/** A `tables` map of strings to strings, or null — anything else is ignored. */
+function tablesOf(value: unknown): Record<string, string> | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  const out: Record<string, string> = {};
+  for (const [short, real] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof real === "string" && real !== "") out[short] = real;
+  }
+  return Object.keys(out).length === 0 ? null : out;
 }

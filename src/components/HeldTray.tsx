@@ -1,5 +1,5 @@
 import { usePos } from '../state/store';
-import { dur, itemById, linesTotal, money, tableName } from '../state/calc';
+import { dur, lineName, linesTotal, money, tableName } from '../state/calc';
 import { useT } from '../i18n';
 import { Icon } from './Icon';
 import { css } from './css';
@@ -30,7 +30,7 @@ export function HeldTray() {
             </div>
           )}
           {s.held.map((h) => {
-            const names = h.items.map((x) => (x.qty > 1 ? x.qty + '× ' : '') + (itemById(x.id)?.name ?? x.id));
+            const names = h.items.map((x) => (x.qty > 1 ? x.qty + '× ' : '') + lineName(x));
             return (
               <div key={h.number} style={css('border:1px solid var(--border);border-radius:16px;padding:16px;background:var(--surface);')}>
                 <div style={css('display:flex;align-items:center;gap:10px;')}>

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { usePos } from '../state/store';
 import type { DiscountKind } from '../data/types';
 import { money } from '../state/calc';
@@ -29,6 +30,8 @@ const REASONS: MessageKey[] = [
 export function DiscountModal() {
   const s = usePos();
   const t = useT();
+  // Why: picked before the discount itself, and saved with it (§0.6 — they could not be chosen).
+  const [reason, setReason] = useState<MessageKey | null>(null);
   if (!s.discountOpen) return null;
 
   /*
@@ -59,7 +62,7 @@ export function DiscountModal() {
             const comp = o.kind === 'comp';
             const label = labelOf(o);
             return (
-              <button key={o.kind + String(o.value)} className="pos-press" onClick={() => s.applyDiscount(o.kind, o.value, label)} style={css('display:flex;align-items:center;gap:12px;padding:16px;border-radius:15px;border:1.5px solid ' + (comp ? 'color-mix(in srgb, var(--danger) 40%, transparent)' : 'var(--border-strong)') + ';background:var(--surface);cursor:pointer;text-align:start;')}>
+              <button key={o.kind + String(o.value)} className="pos-press" onClick={() => s.applyDiscount(o.kind, o.value, label, reason === null ? undefined : t(reason))} style={css('display:flex;align-items:center;gap:12px;padding:16px;border-radius:15px;border:1.5px solid ' + (comp ? 'color-mix(in srgb, var(--danger) 40%, transparent)' : 'var(--border-strong)') + ';background:var(--surface);cursor:pointer;text-align:start;')}>
                 <span style={css('width:40px;height:40px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:' + (comp ? 'var(--danger-soft)' : 'var(--accent-soft)') + ';color:' + (comp ? 'var(--danger)' : 'var(--accent)') + ';')}>
                   <Icon name={comp ? 'gift' : o.kind === 'pct' ? 'percent' : 'minus'} size={19} />
                 </span>
@@ -78,13 +81,23 @@ export function DiscountModal() {
             );
           })}
         </div>
-        <div style={css('font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin-bottom:10px;')}>{t('discount.reason')}</div>
-        <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
-          {REASONS.map((r) => (
-            <span key={r} style={css('font-size:13px;font-weight:700;padding:8px 13px;border-radius:11px;background:var(--surface-2);border:1px solid var(--border);color:var(--fg-muted);')}>
-              {t(r)}
-            </span>
-          ))}
+        <div id="discount-reason" style={css('font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin-bottom:10px;')}>{t('discount.reason')}</div>
+        <div role="radiogroup" aria-labelledby="discount-reason" style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
+          {REASONS.map((r) => {
+            const on = reason === r;
+            return (
+              <button
+                key={r}
+                role="radio"
+                aria-checked={on}
+                className="pos-press"
+                onClick={() => setReason(on ? null : r)}
+                style={css('font-size:13px;font-weight:700;padding:8px 13px;border-radius:11px;cursor:pointer;font-family:inherit;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-soft)' : 'var(--surface-2)') + ';color:' + (on ? 'var(--accent)' : 'var(--fg-muted)') + ';')}
+              >
+                {t(r)}
+              </button>
+            );
+          })}
         </div>
         {!!s.discount && (
           <button className="pos-press" onClick={s.clearDiscount} style={css('width:100%;height:52px;margin-top:18px;border-radius:14px;border:1px solid var(--danger);background:transparent;color:var(--danger);font-size:15px;font-weight:800;cursor:pointer;')}>

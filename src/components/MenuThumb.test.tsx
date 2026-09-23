@@ -19,7 +19,6 @@ const ITEM: MenuItem = {
   cat: 'coffee',
   icon: 'coffee',
   image: 'https://images.example.com/flat-white.jpg',
-  mods: 'coffee',
 };
 
 const render = (item: MenuItem): string =>

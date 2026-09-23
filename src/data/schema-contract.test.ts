@@ -21,6 +21,10 @@
  *
  * So this reads all three and holds them to each other: table names, column
  * names, types, nullability, keys, foreign-key targets and enum values.
+ *
+ * The SQL names each table as an install does — `pos_<ref>`, the manifest's
+ * `prefixed: true` — and is now written from the manifest by `npm run sample`;
+ * this still holds the two to each other in case either is edited by hand.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -63,6 +67,9 @@ function splitTopLevel(body: string, sep: string): string[] {
 
 const TABLE_CONSTRAINT = /^(CONSTRAINT|PRIMARY\s+KEY|UNIQUE|FOREIGN\s+KEY|CHECK|EXCLUDE)\b/i;
 
+/** The prefix an install gives every table, stripped to compare with the manifest's refs. */
+const unprefixed = (name: string) => name.replace(/^pos_/, '');
+
 /** Every `CREATE TABLE` in a schema file, column by column. */
 function parseSchema(sql: string): Map<string, SqlColumn[]> {
   const text = sql.replace(/--[^\n]*/g, '');
@@ -87,14 +94,17 @@ function parseSchema(sql: string): Map<string, SqlColumn[]> {
           type: head[2]!.toLowerCase(),
           notNull: /\bNOT\s+NULL\b/i.test(item),
           primaryKey: /\bPRIMARY\s+KEY\b/i.test(item),
-          references: /\bREFERENCES\s+"?([a-z_][a-z0-9_]*)"?/i.exec(item)?.[1] ?? null,
+          references: (() => {
+            const target = /\bREFERENCES\s+"?([a-z_][a-z0-9_]*)"?/i.exec(item)?.[1];
+            return target === undefined ? null : unprefixed(target);
+          })(),
           checkIn:
             check === null
               ? null
               : check[1]!.split(',').map((value) => value.trim().replace(/^'|'$/g, '')),
         };
       });
-    tables.set(match[1]!, columns);
+    tables.set(unprefixed(match[1]!), columns);
     open.lastIndex = end;
   }
   return tables;
@@ -109,6 +119,13 @@ function manifestTypeOf(column: SqlColumn): string {
     case 'int':
     case 'integer':
       return 'int';
+    case 'bigint':
+      return 'bigint';
+    case 'uuid':
+      return 'uuid';
+    case 'json':
+    case 'jsonb':
+      return 'json';
     case 'text':
     case 'varchar':
       return 'text';

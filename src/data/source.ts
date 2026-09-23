@@ -14,87 +14,93 @@
 // nothing for code that reaches around it, and a connected till would have
 // charged Daybreak Coffee's 8.25% on another shop's sales.
 
-import {
-  BRAND,
-  CATS,
-  EXTRAS,
-  FAVOURITES,
-  MENU,
-  MILKS,
-  SHIFT,
-  SHIFT_START,
-  SIZES,
-  STAFF,
-  TABLES,
-  TAX,
-  TIP_PRESETS,
-  ZONE_ORDER,
-  seedHeld,
-  seedKds,
-  seedTicket,
-} from './demo';
+import { DEMO } from '../surface';
 import type {
+  BookingRules,
   Category,
-  Extra,
+  ClockEntry,
   HeldTicket,
   KdsOrder,
   MenuItem,
+  ModifierGroup,
+  PickupOrder,
+  Reservation,
   ShiftTotals,
-  Size,
+  Split,
   Staff,
   TableInfo,
   Ticket,
+  VenueDetails,
 } from './types';
 
 export interface DataSource {
   /** The shop whose till this is. */
   brand(): string;
+  /** Its name, address, phone and receipt footer. */
+  venue(): VenueDetails;
   /** Sales tax, as a fraction. */
   taxRate(): number;
   /** Tip presets as fractions — the four buttons on the payment screen. */
   tipPresets(): number[];
-  /** The modifier catalogue: sizes, milks and extras, with their surcharges. */
-  sizes(): { v: Size; label: string }[];
-  milks(): { v: string; delta: number }[];
-  extras(): Extra[];
   /** Menu item ids pinned to the register's first row. */
   favourites(): string[];
   /** The order the floor plan lays its zones out in. */
   zoneOrder(): string[];
   /** When the current shift began, as a millisecond stamp. */
   shiftStart(): number;
+  /** The open shift's row, when the till found one open. */
+  openShiftId(): string | null;
+  /** The float counted into the drawer when the open shift began. */
+  openingFloat(): number;
+  /** The venue's booking rules, or null when it has none. */
+  bookingRules(): BookingRules | null;
+  /** Every item's groups of options (menu v1). */
+  modifierGroups(): ModifierGroup[];
+  /** Who can sign in to this till (the demo's PIN roster; the session's person when hosted). */
   staff(): Staff[];
+  /** Every active staff member — Staff & time clock lists them. */
+  roster(): Staff[];
+  /** Who is clocked in now. */
+  timeClock(): ClockEntry[];
   menu(): MenuItem[];
   categories(): Category[];
   tables(): TableInfo[];
   shift(): ShiftTotals;
   openTicket(): Ticket;
+  /** What has already been paid on the open ticket. */
+  openSplits(): Split[];
   heldTickets(): HeldTicket[];
   kitchenOrders(): KdsOrder[];
+  /** Bookings from today on; the store keeps them from here. */
+  reservations(): Reservation[];
+  /** Orders waiting to be collected (wave 2). */
+  pickups(): PickupOrder[];
 }
 
-export const demoSource: DataSource = {
-  brand: () => BRAND,
-  taxRate: () => TAX,
-  tipPresets: () => [...TIP_PRESETS],
-  sizes: () => SIZES.map((s) => ({ ...s })),
-  milks: () => MILKS.map((m) => ({ ...m })),
-  extras: () => EXTRAS.map((e) => ({ ...e })),
-  favourites: () => [...FAVOURITES],
-  zoneOrder: () => [...ZONE_ORDER],
-  shiftStart: () => SHIFT_START,
-  staff: () => STAFF,
-  menu: () => MENU,
-  categories: () => CATS,
-  tables: () => TABLES,
-  shift: () => SHIFT,
-  openTicket: () => seedTicket(),
-  heldTickets: () => seedHeld(),
-  kitchenOrders: () => seedKds(),
-};
+/*
+ * The demo's catalogue lives in its own module (`demoSource.ts`) and is reached
+ * ONLY behind the build-time `DEMO` flag, so a hosted or connected bundle does
+ * not carry the demo café — its roster, their PINs, its menu (§0.6). Every
+ * other build is handed its source by `main.tsx` before anything reads.
+ */
+import { demoSource } from './demoSource';
+export { demoSource };
 
-let current: DataSource = demoSource;
+/** Read before a source was set — a build that is not the demo, reading too early. */
+const unset = new Proxy({} as DataSource, {
+  get: (_target, name) => () => {
+    throw new Error(`the till read ${String(name)}() before it had a data source — set one in main.tsx first`);
+  },
+});
+
+let current: DataSource = DEMO ? demoSourceFor() : unset;
 let read = false;
+let connected = false;
+
+/** The demo's source — a function, so the flag above folds and takes the module with it. */
+function demoSourceFor(): DataSource {
+  return demoSource;
+}
 
 /**
  * The source the app is currently wired to.
@@ -105,22 +111,29 @@ let read = false;
  */
 export const source: DataSource = {
   brand: () => ((read = true), current.brand()),
+  venue: () => ((read = true), current.venue()),
   taxRate: () => ((read = true), current.taxRate()),
   tipPresets: () => ((read = true), current.tipPresets()),
-  sizes: () => ((read = true), current.sizes()),
-  milks: () => ((read = true), current.milks()),
-  extras: () => ((read = true), current.extras()),
   favourites: () => ((read = true), current.favourites()),
   zoneOrder: () => ((read = true), current.zoneOrder()),
   shiftStart: () => ((read = true), current.shiftStart()),
+  openShiftId: () => ((read = true), current.openShiftId()),
+  openingFloat: () => ((read = true), current.openingFloat()),
+  bookingRules: () => ((read = true), current.bookingRules()),
+  modifierGroups: () => ((read = true), current.modifierGroups()),
   staff: () => ((read = true), current.staff()),
+  roster: () => ((read = true), current.roster()),
+  timeClock: () => ((read = true), current.timeClock()),
   menu: () => ((read = true), current.menu()),
   categories: () => ((read = true), current.categories()),
   tables: () => ((read = true), current.tables()),
   shift: () => ((read = true), current.shift()),
   openTicket: () => ((read = true), current.openTicket()),
+  openSplits: () => ((read = true), current.openSplits()),
+  reservations: () => ((read = true), current.reservations()),
   heldTickets: () => ((read = true), current.heldTickets()),
   kitchenOrders: () => ((read = true), current.kitchenOrders()),
+  pickups: () => ((read = true), current.pickups()),
 };
 
 /**
@@ -138,6 +151,7 @@ export function setDataSource(next: DataSource): void {
     );
   }
   current = next;
+  connected = true;
 }
 
 /**
@@ -149,5 +163,5 @@ export function setDataSource(next: DataSource): void {
  * removes it from every non-demo bundle. Kept as the seam's own answer.
  */
 export function isConnected(): boolean {
-  return current !== demoSource;
+  return connected;
 }

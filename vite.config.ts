@@ -2,10 +2,12 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 import { surfaceJsonPlugin } from './surface-emit';
+import { demoJsonPlugin } from './demo-emit';
+import { DEMO_APP_KEY, DEMO_DIR, DEMO_FRAMES, DEMO_MODES, DEMO_SCREENS, DEMO_TOGGLES } from './src/demo-card';
 import { APP_KEY, APP_LABEL_KEY, SURFACE_NAV } from './src/surface-nav';
 import { MESSAGES } from './src/i18n/messages';
 
-// Base is supplied on the CLI: `/` for the default build, `/demo/point-of-sale/`
+// Base is supplied on the CLI: `/` for the default build, `/demo/point-of-sale/app/`
 // for the hosted demo, `/apps/pos/staff/` for the surface Adminium serves (see
 // the `build:*` scripts in package.json).
 /*
@@ -82,6 +84,20 @@ export default defineConfig({
       appKey: APP_KEY,
       appLabelKey: APP_LABEL_KEY,
       nav: SURFACE_NAV,
+      messages: MESSAGES,
+    }),
+    /*
+     * `demo.json` beside the demo build (plan §4.2) — only the build whose
+     * base is `/demo/point-of-sale/app/`, i.e. `build:demo`. The website's
+     * card reads it; every other build writes nothing.
+     */
+    demoJsonPlugin({
+      appKey: DEMO_APP_KEY,
+      dir: DEMO_DIR,
+      frames: DEMO_FRAMES,
+      screens: DEMO_SCREENS,
+      modes: DEMO_MODES,
+      toggles: DEMO_TOGGLES,
       messages: MESSAGES,
     }),
   ],

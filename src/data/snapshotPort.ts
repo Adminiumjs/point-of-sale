@@ -38,5 +38,23 @@ export interface SnapshotPort {
     refs: Record<string, { limit?: number } | undefined>;
   }>;
   assertRefs(required: Record<string, readonly string[]>): Promise<void>;
-  list<T>(ref: string, opts: { limit: number; offset: number }): Promise<{ data: T[] }>;
+  /**
+   * `where` and `order` are the data API's own grammar, which the public client
+   * accepts too: a read of only what the till needs (open tickets, today's
+   * payments) rather than the whole history.
+   */
+  list<T>(ref: string, opts: ListOptions): Promise<{ data: T[] }>;
+}
+
+export type ListCondition =
+  | { column: string; op: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'ilike' | 'is_null' | 'not_null'; value?: unknown }
+  | { and: ListCondition[] }
+  | { or: ListCondition[] };
+
+export interface ListOptions {
+  limit: number;
+  offset: number;
+  where?: ListCondition;
+  /** `column.desc,column2.asc`, at most three keys. */
+  order?: string;
 }

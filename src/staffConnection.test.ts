@@ -7,7 +7,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
-import { configBase, resolveStaffConnectionId } from "./staffConnection.ts";
+import { configBase, loadStaffConfig, resolveStaffConnectionId } from "./staffConnection.ts";
 
 const ok = (doc: unknown) =>
   vi.fn(async () =>
@@ -85,5 +85,40 @@ describe("configBase", () => {
     // One bundle must never fetch another surface's binding.
     expect(configBase(BAKED, "/apps/clinic/berlin/staff/x")).toBe(BAKED);
     expect(configBase(BAKED, "/apps/clients/berlin/customer/x")).toBe(BAKED);
+  });
+});
+
+describe("loadStaffConfig", () => {
+  it("reads everything a till boots from, and keeps nothing it does not understand", async () => {
+    const fetchImpl = ok({
+      connectionId: "con_42",
+      appName: null,
+      tables: { tickets: "pos_tickets", odd: 7 },
+      settings: { business_type: "retail" },
+      timezone: "Europe/Lisbon",
+      timezoneSource: "operator",
+      serverTimezone: "UTC",
+      currency: "EUR",
+      user: { id: "usr_1", name: "Cara", email: "cara@example.com" },
+      csrfToken: "tok",
+    });
+    expect(await loadStaffConfig({ hostedStaff: true, base: "/apps/pos/staff/", fetchImpl })).toEqual({
+      connectionId: "con_42",
+      appName: null,
+      tables: { tickets: "pos_tickets" },
+      settings: { business_type: "retail" },
+      timezone: "Europe/Lisbon",
+      timezoneSource: "operator",
+      serverTimezone: "UTC",
+      currency: "EUR",
+      user: { id: "usr_1", name: "Cara", email: "cara@example.com" },
+      csrfToken: "tok",
+    });
+  });
+
+  it("is null outside a hosted staff build", async () => {
+    const fetchImpl = ok({});
+    expect(await loadStaffConfig({ hostedStaff: false, fetchImpl })).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

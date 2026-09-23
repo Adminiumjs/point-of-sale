@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { STAFF, TABLES } from '../data/demo';
+import { STAFF, TABLES, demoGroupId, demoSelection, type DemoSize } from '../data/demo';
 import { keyOf } from '../data/key';
 import { remaining, subtotal, total } from './calc';
 import { usePos } from './store';
+import { outbox } from './writes';
 
 /*
  * The store is a module singleton, so each test restores the state it was
@@ -11,6 +12,17 @@ import { usePos } from './store';
  */
 const INITIAL = usePos.getState();
 const reset = () => usePos.setState(INITIAL, true);
+
+/**
+ * Money waits for the server: a charge is saved through the outbox before the
+ * sale closes. Let the (memory) saves and the promise chains behind them run.
+ */
+const settled = async () => {
+  for (let i = 0; i < 20; i += 1) {
+    await outbox().idle();
+    await Promise.resolve();
+  }
+};
 const s = () => usePos.getState();
 
 beforeEach(reset);
@@ -19,6 +31,16 @@ afterEach(() => {
 });
 
 const keysOf = () => s().ticket.items.map((x) => x.key);
+/** A seeded line's key, its options spelled the demo's way. */
+const keyWith = (id: string, choice: { size?: DemoSize; milk?: string; extras?: string[] }, note = '', seat = 0) =>
+  keyOf(id, demoSelection(id, choice), note, seat);
+/** Pick options on the open sheet, the way the cashier taps them. */
+const choose = (choice: { size?: DemoSize; milk?: string; extras?: string[] }) => {
+  const id = s().sheetId!;
+  for (const [groupId, options] of Object.entries(demoSelection(id, choice))) {
+    for (const option of options) s().toggleOption(groupId, option);
+  }
+};
 const qtyOf = (k: string) => s().ticket.items.find((x) => x.key === k)?.qty ?? 0;
 
 describe('login', () => {
@@ -116,29 +138,25 @@ describe('adding items', () => {
     expect(s().ticket.items.length).toBe(rows);
   });
 
-  it('the same drink with different modifiers is a different line', () => {
+  it('the same drink with different options is a different line', () => {
     s().tapTile('latte');
-    s().setSheetMilk('Oat');
+    choose({ milk: 'Oat' });
     s().sheetAdd();
     const rows = s().ticket.items.length;
     s().tapTile('latte');
-    s().setSheetMilk('Almond');
+    choose({ milk: 'Almond' });
     s().sheetAdd();
     expect(s().ticket.items.length).toBe(rows + 1);
   });
 
-  it('the sheet resets every time it opens', () => {
+  it('the sheet opens with each required choice answered by its free option, and resets every time', () => {
     s().tapTile('latte');
-    s().setSheetSize('L');
-    s().setSheetMilk('Oat');
-    s().toggleSheetExtra('Vanilla');
+    choose({ size: 'L', milk: 'Oat', extras: ['Vanilla'] });
     s().setSheetNote('hot');
     s().sheetQtyInc();
     s().closeSheet();
     s().tapTile('mocha');
-    expect(s().sheetSize).toBe('M');
-    expect(s().sheetMilk).toBe('Whole');
-    expect(s().sheetExtras).toEqual([]);
+    expect(s().sheetSel).toEqual(demoSelection('mocha', { size: 'M', milk: 'Whole' }));
     expect(s().sheetNote).toBe('');
     expect(s().sheetQty).toBe(1);
   });
@@ -152,21 +170,55 @@ describe('adding items', () => {
 
   it('toggling an extra adds then removes it', () => {
     s().tapTile('latte');
-    s().toggleSheetExtra('Vanilla');
-    expect(s().sheetExtras).toEqual(['Vanilla']);
-    s().toggleSheetExtra('Vanilla');
-    expect(s().sheetExtras).toEqual([]);
+    const extras = demoGroupId('latte', 'extras');
+    const [vanilla] = demoSelection('latte', { extras: ['Vanilla'] })[extras]!;
+    s().toggleOption(extras, vanilla!);
+    expect(s().sheetSel[extras]).toEqual([vanilla]);
+    s().toggleOption(extras, vanilla!);
+    expect(s().sheetSel[extras]).toEqual([]);
   });
 
-  it('the sheet only applies the modifiers its scheme offers', () => {
+  it('a required single choice is changed by a tap, never emptied', () => {
+    s().tapTile('latte');
+    const size = demoGroupId('latte', 'size');
+    const [large] = demoSelection('latte', { size: 'L' })[size]!;
+    s().toggleOption(size, large!);
+    expect(s().sheetSel[size]).toEqual([large]);
+    s().toggleOption(size, large!);
+    expect(s().sheetSel[size]).toEqual([large]);
+  });
+
+  it('a check group takes no more than its max', async () => {
+    const { source } = await import('../data/source');
+    const groups = source.modifierGroups();
+    const extras = groups.find((g) => g.id === demoGroupId('latte', 'extras'))!;
+    const spy = vi.spyOn(source, 'modifierGroups').mockReturnValue(groups.map((g) => (g === extras ? { ...g, max: 2 } : g)));
+    s().tapTile('latte');
+    for (const option of extras.options) s().toggleOption(extras.id, option.id);
+    expect(s().sheetSel[extras.id]).toEqual(extras.options.slice(0, 2).map((o) => o.id));
+    spy.mockRestore();
+  });
+
+  it('holds the line back, naming the group, while a required choice is unanswered', () => {
+    s().tapTile('latte');
+    const rows = s().ticket.items.length;
+    usePos.setState({ sheetSel: { ...s().sheetSel, [demoGroupId('latte', 'milk')]: [] } });
+    s().sheetAdd();
+    expect(s().ticket.items.length).toBe(rows);
+    expect(s().sheetOpen).toBe(true);
+    expect(s().toast?.msg).toBe('Choose an option for “Milk” first.');
+    expect(s().toast?.kind).toBe('error');
+  });
+
+  it('the sheet offers only the item’s own groups', () => {
     // Cold drinks take a size and extras but no milk choice.
     s().tapTile('coldbrew');
-    s().setSheetMilk('Oat');
-    s().setSheetSize('L');
+    choose({ size: 'L' });
+    s().toggleOption(demoGroupId('latte', 'milk'), demoSelection('latte', { milk: 'Oat' })[demoGroupId('latte', 'milk')]![0]!);
     s().sheetAdd();
-    const added = s().ticket.items.find((x) => x.id === 'coldbrew' && x.size === 'L' && x.extras.length === 0);
+    const added = s().ticket.items.find((x) => x.key === keyWith('coldbrew', { size: 'L' }));
     expect(added).toBeDefined();
-    expect(added!.milk).toBeNull();
+    expect(Object.keys(added!.selection)).toEqual([demoGroupId('coldbrew', 'size')]);
   });
 });
 
@@ -202,7 +254,7 @@ describe('changing quantities', () => {
    * which needs a reason — it must not just disappear off the ticket.
    */
   it('removing a sent line opens the void dialog instead of deleting it', () => {
-    const k = keyOf('avotoast', null, null, [], 'No chili flakes', 1);
+    const k = keyWith('avotoast', {}, 'No chili flakes', 1);
     expect(s().ticket.items.find((x) => x.key === k)!.sent).toBe(true);
     s().dec(k);
     expect(s().voidOpen).toBe(true);
@@ -215,14 +267,14 @@ describe('changing quantities', () => {
     s().removeKey(unsent);
     expect(keysOf()).not.toContain(unsent);
 
-    const sent = keyOf('flatwhite', 'M', 'Oat', [], '', 1);
+    const sent = keyWith('flatwhite', { size: 'M', milk: 'Oat' }, '', 1);
     s().removeKey(sent);
     expect(s().voidOpen).toBe(true);
     expect(keysOf()).toContain(sent);
   });
 
   it('a void needs the word VOID typed to go through', () => {
-    const k = keyOf('flatwhite', 'M', 'Oat', [], '', 1);
+    const k = keyWith('flatwhite', { size: 'M', milk: 'Oat' }, '', 1);
     s().openVoid(k);
     s().setVoidText('yes');
     s().confirmVoid();
@@ -256,7 +308,7 @@ describe('sending to the kitchen', () => {
   it('carries the modifiers and the note through to the kitchen', () => {
     s().openTable(TABLES.find((t) => t.label === 'W3')!);
     s().tapTile('latte');
-    s().setSheetMilk('Oat');
+    choose({ milk: 'Oat' });
     s().setSheetNote('extra hot');
     s().sheetAdd();
     s().send();
@@ -352,10 +404,11 @@ describe('holding and resuming', () => {
     expect(new Set(all).size).toBe(all.length);
   });
 
-  it('and still does not after a sale closes', () => {
+  it('and still does not after a sale closes', async () => {
     s().resumeHeld(1041);
     usePos.setState({ payMethod: 'cash', cash: '999' });
     s().onCharge();
+    await settled();
     s().newOrder();
     const all = [s().ticket.number, ...s().held.map((h) => h.number)];
     expect(new Set(all).size).toBe(all.length);
@@ -424,10 +477,11 @@ describe('discounts across tickets', () => {
    * the ticket, and nothing cleared it. One comp and every subsequent customer
    * was rung up free until a human noticed.
    */
-  it('does not survive the sale it was applied to', () => {
+  it('does not survive the sale it was applied to', async () => {
     s().applyDiscount('comp', 0, 'On the house');
     usePos.setState({ payMethod: 'cash', cash: '5' });
     s().onCharge();
+    await settled();
     expect(s().view).toBe('complete');
     s().newOrder();
     expect(s().discount).toBeNull();
@@ -454,27 +508,30 @@ describe('discounts across tickets', () => {
     expect(s().discount).toBeNull();
   });
 
-  it('is recorded on the sale so the receipt can print it', () => {
+  it('is recorded on the sale so the receipt can print it', async () => {
     s().applyDiscount('pct', 20, '20% off');
     const expected = subtotal(s()) * 0.2;
     usePos.setState({ payMethod: 'cash', cash: '999' });
     s().onCharge();
+    await settled();
     const sale = s().lastSale!;
     expect(sale.discount).toBeCloseTo(expected, 2);
     expect(sale.discountLabel).toBe('20% off');
   });
 
-  it('a sale with no discount records zero, not a stray label', () => {
+  it('a sale with no discount records zero, not a stray label', async () => {
     usePos.setState({ payMethod: 'cash', cash: '999' });
     s().onCharge();
+    await settled();
     expect(s().lastSale!.discount).toBe(0);
     expect(s().lastSale!.discountLabel).toBe('');
   });
 
-  it('the receipt rows add up to the receipt total', () => {
+  it('the receipt rows add up to the receipt total', async () => {
     s().applyDiscount('pct', 15, '15% off');
     usePos.setState({ payMethod: 'cash', cash: '999', tip: 2 });
     s().onCharge();
+    await settled();
     const r = s().lastSale!;
     expect(Math.round((r.subtotal - r.discount + r.tax + r.tip) * 100) / 100).toBe(r.total);
   });
@@ -495,63 +552,72 @@ describe('taking payment', () => {
     expect(s().view).not.toBe('payment');
   });
 
-  it('cash covering the balance closes the sale and returns the change', () => {
+  it('cash covering the balance closes the sale and returns the change', async () => {
     s().openPay();
     const due = remaining(s());
     usePos.setState({ payMethod: 'cash', cash: '50' });
     s().onCharge();
+    await settled();
     expect(s().view).toBe('complete');
     expect(s().lastSale!.change).toBeCloseTo(50 - due, 2);
   });
 
-  it('exact cash leaves no change', () => {
+  it('exact cash leaves no change', async () => {
     s().openPay();
     usePos.setState({ payMethod: 'cash', cash: String(remaining(s())) });
     s().onCharge();
+    await settled();
     expect(s().lastSale!.change).toBe(0);
   });
 
-  it('cash short of the balance is a partial payment, not a sale', () => {
+  it('cash short of the balance is a partial payment, not a sale', async () => {
     s().openPay();
     const due = remaining(s());
     usePos.setState({ payMethod: 'cash', cash: '5' });
     s().onCharge();
+    await settled();
     expect(s().view).toBe('payment');
     expect(s().splits.length).toBe(1);
     expect(remaining(s())).toBeCloseTo(due - 5, 2);
   });
 
-  it('zero cash tendered does nothing', () => {
+  it('zero cash tendered does nothing', async () => {
     s().openPay();
     usePos.setState({ payMethod: 'cash', cash: '0' });
     s().onCharge();
+    await settled();
     expect(s().splits).toEqual([]);
     expect(s().view).toBe('payment');
   });
 
-  it('a wallet payment settles the balance', () => {
+  it('a wallet payment settles the balance', async () => {
     s().openPay();
     usePos.setState({ payMethod: 'qr' });
     s().onCharge();
+    await settled();
     expect(s().view).toBe('complete');
   });
 
-  it('a card is read, approved, and settles the balance', () => {
+  it('a card is read, approved, and settles the balance', async () => {
     vi.useFakeTimers();
     s().openPay();
     usePos.setState({ payMethod: 'card' });
     s().onCharge();
+    await settled();
     expect(s().card).toBe('reading');
     vi.runAllTimers();
+    await settled();
     expect(s().view).toBe('complete');
   });
 
-  it('a declined card leaves the ticket open and payable again', () => {
+  it('a declined card leaves the ticket open and payable again', async () => {
     vi.useFakeTimers();
     s().openPay();
     usePos.setState({ payMethod: 'card', declined: true });
     s().onCharge();
+    await settled();
     vi.runAllTimers();
+    await settled();
     expect(s().card).toBe('declined');
     expect(s().view).toBe('payment');
     expect(s().splits).toEqual([]);
@@ -568,42 +634,49 @@ describe('taking payment', () => {
     expect(s().cash).toBe('1.50');
   });
 
-  it('an even split collects the whole balance across the payers', () => {
+  it('an even split collects the whole balance across the payers', async () => {
     s().openPay();
     const due = remaining(s());
     s().setSplitN(3);
     usePos.setState({ payMethod: 'qr' });
     s().onCharge();
+    await settled();
     expect(s().view).toBe('payment');
     s().onCharge();
+    await settled();
     expect(s().view).toBe('payment');
     s().onCharge();
+    await settled();
     expect(s().view).toBe('complete');
     const collected = s().lastSale!.splits.reduce((a, x) => a + x.amount, 0);
     expect(Math.round(collected * 100) / 100).toBe(due);
   });
 
-  it('the sale records what was actually collected', () => {
+  it('the sale records what was actually collected', async () => {
     s().openPay();
     const due = remaining(s());
     usePos.setState({ payMethod: 'cash', cash: '5' });
     s().onCharge();
+    await settled();
     usePos.setState({ cash: '999' });
     s().onCharge();
+    await settled();
     const sale = s().lastSale!;
     expect(sale.splits.length).toBe(2);
     expect(Math.round(sale.splits.reduce((a, x) => a + x.amount, 0) * 100) / 100).toBe(due);
     expect(sale.total).toBe(due);
   });
 
-  it('a completed sale clears the payment scratch state', () => {
+  it('a completed sale clears the payment scratch state', async () => {
     s().openPay();
     s().setSplitN(2);
     usePos.setState({ payMethod: 'cash', cash: '999' });
     s().onCharge(); // first share
+    await settled();
     expect(s().view).toBe('payment');
     usePos.setState({ cash: '999' });
     s().onCharge(); // second share closes it
+    await settled();
     expect(s().view).toBe('complete');
     expect(s().splits).toEqual([]);
     expect(s().cash).toBe('');
@@ -618,17 +691,19 @@ describe('a paid ticket is closed', () => {
    * receipt and pressing Pay charged the same items again and wrote a second
    * Sale under the same order number.
    */
-  it('the register is empty again after a sale', () => {
+  it('the register is empty again after a sale', async () => {
     const n = s().ticket.number;
     usePos.setState({ payMethod: 'cash', cash: '999' });
     s().onCharge();
+    await settled();
     expect(s().ticket.items).toEqual([]);
     expect(s().ticket.number).not.toBe(n);
   });
 
-  it('the same ticket cannot be charged twice', () => {
+  it('the same ticket cannot be charged twice', async () => {
     usePos.setState({ payMethod: 'cash', cash: '999' });
     s().onCharge();
+    await settled();
     const first = s().lastSale!;
     usePos.setState({ view: 'register' });
     s().openPay();
@@ -636,11 +711,12 @@ describe('a paid ticket is closed', () => {
     expect(s().lastSale!.number).toBe(first.number);
   });
 
-  it('the receipt still has the sale it was rung up from', () => {
+  it('the receipt still has the sale it was rung up from', async () => {
     const n = s().ticket.number;
     const due = total(s());
     usePos.setState({ payMethod: 'cash', cash: '999' });
     s().onCharge();
+    await settled();
     expect(s().lastSale!.number).toBe(n);
     expect(s().lastSale!.total).toBe(due);
     expect(s().lastSale!.items.length).toBeGreaterThan(0);
@@ -653,11 +729,12 @@ describe('an interrupted payment', () => {
    * used to reset `splits: []` — every payment already collected vanished and
    * the guest who had handed over cash was asked for the full amount again.
    */
-  it('keeps money already collected when you return to the payment screen', () => {
+  it('keeps money already collected when you return to the payment screen', async () => {
     s().openPay();
     const due = remaining(s());
     usePos.setState({ payMethod: 'cash', cash: '5' });
     s().onCharge();
+    await settled();
     expect(s().splits.length).toBe(1);
 
     usePos.setState({ view: 'register' }); // "Ticket" back button
@@ -666,10 +743,11 @@ describe('an interrupted payment', () => {
     expect(remaining(s())).toBeCloseTo(due - 5, 2);
   });
 
-  it('a fresh ticket does start from a clean payment screen', () => {
+  it('a fresh ticket does start from a clean payment screen', async () => {
     s().openPay();
     usePos.setState({ payMethod: 'cash', cash: '999' });
     s().onCharge(); // closes it, mints a fresh ticket
+    await settled();
     s().tapTile('soup');
     s().openPay();
     expect(s().splits).toEqual([]);
@@ -681,47 +759,53 @@ describe('an interrupted payment', () => {
    * where the user had navigated to, finalising a sale and yanking the view to
    * the receipt from whatever screen they were on.
    */
-  it('a card charge abandoned mid-read does not finalise behind you', () => {
+  it('a card charge abandoned mid-read does not finalise behind you', async () => {
     vi.useFakeTimers();
     s().openPay();
     usePos.setState({ payMethod: 'card' });
     s().onCharge();
+    await settled();
     expect(s().card).toBe('reading');
     usePos.setState({ view: 'kitchen' }); // walk away
     vi.runAllTimers();
+    await settled();
     expect(s().view).toBe('kitchen');
     expect(s().lastSale).toBeNull();
     expect(s().splits).toEqual([]);
   });
 
-  it('switching off Card mid-read does not charge the card', () => {
+  it('switching off Card mid-read does not charge the card', async () => {
     vi.useFakeTimers();
     s().openPay();
     usePos.setState({ payMethod: 'card' });
     s().onCharge();
+    await settled();
     s().setMethod('cash');
     vi.runAllTimers();
+    await settled();
     expect(s().splits).toEqual([]);
     expect(s().view).toBe('payment');
   });
 
-  it('a part-paid "by amount" split does not leave a stale $0.00 badge', () => {
+  it('a part-paid "by amount" split does not leave a stale $0.00 badge', async () => {
     s().openPay();
     s().setSplitFraction(0.5);
     expect(s().splitMode).toBe('amount');
     usePos.setState({ payMethod: 'qr' });
     s().onCharge();
+    await settled();
     expect(s().view).toBe('payment');
     // the custom amount has been consumed, so the mode goes with it
     expect(s().splitMode).toBe('none');
     expect(s().splitCustom).toBe('');
   });
 
-  it('an even split stays in force between payers', () => {
+  it('an even split stays in force between payers', async () => {
     s().openPay();
     s().setSplitN(3);
     usePos.setState({ payMethod: 'qr' });
     s().onCharge();
+    await settled();
     expect(s().splitMode).toBe('even');
     expect(s().splitN).toBe(3);
   });

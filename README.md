@@ -4,7 +4,7 @@ A complete, open-source **point-of-sale** example for cafes and restaurants — 
 
 **Live demo → [adminium.dev/demo/point-of-sale](https://adminium.dev/demo/point-of-sale)**
 
-Use the **Demo controls** dock at the top to switch screens, flip between **Restaurant** and **Retail** service modes, toggle **online/offline**, and change the **theme**.
+The demo card beside it switches screens — the till, its tools and the guest booking pages — flips between **Restaurant** and **Retail** service modes, toggles **online/offline**, and changes the **theme** and the **language**. The app speaks to the card through `src/demoBridge.ts`; what the card offers is declared in `src/demo-card.ts`.
 
 ---
 
@@ -17,6 +17,10 @@ Use the **Demo controls** dock at the top to switch screens, flip between **Rest
 - **Floor** — zones, live table states, seat/auto-hold flow.
 - **Kitchen display** — three-column bump flow with an all-day aggregate.
 - Held-tickets tray, move / merge, discount & comps.
+- **Customer display** — the guest's view of their order: the items, the money, the tip (the same buttons as Payment, custom amount on a keypad — and Payment keeps the guest's choice), then a signature and how they want their receipt. Nothing sends an emailed or texted receipt yet: the choice is kept on the ticket and shown on the receipt screen.
+- **Pickup** — mark a ticket for pickup (at the till or by phone, with the name and number to call), and work the queue in three lanes: Start, Mark ready, Hand off; Notify opens the device's own messages on the guest's number. A paid order waits until it is collected.
+- **Gift cards** — look a card up by its code (or scan it), put money on it through the ticket — untaxed, and credited once the ticket is paid — pay a ticket from it, issue a new one, and see its history. A refund of a sale paid by gift card can go back onto the card.
+- **Loyalty & rewards** — find a member by phone, member number or name (or scan their code), enroll someone new, put them on the ticket, and spend their points on a reward that joins the ticket free. Points are earned when the ticket is paid — one per whole unit spent on goods — and a tier follows every point ever earned (Silver, Gold from 1,000, Platinum from 2,500).
 
 Money math is exact: tax is **8.25%**, tip presets are **0 / 10 / 15 / 20%**, and split rounding matches the design to the cent.
 
@@ -100,9 +104,11 @@ Requires **Node 22**. Uses **npm** (a `package-lock.json` is committed).
 npm install
 npm run dev          # start the dev server
 npm run build        # production build (base "/")  → dist/
-npm run build:demo   # production build for the hosted demo (base "/demo/point-of-sale/")
+npm run build:demo   # the hosted demo, served inside its card (base "/demo/point-of-sale/app/"; writes dist/demo.json)
 npm run preview      # preview a production build locally
 npm run typecheck    # type-check without emitting
+npm test             # unit tests (vitest)
+npm run test:e2e     # every demo screen under axe, light/dark × English/Arabic (Playwright)
 ```
 
 ---

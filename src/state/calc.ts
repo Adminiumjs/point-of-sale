@@ -4,7 +4,7 @@
 
 import { seedTicket } from '../data/demo';
 import { source } from '../data/source';
-import type { Category, Discount, LineItem, MenuItem, Sale, Size, Split, ServiceMode } from '../data/types';
+import type { Category, Discount, LineItem, MenuItem, ModifierGroup, Sale, Split, ServiceMode } from '../data/types';
 import type { MessageKey } from '../i18n';
 import { money as fmtMoney, number as fmtNumber, t, tOr } from '../i18n/ambient';
 
@@ -103,24 +103,41 @@ export const tableName = (l: string | null | undefined, mode: ServiceMode): stri
   return key ? t(key, { n: l.slice(1) }) : l;
 };
 
-// ---- Pricing deltas ----
-export const sizeDelta = (s?: Size | null): number => (s === 'S' ? -0.4 : s === 'L' ? 0.7 : 0);
-export const milkDelta = (m?: string | null): number => source.milks().find((x) => x.v === m)?.delta ?? 0;
-export const extraDelta = (x: string): number => (x === 'Extra shot' ? 0.9 : x === 'Decaf' ? 0 : 0.5);
+// ---- Options (menu v1) ----
 
+/** An item's own groups of options, in their order. */
+export const groupsOf = (itemId: string): ModifierGroup[] => source.modifierGroups().filter((g) => g.itemId === itemId);
+
+/** The chosen options of a line, in the order its groups list them. */
+export const chosenOptions = (li: LineItem): ModifierGroup['options'] => {
+  const out: ModifierGroup['options'] = [];
+  for (const group of groupsOf(li.id)) {
+    const picked = li.selection[group.id] ?? [];
+    for (const option of group.options) if (picked.includes(option.id)) out.push(option);
+  }
+  return out;
+};
+
+/**
+ * Per unit: the item's price plus every chosen option's delta (Online
+ * ordering's rule). A reward's line is free: the member's points paid for it.
+ */
 export const lineUnit = (li: LineItem): number => {
+  if (li.rewardId !== undefined) return 0;
+  // A gift card load is its own price: nothing on the menu, no options.
+  if (li.giftCard !== undefined) return li.giftCard.amount;
   const m = itemById(li.id);
   if (!m) return 0;
-  let p = m.price;
-  if (li.size) p += sizeDelta(li.size);
-  if (li.milk) p += milkDelta(li.milk);
-  (li.extras || []).forEach((x) => {
-    p += extraDelta(x);
-  });
-  return p;
+  return chosenOptions(li).reduce((price, option) => price + option.delta, m.price);
 };
 export const lineTotal = (li: LineItem): number => lineUnit(li) * li.qty;
 export const itemsSub = (items: LineItem[]): number => (items || []).reduce((s, li) => s + lineTotal(li), 0);
+/** The goods on a ticket — every line but a gift card load, which is taxed, discounted and tipped on nothing. */
+export const goodsOf = (items: LineItem[]): LineItem[] => (items || []).filter((li) => li.giftCard === undefined);
+
+/** A line's name as the ticket, the receipt and the kitchen say it. */
+export const lineName = (li: LineItem): string =>
+  li.giftCard !== undefined ? t('gift.lineName', { code: li.giftCard.code }) : (itemById(li.id)?.name ?? li.id);
 
 /**
  * Round to whole cents.
@@ -139,10 +156,12 @@ export const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 1
 // Raw (unrounded) goods figures. Internal: they are the base the percentages
 // are assessed on, not something a screen ever prints.
 const rawSub = (s: PricingState): number => itemsSub(s.ticket.items);
+/** The goods alone: what a discount, the tax and a tip are worked out on. */
+const rawGoods = (s: PricingState): number => itemsSub(goodsOf(s.ticket.items));
 const rawDisc = (s: PricingState): number => {
   const d = s.discount;
   if (!d) return 0;
-  const sub = rawSub(s);
+  const sub = rawGoods(s);
   const off = d.kind === 'pct' ? (sub * d.value) / 100 : d.kind === 'comp' ? sub : d.value || 0;
   /*
    * Clamp every kind, not just the fixed amount.
@@ -158,8 +177,8 @@ const rawDisc = (s: PricingState): number => {
 
 export const subtotal = (s: PricingState): number => round2(rawSub(s));
 export const discountAmt = (s: PricingState): number => round2(rawDisc(s));
-/** The taxable/tippable base — deliberately unrounded. */
-export const netSub = (s: PricingState): number => Math.max(0, rawSub(s) - rawDisc(s));
+/** The taxable/tippable base — deliberately unrounded. Goods only: a gift card load is none of it. */
+export const netSub = (s: PricingState): number => Math.max(0, rawGoods(s) - rawDisc(s));
 export const tax = (s: PricingState): number => round2(netSub(s) * source.taxRate());
 
 /** What tip preset `i` is worth on this ticket — the one authority for the
@@ -187,7 +206,7 @@ export const regTotal = (s: PricingState): number =>
  */
 export const linesTotal = (items: LineItem[]): number => {
   const raw = itemsSub(items);
-  return round2(round2(raw) + round2(raw * source.taxRate()));
+  return round2(round2(raw) + round2(itemsSub(goodsOf(items)) * source.taxRate()));
 };
 export const total = (s: PricingState): number => round2(regTotal(s) + tipAmt(s));
 export const paid = (s: PricingState): number => s.splits.reduce((a, x) => a + x.amount, 0);
@@ -211,18 +230,11 @@ export const chargeTarget = (s: PricingState): number => {
   return rem;
 };
 
-/** The size words and the "… milk" frame are chrome; the milk and extra names
- * themselves are the cafe's catalogue and pass through untouched. */
-export const sizeLabel = (s: Size): string =>
-  t(s === 'S' ? 'size.small' : s === 'L' ? 'size.large' : 'size.medium');
-
-export const modLabel = (li: LineItem): string => {
-  const parts: string[] = [];
-  if (li.size) parts.push(sizeLabel(li.size));
-  if (li.milk && li.milk !== 'Whole') parts.push(t('mod.milkSuffix', { milk: li.milk }));
-  (li.extras || []).forEach((x) => parts.push(x));
-  return parts.join(' · ');
-};
+/** What was chosen on a line, as the menu names it: "Medium · Oat milk · Vanilla". */
+export const modLabel = (li: LineItem): string =>
+  chosenOptions(li)
+    .map((option) => option.name)
+    .join(' · ');
 
 // Synthetic sale for the Receipt view when no real sale has been finalised yet
 // (e.g. opening it straight from the dock). Mirrors the comp's demoSale().
@@ -236,7 +248,7 @@ export const demoSale = (ticket: { items: LineItem[]; number: number; table: str
   return {
     number: ticket.number || 1042,
     table: ticket.table || 'T12',
-    items: items.map((x) => ({ name: itemById(x.id)?.name ?? x.id, qty: x.qty, unit: lineUnit(x), line: lineTotal(x), mod: modLabel(x), note: x.note })),
+    items: items.map((x) => ({ name: lineName(x), qty: x.qty, unit: lineUnit(x), line: lineTotal(x), mod: modLabel(x), note: x.note })),
     subtotal: sub,
     discount: 0,
     discountLabel: '',

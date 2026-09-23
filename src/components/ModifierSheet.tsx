@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { usePos } from '../state/store';
-import { source } from '../data/source';
-import { extraDelta, itemById, milkDelta, money, sizeDelta, sizeLabel } from '../state/calc';
+import { chosenOptions, groupsOf, itemById, money } from '../state/calc';
 import { useT } from '../i18n';
 import { Icon } from './Icon';
 import { MenuThumb } from './MenuThumb';
@@ -34,22 +33,14 @@ export function ModifierSheet() {
   const m = itemById(s.sheetId || '');
   if (!m) return null;
   const dark = s.theme === 'dark';
-  const ms = m.mods;
-  const hasSize = ms === 'coffee' || ms === 'tea' || ms === 'cold';
-  const hasMilk = ms === 'coffee' || ms === 'tea';
-  const hasExtras = ms === 'coffee' || ms === 'cold';
+  const groups = groupsOf(m.id);
   const hasSeat = s.mode !== 'retail' && (s.ticket.seats || 0) > 0;
 
-  let line = m.price + sizeDelta(s.sheetSize) + milkDelta(s.sheetMilk);
-  s.sheetExtras.forEach((x) => {
-    line += extraDelta(x);
-  });
-  line *= s.sheetQty;
+  // What the line will be, priced by the same rule the ticket uses.
+  const picked = chosenOptions({ key: '', id: m.id, qty: s.sheetQty, selection: s.sheetSel, note: '', seat: 0, sent: false });
+  const line = picked.reduce((price, option) => price + option.delta, m.price) * s.sheetQty;
 
-  const summaryParts: string[] = [];
-  if (hasSize) summaryParts.push(sizeLabel(s.sheetSize));
-  if (hasMilk && s.sheetMilk !== 'Whole') summaryParts.push(t('mod.milkSuffix', { milk: s.sheetMilk }));
-  s.sheetExtras.forEach((x) => summaryParts.push(x));
+  const summaryParts: string[] = picked.map((option) => option.name);
   if (s.sheetSeat > 0) summaryParts.push(t('ticket.seatN', { n: s.sheetSeat }));
   const summary = summaryParts.length ? summaryParts.join(' · ') : t('sheet.noCustomizations');
 
@@ -88,61 +79,39 @@ export function ModifierSheet() {
             </div>
           </div>
 
-          {hasSize && (
-            <>
-              <SectionLabel>{t('sheet.size')}</SectionLabel>
-              <div style={css('display:flex;gap:10px;margin-bottom:24px;')}>
-                {source.sizes().map((o) => {
-                  const on = s.sheetSize === o.v;
-                  const d = sizeDelta(o.v);
-                  const lbl = sizeLabel(o.v);
-                  const delta = (d < 0 ? '−' : '+') + money(Math.abs(d));
-                  return (
-                    <button key={o.v} className="pos-press" onClick={() => s.setSheetSize(o.v)} style={css(optBox(on))}>
-                      <span style={css('font-size:16px;font-weight:800;')}>{lbl}</span>
-                      {d !== 0 && <span style={css('font-size:12.5px;' + MONO + 'opacity:.7;margin-top:3px;')}>{delta}</span>}
-                    </button>
-                  );
-                })}
+          {groups.map((group) => {
+            const chosen = s.sheetSel[group.id] ?? [];
+            // A short single choice is drawn as the comp's boxes (a size); the rest as chips.
+            const boxes = group.kind === 'radio' && group.options.length <= 3;
+            return (
+              <div key={group.id}>
+                <SectionLabel>
+                  {group.name}
+                  {group.kind === 'check' && group.max > 1 && (
+                    <span style={css('font-weight:600;text-transform:none;letter-spacing:0;margin-inline-start:8px;')}>{t('sheet.upTo', { n: group.max })}</span>
+                  )}
+                </SectionLabel>
+                <div role="group" aria-label={group.name} style={css(boxes ? 'display:flex;gap:10px;margin-bottom:24px;' : 'display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;')}>
+                  {group.options.map((o) => {
+                    const on = chosen.includes(o.id);
+                    const delta = (o.delta < 0 ? '−' : '+') + money(Math.abs(o.delta));
+                    return boxes ? (
+                      <button key={o.id} className="pos-press" aria-pressed={on} disabled={!o.available} onClick={() => s.toggleOption(group.id, o.id)} style={css(optBox(on))}>
+                        <span style={css('font-size:16px;font-weight:800;')}>{o.name}</span>
+                        {o.delta !== 0 && <span style={css('font-size:12.5px;' + MONO + 'opacity:.7;margin-top:3px;')}>{delta}</span>}
+                      </button>
+                    ) : (
+                      <button key={o.id} className="pos-press" aria-pressed={on} disabled={!o.available} onClick={() => s.toggleOption(group.id, o.id)} style={css(chipBox(on))}>
+                        {group.kind === 'check' && <Icon name={on ? 'check' : 'plus'} size={16} />}
+                        {o.name}
+                        {o.delta !== 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-inline-start:2px;')}>{delta}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </>
-          )}
-
-          {hasMilk && (
-            <>
-              <SectionLabel>{t('sheet.milk')}</SectionLabel>
-              <div style={css('display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;')}>
-                {source.milks().map(({ v, delta: d }) => {
-                  const on = s.sheetMilk === v;
-                  return (
-                    <button key={v} className="pos-press" onClick={() => s.setSheetMilk(v)} style={css(chipBox(on))}>
-                      {v}
-                      {d > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-inline-start:6px;')}>+{money(d)}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          {hasExtras && (
-            <>
-              <SectionLabel>{t('sheet.extras')}</SectionLabel>
-              <div style={css('display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;')}>
-                {source.extras().map((o) => {
-                  const on = s.sheetExtras.indexOf(o.v) >= 0;
-                  const d = extraDelta(o.v);
-                  return (
-                    <button key={o.v} className="pos-press" onClick={() => s.toggleSheetExtra(o.v)} style={css(chipBox(on))}>
-                      <Icon name={o.icon} size={16} />
-                      {o.v}
-                      {d > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-inline-start:2px;')}>+{money(d)}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
+            );
+          })}
 
           {hasSeat && (
             <>
