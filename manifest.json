@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "key": "pos",
   "name": "Point of Sale",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "publisher": {
     "id": "adminium",
     "name": "Adminium",
