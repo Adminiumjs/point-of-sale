@@ -18,6 +18,12 @@
       "version": "0.1.2",
       "integrity": "sha512-rzOq+uWnfgnZ4vhI9+uLvE/Qw5weY6JZixMoRaF5KyUSDD68VcivKQpCnoP5O0IY/sjMejHQYbfsmWKoMHiYhg==",
       "publishedAt": "2026-09-21T17:00:13.000Z"
+    },
+    {
+      "name": "@adminiumjs/app-pos",
+      "version": "0.2.0",
+      "integrity": "sha512-PjQMcbJFBRYKr1JyA2jNDECxZEwrBcDAtvBZPFjUs2aRUSCDv1d8G1ByCWrZs1ts+1ycwts7WyBRkmjLNslSCw==",
+      "publishedAt": "2026-09-23T16:50:20.000Z"
     }
   ]
 }
