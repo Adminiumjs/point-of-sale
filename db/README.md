@@ -9,7 +9,16 @@ seed.sql           realistic demo rows, so the app is useful the moment it boots
 demo-toolkit.sql   bookkeeping that records which rows came from seed.sql
 init-demo.sh       first-boot hook: loads the demo rows unless DEMO_DATA=0
 demo.mjs           the command behind `npm run demo:*`
+write-sample.ts    the command behind `npm run sample` (below)
 ```
+
+`schema.sql` and `seed.sql` are **generated**, never edited by hand:
+`npm run sample` writes `schema.sql` from `manifest.json` and `seed.sql` from
+the same sample bundle an operator adds from Adminium
+(`seeds/pos.sample.json`, built by `src/data/sample.ts`). The tables carry the
+names an Adminium install gives them (`pos_menu_items`, `pos_tickets`, …), so
+the two ways of running the app use one schema. `src/data/sample-drift.test.ts`
+fails when any of the three files is out of date.
 
 `schema.sql` is always applied. It is also a valid **schema-only import** for
 Adminium on its own, if you want to see the generated admin app without a

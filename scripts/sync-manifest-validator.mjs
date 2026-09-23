@@ -58,9 +58,11 @@ if (!existsSync(product)) {
 const FILES = [
   ['packages/manifest/src/schema.ts', 'schema.ts'],
   ['packages/manifest/src/validate.ts', 'validate.ts'],
+  ['packages/manifest/src/sample.ts', 'sample.ts'],
   ['packages/add-on-contracts/src/add-on-block.ts', 'add-on-block.ts'],
   ['packages/add-on-contracts/src/contracts.ts', 'contracts.ts'],
   ['packages/add-on-contracts/src/slots.ts', 'slots.ts'],
+  ['packages/add-on-contracts/src/nav-groups.ts', 'nav-groups.ts'],
 ];
 const VENDORED = new Set(FILES.map(([, base]) => base));
 
@@ -99,7 +101,9 @@ function specifiersIn(text) {
  *
  * It also reads `export { a, b as c }` lists, not just declarations. A symbol
  * this cannot place becomes a refusal downstream, which is the safe direction:
- * an openly failed sync beats a subtly wrong copy.
+ * an openly failed sync beats a subtly wrong copy. A RE-export
+ * (`export { a } from './b.js'`) is skipped: it names the symbol's home rather
+ * than being one, and that home is scanned in its own right.
  */
 function exportIndex() {
   const index = new Map();
@@ -110,7 +114,7 @@ function exportIndex() {
     const declared =
       /^export\s+(?:declare\s+)?(?:const|let|var|function|type|interface|class|enum)\s+([A-Za-z0-9_$]+)/gm;
     for (const [, name] of text.matchAll(declared)) names.push(name);
-    for (const [, list] of text.matchAll(/^export\s*\{([^}]*)\}/gm)) {
+    for (const [, list] of text.matchAll(/^export\s*\{([^}]*)\}(?!\s*from\b)/gm)) {
       for (const entry of list.split(',')) {
         const parts = entry.trim().replace(/^type\s+/, '').split(/\s+as\s+/);
         const exported = (parts[parts.length - 1] ?? '').trim();

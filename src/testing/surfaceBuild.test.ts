@@ -48,6 +48,21 @@
  * stayed blind for months. If something below cannot be located, that is a
  * finding, not a reason to stand down.
  *
+ * ── The demo's tools, and the demo protocol ─────────────────────────────────
+ *
+ * An app that still ships its own `DemoDock.tsx` is marked by the dock's class
+ * names. One that moved to the website's demo card (`src/demoBridge.ts`) has no
+ * dock; its demo tools are marked by the protocol's own message prefix, read
+ * from `src/demo-types.ts`. Either way the demo build must carry them and no
+ * surface build may — and no surface build may speak the protocol at all.
+ *
+ * ── A customer bundle carries nothing from the till ─────────────────────────
+ *
+ * An app with a customer side builds it with source maps, and the modules in
+ * them are checked against the staff-only screens `src/surface-nav.ts`
+ * declares (`src/screens/<View>.tsx`). A guest's page that shipped the till
+ * would ship its code, its strings and its endpoints to every visitor.
+ *
  * ── Markers are derived, not written down ───────────────────────────────────
  *
  * The strings this file greps for are pulled out of the very files it guards.
@@ -64,6 +79,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const REPO = resolve(__dirname, "..", "..");
 const DOCK = join(REPO, "src", "components", "DemoDock.tsx");
+const BRIDGE = join(REPO, "src", "demoBridge.ts");
+const DEMO_TYPES = join(REPO, "src", "demo-types.ts");
+const NAV = join(REPO, "src", "surface-nav.ts");
 const DEMO_DATA = join(REPO, "src", "data", "demo.ts");
 
 /** Every `.js` byte of a build, concatenated. */
@@ -77,10 +95,10 @@ function bundleOf(dir: string): string {
   return js.map((f) => readFileSync(join(assets, f), "utf8")).join("\n");
 }
 
-function build(outDir: string, env: Record<string, string>): string {
+function build(outDir: string, env: Record<string, string>, extra: string[] = []): string {
   execFileSync(
     "npx",
-    ["vite", "build", "--outDir", outDir, "--emptyOutDir", "--logLevel", "error"],
+    ["vite", "build", "--outDir", outDir, "--emptyOutDir", "--logLevel", "error", ...extra],
     {
       cwd: REPO,
       // Every flag is passed EXPLICITLY, including the empty ones. Inheriting a
@@ -120,6 +138,58 @@ function dockMarkers(): string[] {
   }
   return [...found];
 }
+
+/** The protocol's message prefix, read from the synced `demo-types.ts`. */
+function protocolPrefix(): string {
+  if (!existsSync(DEMO_TYPES)) {
+    throw new Error(`${DEMO_TYPES} is missing — sync it (surface-build.sh sync); this gate reads the prefix from it`);
+  }
+  const found = /DEMO_MESSAGE_PREFIX\s*=\s*["']([^"']+)["']/.exec(readFileSync(DEMO_TYPES, "utf8"))?.[1];
+  if (found === undefined) throw new Error(`no DEMO_MESSAGE_PREFIX in ${DEMO_TYPES} — this gate cannot see the protocol`);
+  return found;
+}
+
+/** What marks the demo's tools: the dock while there is one, else the bridge's protocol. */
+function demoToolMarkers(): string[] {
+  if (existsSync(DOCK)) return dockMarkers();
+  if (existsSync(BRIDGE)) return [protocolPrefix()];
+  throw new Error(`neither ${DOCK} nor ${BRIDGE} exists — the demo build has no tools for this gate to find`);
+}
+
+/**
+ * The staff-only screens' modules, from `surface-nav.ts`: every view whose
+ * entry says `side: 'staff'` and has a `src/screens/<View>.tsx`.
+ */
+function staffScreenModules(): string[] {
+  const src = readFileSync(NAV, "utf8");
+  const views = new Set<string>();
+  for (const entry of src.matchAll(/\{[^{}]*\}/g)) {
+    const body = entry[0];
+    if (!/side:\s*["']staff["']/.test(body)) continue;
+    const view = /view:\s*["']([^"']+)["']/.exec(body)?.[1];
+    if (view !== undefined) views.add(view);
+  }
+  const files = [...views]
+    .map((view) => join("src", "screens", `${view.charAt(0).toUpperCase()}${view.slice(1)}.tsx`))
+    .filter((file) => existsSync(join(REPO, file)));
+  if (files.length === 0) throw new Error(`no staff screen module found from ${NAV} — this gate cannot see the till`);
+  return files;
+}
+
+/** Every source module a build's source maps name, relative to the repo. */
+function sourcesOf(dir: string): Set<string> {
+  const assets = join(dir, "assets");
+  const out = new Set<string>();
+  for (const map of readdirSync(assets).filter((f) => f.endsWith(".js.map"))) {
+    const { sources } = JSON.parse(readFileSync(join(assets, map), "utf8")) as { sources: string[] };
+    for (const source of sources) out.add(resolve(assets, source).replace(REPO + "/", ""));
+  }
+  if (out.size === 0) throw new Error(`no source maps in ${assets} — the customer build was not mapped`);
+  return out;
+}
+
+/** The app builds a customer side: `surface-nav.ts` declares a customer screen. */
+const HAS_CUSTOMER = existsSync(NAV) && /side:\s*["']customer["']/.test(readFileSync(NAV, "utf8"));
 
 /**
  * Distinctive literals from the seeded fiction.
@@ -171,15 +241,15 @@ let customer = "";
 let outs: string[] = [];
 
 beforeAll(() => {
-  // The component and the dataset must EXIST. If either is gone this gate is
-  // meaningless, and it says so rather than passing vacuously.
-  for (const f of [DOCK, DEMO_DATA]) {
-    if (!existsSync(f)) throw new Error(`${f} is missing — this gate has nothing to guard`);
-  }
+  // The demo's tools and the dataset must EXIST. If either is gone this gate
+  // is meaningless, and it says so rather than passing vacuously.
+  if (!existsSync(DEMO_DATA)) throw new Error(`${DEMO_DATA} is missing — this gate has nothing to guard`);
+  demoToolMarkers();
   outs = ["demo", "staff", "customer"].map(() => mkdtempSync(join(tmpdir(), "surface-gate-")));
   demo = build(outs[0]!, {});
-  staff = build(outs[1]!, { VITE_ADMINIUM_SURFACE_SIDE: "staff" });
-  customer = build(outs[2]!, { VITE_ADMINIUM_SURFACE_SIDE: "customer" });
+  // Both surfaces mapped, so the modules they carry can be named (see the header).
+  staff = build(outs[1]!, { VITE_ADMINIUM_SURFACE_SIDE: "staff" }, ["--sourcemap"]);
+  customer = build(outs[2]!, { VITE_ADMINIUM_SURFACE_SIDE: "customer" }, ["--sourcemap"]);
 }, 180_000);
 
 afterAll(() => {
@@ -199,18 +269,36 @@ function present(bundle: string, markers: string[]): string[] {
   return markers.filter((m) => bundle.includes(m));
 }
 
-describe("rule 1 + 3 — a flag folds, so the dock is ABSENT and not merely hidden", () => {
-  it("the demo build contains the dock", () => {
+describe("rule 1 + 3 — a flag folds, so the demo's tools are ABSENT and not merely hidden", () => {
+  it("the demo build contains them", () => {
     // The control. Without it, a gate that greps for absence passes just as
     // happily when the marker is wrong as when the code is right.
-    expect(present(demo, dockMarkers())).not.toEqual([]);
+    expect(present(demo, demoToolMarkers())).not.toEqual([]);
   });
 
-  it("no surface build contains the dock", () => {
+  it("no surface build contains them", () => {
     expect({
-      staff: present(staff, dockMarkers()),
-      customer: present(customer, dockMarkers()),
+      staff: present(staff, demoToolMarkers()),
+      customer: present(customer, demoToolMarkers()),
     }).toEqual({ staff: [], customer: [] });
+  });
+
+  it("no surface build speaks the demo protocol", () => {
+    const prefix = protocolPrefix();
+    expect({ staff: staff.includes(prefix), customer: customer.includes(prefix) }).toEqual({ staff: false, customer: false });
+  });
+});
+
+describe.runIf(HAS_CUSTOMER)("a customer bundle carries nothing from the till", () => {
+  it("the staff build names the till's screens", () => {
+    // The control: the same derivation finds them where they belong.
+    const sources = sourcesOf(outs[1]!);
+    expect(staffScreenModules().filter((file) => sources.has(file))).not.toEqual([]);
+  });
+
+  it("names none of the staff screens' modules", () => {
+    const sources = sourcesOf(outs[2]!);
+    expect(staffScreenModules().filter((file) => sources.has(file))).toEqual([]);
   });
 });
 
