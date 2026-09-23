@@ -106,6 +106,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   // in the dashboard re-renders this frame live rather than on the next load.
   useEffect(() => {
     applyLocale = setLocaleState;
+    // A host locale that arrived after the first render picked its locale, but
+    // before this effect registered the setter, would otherwise be lost.
+    if (hostLocale !== null) setLocaleState(hostLocale);
     return () => {
       applyLocale = null;
     };

@@ -169,7 +169,13 @@ export function startDemoBridge(): () => void {
     applyDemoMessage(event.data);
     report();
     // A new language reaches the app on its next render: report once it has.
+    // The first `init` can land before React has mounted at all, so it waits
+    // longer for the rendered locale to catch up.
     setTimeout(report, 50);
+    if (event.data.type === 'adminium:demo:init') {
+      setTimeout(report, 400);
+      setTimeout(report, 1500);
+    }
   };
   window.addEventListener('message', onMessage);
   const unsubscribe = [usePos.subscribe(report), useGuests.subscribe(report)];
