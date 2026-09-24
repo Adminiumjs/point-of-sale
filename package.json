@@ -24,7 +24,7 @@
     "dev:hosted": "VITE_ADMINIUM_SURFACE_SIDE=staff vite"
   },
   "dependencies": {
-    "@adminiumjs/public-client": "0.3.0-rc.4",
+    "@adminiumjs/public-client": "0.3.0",
     "lucide-react": "^1.25.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
