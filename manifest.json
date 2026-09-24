@@ -4335,6 +4335,16 @@
               "h": 3,
               "config": {
                 "title": "Sales",
+                "titles": {
+                  "en-US": "Sales",
+                  "de-DE": "Umsatz",
+                  "fr-FR": "Ventes",
+                  "da-DK": "Salg",
+                  "cs-CZ": "Tržby",
+                  "ar-EG": "المبيعات",
+                  "zh-CN": "销售额",
+                  "zh-TW": "銷售額"
+                },
                 "metricFormat": "currency",
                 "iconName": "dollar",
                 "binding": {
@@ -4376,6 +4386,16 @@
               "h": 3,
               "config": {
                 "title": "Tickets",
+                "titles": {
+                  "en-US": "Tickets",
+                  "de-DE": "Bons",
+                  "fr-FR": "Tickets",
+                  "da-DK": "Boner",
+                  "cs-CZ": "Účty",
+                  "ar-EG": "الفواتير",
+                  "zh-CN": "账单",
+                  "zh-TW": "訂單"
+                },
                 "metricFormat": "plain",
                 "binding": {
                   "kind": "table-query",
@@ -4415,6 +4435,16 @@
               "h": 3,
               "config": {
                 "title": "Average ticket",
+                "titles": {
+                  "en-US": "Average ticket",
+                  "de-DE": "Durchschnittlicher Bon",
+                  "fr-FR": "Ticket moyen",
+                  "da-DK": "Gennemsnitlig bon",
+                  "cs-CZ": "Průměrný účet",
+                  "ar-EG": "متوسط الفاتورة",
+                  "zh-CN": "平均客单价",
+                  "zh-TW": "平均客單價"
+                },
                 "metricFormat": "currency",
                 "binding": {
                   "kind": "table-query",
@@ -4455,6 +4485,16 @@
               "h": 3,
               "config": {
                 "title": "Tips",
+                "titles": {
+                  "en-US": "Tips",
+                  "de-DE": "Trinkgeld",
+                  "fr-FR": "Pourboires",
+                  "da-DK": "Drikkepenge",
+                  "cs-CZ": "Spropitné",
+                  "ar-EG": "الإكراميات",
+                  "zh-CN": "小费",
+                  "zh-TW": "小費"
+                },
                 "metricFormat": "currency",
                 "binding": {
                   "kind": "table-query",
@@ -4488,6 +4528,16 @@
               "h": 3,
               "config": {
                 "title": "Guests served",
+                "titles": {
+                  "en-US": "Guests served",
+                  "de-DE": "Bediente Gäste",
+                  "fr-FR": "Couverts servis",
+                  "da-DK": "Betjente gæster",
+                  "cs-CZ": "Obsloužení hosté",
+                  "ar-EG": "عدد الضيوف",
+                  "zh-CN": "接待客人数",
+                  "zh-TW": "接待客人數"
+                },
                 "metricFormat": "plain",
                 "binding": {
                   "kind": "table-query",
@@ -4528,6 +4578,16 @@
               "h": 8,
               "config": {
                 "title": "Sales by hour",
+                "titles": {
+                  "en-US": "Sales by hour",
+                  "de-DE": "Umsatz nach Stunde",
+                  "fr-FR": "Ventes par heure",
+                  "da-DK": "Salg pr. time",
+                  "cs-CZ": "Tržby po hodinách",
+                  "ar-EG": "المبيعات حسب الساعة",
+                  "zh-CN": "每小时销售额",
+                  "zh-TW": "每小時銷售額"
+                },
                 "binding": {
                   "kind": "table-query",
                   "source": {
@@ -4571,6 +4631,16 @@
               "h": 8,
               "config": {
                 "title": "Payments",
+                "titles": {
+                  "en-US": "Payments",
+                  "de-DE": "Zahlungen",
+                  "fr-FR": "Paiements",
+                  "da-DK": "Betalinger",
+                  "cs-CZ": "Platby",
+                  "ar-EG": "المدفوعات",
+                  "zh-CN": "付款方式",
+                  "zh-TW": "付款方式"
+                },
                 "binding": {
                   "kind": "table-query",
                   "source": {
@@ -4606,6 +4676,16 @@
               "h": 8,
               "config": {
                 "title": "Right now",
+                "titles": {
+                  "en-US": "Right now",
+                  "de-DE": "Gerade jetzt",
+                  "fr-FR": "En ce moment",
+                  "da-DK": "Lige nu",
+                  "cs-CZ": "Právě teď",
+                  "ar-EG": "الآن",
+                  "zh-CN": "当前",
+                  "zh-TW": "目前"
+                },
                 "binding": {
                   "kind": "table-query",
                   "source": {
@@ -4647,6 +4727,16 @@
               "h": 8,
               "config": {
                 "title": "Today’s bookings",
+                "titles": {
+                  "en-US": "Today’s bookings",
+                  "de-DE": "Heutige Reservierungen",
+                  "fr-FR": "Réservations du jour",
+                  "da-DK": "Dagens reservationer",
+                  "cs-CZ": "Dnešní rezervace",
+                  "ar-EG": "حجوزات اليوم",
+                  "zh-CN": "今日预订",
+                  "zh-TW": "今日訂位"
+                },
                 "binding": {
                   "kind": "table-query",
                   "source": {
@@ -4685,6 +4775,16 @@
               "h": 8,
               "config": {
                 "title": "Best sellers",
+                "titles": {
+                  "en-US": "Best sellers",
+                  "de-DE": "Bestseller",
+                  "fr-FR": "Meilleures ventes",
+                  "da-DK": "Mest solgte",
+                  "cs-CZ": "Nejprodávanější",
+                  "ar-EG": "الأكثر مبيعًا",
+                  "zh-CN": "畅销品",
+                  "zh-TW": "暢銷品"
+                },
                 "binding": {
                   "kind": "table-query",
                   "source": {
@@ -4727,6 +4827,16 @@
               "h": 8,
               "config": {
                 "title": "Sold out now",
+                "titles": {
+                  "en-US": "Sold out now",
+                  "de-DE": "Jetzt ausverkauft",
+                  "fr-FR": "Épuisés en ce moment",
+                  "da-DK": "Udsolgt nu",
+                  "cs-CZ": "Právě vyprodáno",
+                  "ar-EG": "نفد الآن",
+                  "zh-CN": "当前售罄",
+                  "zh-TW": "目前售完"
+                },
                 "binding": {
                   "kind": "table-query",
                   "source": {
@@ -4764,6 +4874,16 @@
               "h": 8,
               "config": {
                 "title": "Shift and cash",
+                "titles": {
+                  "en-US": "Shift and cash",
+                  "de-DE": "Schicht und Kasse",
+                  "fr-FR": "Service et caisse",
+                  "da-DK": "Vagt og kasse",
+                  "cs-CZ": "Směna a pokladna",
+                  "ar-EG": "الوردية والصندوق",
+                  "zh-CN": "班次与现金",
+                  "zh-TW": "班次與現金"
+                },
                 "binding": {
                   "kind": "table-query",
                   "source": {
@@ -4796,6 +4916,16 @@
               "h": 8,
               "config": {
                 "title": "Refunds",
+                "titles": {
+                  "en-US": "Refunds",
+                  "de-DE": "Rückerstattungen",
+                  "fr-FR": "Remboursements",
+                  "da-DK": "Refusioner",
+                  "cs-CZ": "Vrácené platby",
+                  "ar-EG": "المبالغ المستردة",
+                  "zh-CN": "退款",
+                  "zh-TW": "退款"
+                },
                 "binding": {
                   "kind": "table-query",
                   "source": {
@@ -4832,6 +4962,16 @@
               "h": 8,
               "config": {
                 "title": "On shift",
+                "titles": {
+                  "en-US": "On shift",
+                  "de-DE": "Im Dienst",
+                  "fr-FR": "En service",
+                  "da-DK": "På vagt",
+                  "cs-CZ": "Na směně",
+                  "ar-EG": "في الوردية",
+                  "zh-CN": "在班",
+                  "zh-TW": "在班"
+                },
                 "binding": {
                   "kind": "table-query",
                   "source": {
