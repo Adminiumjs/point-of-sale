@@ -50,6 +50,51 @@ describe('demoJsonIssues', () => {
   it('checks icons against the card’s set when it is given', () => {
     expect(demoJsonIssues(GOOD, { ...CTX, icons: new Set(['receipt']) })).toEqual(['screens.till.pay: no icon "credit-card"']);
   });
+
+  // An app with two sides and its own clock: personas with icons, and a reset
+  // named the app's way rather than the card's "Start over".
+  const CLINIC = {
+    v: 1,
+    appKey: 'clinic',
+    base: '/demo/clinic-desk/app/',
+    frames: ['desktop', 'phone'],
+    screens: [
+      { id: 'find', view: 'find', icon: 'calendar-search', persona: 'patient', labels: all('Find a time') },
+      { id: 'day', view: 'day', icon: 'calendar-days', persona: 'clinic', labels: all('Day sheet') },
+      { id: 'notfound', view: 'notfound', icon: 'file-x', labels: all('404') },
+    ],
+    personas: [
+      { id: 'patient', icon: 'user-round', labels: all('Patient') },
+      { id: 'clinic', icon: 'clipboard-list', labels: all('Clinic') },
+    ],
+    clock: { advance: [{ id: '15m', labels: all('+15 min') }], reset: { labels: all('Back to Tuesday morning') } },
+  };
+  const CLINIC_CTX = { appKey: 'clinic', dir: 'clinic-desk' };
+
+  it('accepts personas with icons and a labelled reset', () => {
+    expect(demoJsonIssues(CLINIC, CLINIC_CTX)).toEqual([]);
+    expect(demoJsonIssues({ ...CLINIC, clock: { ...CLINIC.clock, reset: true } }, CLINIC_CTX)).toEqual([]);
+    expect(demoJsonIssues({ ...CLINIC, clock: { ...CLINIC.clock, reset: false } }, CLINIC_CTX)).toEqual([]);
+  });
+
+  it('checks a labelled reset like every other label', () => {
+    const sevenOnly = Object.fromEntries(Object.entries(all('Back to Tuesday morning')).filter(([l]) => l !== 'ar-EG'));
+    expect(demoJsonIssues({ ...CLINIC, clock: { ...CLINIC.clock, reset: { labels: sevenOnly } } }, CLINIC_CTX)).toEqual([
+      'clock.reset: no label in ar-EG',
+    ]);
+    expect(demoJsonIssues({ ...CLINIC, clock: { ...CLINIC.clock, reset: {} } }, CLINIC_CTX)).toEqual(['clock.reset: no labels']);
+    expect(demoJsonIssues({ ...CLINIC, clock: { ...CLINIC.clock, reset: 'Back to Tuesday' } }, CLINIC_CTX)).toEqual([
+      'clock.reset: "Back to Tuesday" is neither true, false nor {labels}',
+    ]);
+  });
+
+  it('checks a persona’s icon when it has one', () => {
+    const personas = [{ id: 'patient', icon: 'UserRound', labels: all('Patient') }, CLINIC.personas[1]];
+    expect(demoJsonIssues({ ...CLINIC, personas }, CLINIC_CTX)).toEqual(['personas.patient: "UserRound" is not an icon name']);
+    expect(demoJsonIssues(CLINIC, { ...CLINIC_CTX, icons: new Set(['calendar-search', 'calendar-days', 'file-x', 'user-round']) })).toEqual([
+      'personas.clinic: no icon "clipboard-list"',
+    ]);
+  });
 });
 
 describe('isDemoMessage', () => {
@@ -58,5 +103,12 @@ describe('isDemoMessage', () => {
     expect(isDemoMessage({ type: 'adminium:demo:hello', dv: 2, appKey: 'pos' })).toBe(false);
     expect(isDemoMessage({ type: 'adminium:embed:hello', dv: 1 })).toBe(false);
     expect(isDemoMessage('adminium:demo:reset')).toBe(false);
+  });
+
+  it('takes a state with or without the clock label and the overlay flag, at the same version', () => {
+    const state = { type: 'adminium:demo:state', dv: 1, screen: 'day', persona: 'clinic', mode: null, online: true, toggles: {}, locale: 'en-US', theme: 'light' };
+    expect(isDemoMessage(state)).toBe(true);
+    expect(isDemoMessage({ ...state, clockLabel: 'Tue 28 Jul · 09:20', overlay: true })).toBe(true);
+    expect(isDemoMessage({ ...state, clockLabel: 'Tue 28 Jul · 09:20', dv: 2 })).toBe(false);
   });
 });

@@ -11,7 +11,17 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { buildDemoJson, demoJsonPlugin, type DemoEmitOptions } from '../demo-emit.ts';
 import { DEMO_LOCALES, demoJsonIssues } from './demo-types.ts';
 
-const words: Record<string, string> = { 'nav.till': 'Till', 'nav.floor': 'Floor', 'do.pay': 'Take a payment', 'mode.cafe': 'Café', 'mode.shop': 'Shop' };
+const words: Record<string, string> = {
+  'nav.till': 'Till',
+  'nav.floor': 'Floor',
+  'do.pay': 'Take a payment',
+  'mode.cafe': 'Café',
+  'mode.shop': 'Shop',
+  'who.guest': 'Guest',
+  'who.staff': 'Staff',
+  'clock.15m': '+15 min',
+  'clock.reset': 'Back to this morning',
+};
 const MESSAGES = Object.fromEntries(DEMO_LOCALES.map((l) => [l, Object.fromEntries(Object.entries(words).map(([k, v]) => [k, `${v} (${l})`]))]));
 
 const OPTS: DemoEmitOptions = {
@@ -49,6 +59,22 @@ describe('buildDemoJson', () => {
     expect(() => buildDemoJson({ ...OPTS, messages })).toThrow('no cs-CZ string for "do.pay"');
     const { ['zh-TW']: _gone, ...seven } = MESSAGES;
     expect(() => buildDemoJson({ ...OPTS, messages: seven })).toThrow('no zh-TW messages');
+  });
+
+  it('writes persona icons and a reset named in all eight languages', () => {
+    const doc = buildDemoJson({
+      ...OPTS,
+      screens: [{ ...OPTS.screens[0]!, persona: 'staff' }],
+      personas: [{ id: 'guest', icon: 'user-round', labelKey: 'who.guest' }, { id: 'staff', labelKey: 'who.staff' }],
+      clock: { advance: [{ id: '15m', labelKey: 'clock.15m' }], reset: { labelKey: 'clock.reset' } },
+    });
+    expect(doc.personas).toEqual([
+      { id: 'guest', icon: 'user-round', labels: expect.objectContaining({ 'en-US': 'Guest (en-US)' }) },
+      { id: 'staff', labels: expect.objectContaining({ 'zh-TW': 'Staff (zh-TW)' }) },
+    ]);
+    expect(doc.clock?.reset).toEqual({ labels: expect.objectContaining({ 'ar-EG': 'Back to this morning (ar-EG)' }) });
+    expect(demoJsonIssues(doc, { appKey: 'pos', dir: 'point-of-sale' })).toEqual([]);
+    expect(buildDemoJson({ ...OPTS, clock: { advance: [], reset: true } }).clock?.reset).toBe(true);
   });
 });
 

@@ -47,10 +47,11 @@ export interface DemoEmitOptions {
     persona?: string;
     shortcuts?: (Labelled & { icon: string })[];
   })[];
-  personas?: Labelled[];
+  personas?: (Labelled & { icon?: string })[];
   modes?: { id: string; options: Labelled[] }[];
   toggles?: 'online'[];
-  clock?: { advance: Labelled[]; reset: boolean };
+  /** `reset: { labelKey }` names the reset the app's way; `true` leaves it to the card. */
+  clock?: { advance: Labelled[]; reset: boolean | { labelKey: string } };
   addOns?: { key: string; labelKey: string }[];
   /** `{ 'en-US': { key: string, … }, … }` — the app's flattened bundles, all eight. */
   messages: Record<string, Record<string, string>>;
@@ -92,10 +93,19 @@ export function buildDemoJson(opts: DemoEmitOptions): DemoJson {
         ? {}
         : { shortcuts: screen.shortcuts.map((s) => ({ id: s.id, icon: s.icon, labels: labels(s.labelKey) })) }),
     })),
-    ...(opts.personas === undefined ? {} : { personas: opts.personas.map(choice) }),
+    ...(opts.personas === undefined
+      ? {}
+      : { personas: opts.personas.map((p) => ({ id: p.id, ...(p.icon === undefined ? {} : { icon: p.icon }), labels: labels(p.labelKey) })) }),
     ...(opts.modes === undefined ? {} : { modes: opts.modes.map((m) => ({ id: m.id, options: m.options.map(choice) })) }),
     ...(opts.toggles === undefined ? {} : { toggles: [...opts.toggles] }),
-    ...(opts.clock === undefined ? {} : { clock: { advance: opts.clock.advance.map(choice), reset: opts.clock.reset } }),
+    ...(opts.clock === undefined
+      ? {}
+      : {
+          clock: {
+            advance: opts.clock.advance.map(choice),
+            reset: typeof opts.clock.reset === 'boolean' ? opts.clock.reset : { labels: labels(opts.clock.reset.labelKey) },
+          },
+        }),
     ...(opts.addOns === undefined ? {} : { addOns: opts.addOns.map((a) => ({ key: a.key, labels: labels(a.labelKey) })) }),
   };
 }

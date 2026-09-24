@@ -24,6 +24,12 @@
  *   4. card → app: `go`, `do`, `set`, `clock`, `reset`;
  *   5. app → card: `state`, after init and on every change.
  *
+ * `state` may also carry the app's clock as the card should print it
+ * (`clockLabel`, already in the page's language), and `overlay: true` while
+ * the app shows a dialog, sheet or panel — the card lives outside the app's
+ * frame, so it cannot see one, and it hides itself until the flag clears.
+ * Both are optional, so an app that sends neither still speaks `dv: 1`.
+ *
  * Both ends accept a message only from `location.origin`, from the expected
  * window, and with a matching `dv`; neither ever posts to `*`.
  */
@@ -71,6 +77,18 @@ export interface DemoChoice {
   labels: DemoLabels;
 }
 
+export interface DemoPersona extends DemoChoice {
+  /** lucide icon name, kebab-case; the card draws it beside the label. */
+  icon?: string;
+}
+
+/**
+ * Whether the card offers a reset, and what it is called: `true` uses the
+ * card's own words ("Start over"); `{labels}` names it the app's way ("Back to
+ * Tuesday morning"), in all eight languages.
+ */
+export type DemoClockReset = boolean | { labels: DemoLabels };
+
 export interface DemoJson {
   v: 1;
   appKey: string;
@@ -78,10 +96,10 @@ export interface DemoJson {
   base: string;
   frames: DemoFrame[];
   screens: DemoScreen[];
-  personas?: DemoChoice[];
+  personas?: DemoPersona[];
   modes?: { id: string; options: DemoChoice[] }[];
   toggles?: 'online'[];
-  clock?: { advance: DemoChoice[]; reset: boolean };
+  clock?: { advance: DemoChoice[]; reset: DemoClockReset };
   addOns?: { key: string; labels: DemoLabels }[];
 }
 
@@ -124,6 +142,10 @@ export type DemoMessage =
       toggles: Record<string, boolean>;
       locale: string;
       theme: DemoTheme;
+      /** The app's clock, as the card prints it ("Tue 28 Jul · 09:20"). */
+      clockLabel?: string;
+      /** True while the app shows a dialog, sheet or panel: the card hides. */
+      overlay?: boolean;
     };
 
 export type DemoMessageType = DemoMessage['type'];
@@ -226,7 +248,10 @@ export function demoJsonIssues(raw: unknown, ctx: DemoJsonContext): string[] {
   }
   const personas = doc.personas ?? [];
   unique('personas', personas.map((p) => p?.id));
-  for (const persona of personas) labels(`personas.${String(persona?.id)}`, persona?.labels);
+  for (const persona of personas) {
+    if (persona?.icon !== undefined) icon(`personas.${String(persona.id)}`, persona.icon);
+    labels(`personas.${String(persona?.id)}`, persona?.labels);
+  }
   for (const screen of screens) {
     if (screen?.persona !== undefined && !personas.some((p) => p?.id === screen.persona)) {
       out.push(`screens.${String(screen.id)}: persona "${screen.persona}" is not declared`);
@@ -242,6 +267,9 @@ export function demoJsonIssues(raw: unknown, ctx: DemoJsonContext): string[] {
   if (doc.clock !== undefined) {
     unique('clock.advance', (doc.clock.advance ?? []).map((a) => a?.id));
     for (const step of doc.clock.advance ?? []) labels(`clock.${String(step?.id)}`, step?.labels);
+    const reset: unknown = doc.clock.reset;
+    if (typeof reset === 'object' && reset !== null && !Array.isArray(reset)) labels('clock.reset', (reset as { labels?: unknown }).labels);
+    else if (typeof reset !== 'boolean') out.push(`clock.reset: ${JSON.stringify(reset)} is neither true, false nor {labels}`);
   }
   for (const addOn of doc.addOns ?? []) {
     if (!(ctx.addOnKeys ?? new Set<string>()).has(addOn?.key)) out.push(`addOns: "${String(addOn?.key)}" is not an add-on the marketplace knows`);
