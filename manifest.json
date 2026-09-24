@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "key": "pos",
   "name": "Point of Sale",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": {
     "id": "adminium",
     "name": "Adminium",
@@ -17,7 +17,7 @@
     "hospitality"
   ],
   "compatibility": {
-    "minAdminiumVersion": "0.3.0-rc.4",
+    "minAdminiumVersion": "0.3.0",
     "engines": [
       "sqlite",
       "postgres",
