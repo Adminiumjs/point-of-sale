@@ -313,8 +313,10 @@ async function boot(): Promise<void> {
     // Gift cards are looked up by their code, on demand.
     const { setGiftCards, portGiftCards } = await import('./data/giftCards');
     setGiftCards(portGiftCards(client));
-    const { usePos } = await import('./state/store');
+    const [{ usePos }, { openInBusinessType }] = await Promise.all([import('./state/store'), import('./state/businessType')]);
     usePos.setState((st) => ({ rewards, members: member === null ? st.members : { ...st.members, [member.id]: member } }));
+    // A shop set up as retail opens in retail: the store's default is restaurant.
+    openInBusinessType(staffConfig?.settings, usePos.getState());
     // Every action at the till is saved as the signed-in staff member, from here on.
     if (transport !== null) {
       const tables = { ...WRITE_TABLES, ...(staffConfig?.tables ?? {}) };
