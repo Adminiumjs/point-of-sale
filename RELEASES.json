@@ -30,6 +30,12 @@
       "version": "0.2.1",
       "integrity": "sha512-d+dV1cieLob+ZGaHEAcZ46odhkQ97UBNXJEY/1d/oKWZpgcaGAednNPvfUGBGbv7XPNgDk+97EZQWWfl04jwTQ==",
       "publishedAt": "2026-09-24T22:15:47.000Z"
+    },
+    {
+      "name": "@adminiumjs/app-pos",
+      "version": "0.2.2",
+      "integrity": "sha512-HYtcjcMeVpfjITNUCK9bwaDtLp2pF0BQNqrD8uwTOgzh6EHI21LHQ7bgOau526xMWddYtRJ/S8Dh4wlj3gz0nw==",
+      "publishedAt": "2026-09-25T15:34:35.000Z"
     }
   ]
 }
