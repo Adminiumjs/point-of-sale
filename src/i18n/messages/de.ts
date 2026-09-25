@@ -347,7 +347,6 @@ export const de: Translated<typeof enUS> = {
   'toast.cardSharePaid': 'Kartenanteil bezahlt · {rem} offen',
   'toast.walletSharePaid': 'Wallet-Anteil bezahlt · {rem} offen',
   'toast.printSent': 'Druck simuliert · nur Demo',
-  'toast.receiptSentEmail': 'Beleg per E-Mail simuliert · nur Demo',
   'toast.receiptSentText': 'Beleg per SMS simuliert · nur Demo',
 
   // ---- wave 1 and the Guests side (55-T58–T62) ----
@@ -795,6 +794,40 @@ export const de: Translated<typeof enUS> = {
   'complete.guestWantsPrint': 'Der Gast möchte einen gedruckten Beleg',
   'complete.guestWantsEmail': 'Der Gast möchte den Beleg per E-Mail: {to}',
   'complete.guestWantsText': 'Der Gast möchte den Beleg per SMS: {to}',
+
+  // ---- add-ons: emailed receipts and shelf labels ----
+  'complete.emailTitle': 'Beleg per E-Mail senden',
+  'complete.emailLabel': 'E-Mail-Adresse des Gastes',
+  'complete.emailSend': 'Beleg senden',
+  'complete.emailInvalid': 'Das ist keine E-Mail-Adresse',
+  'complete.emailQueued': 'Beleg ist unterwegs an {to}',
+  'complete.emailedTo': 'Per E-Mail an {to}',
+  'complete.emailNote': 'Adminium verschickt ihn mit dem Beleg im Anhang. Die Adresse bleibt nur bei dieser einen E-Mail und wird für nichts anderes verwendet.',
+  'nav.labels': 'Regaletiketten',
+  'labels.sub': 'Ein Etikettenbogen aus dem Barcode eines Artikels',
+  'labels.search': 'Artikel oder Barcode suchen',
+  'labels.print': 'Etikett drucken',
+  'labels.printFor': 'Etikett für {name} drucken',
+  'labels.drawing': 'Wird gesetzt …',
+  'labels.open': 'Etikettenbogen öffnen',
+  'labels.noBarcode': '{count} Artikel hat keinen Barcode. Tragen Sie ihn in Adminium auf der Seite „Menü“ ein, um das Etikett zu drucken.|{count} Artikel haben keinen Barcode. Tragen Sie ihn in Adminium auf der Seite „Menü“ ein, um die Etiketten zu drucken.',
+  'labels.none': 'Kein Artikel passt',
+  'labels.errLatin': '„{name}“ kann nicht auf ein Etikett: Etikettenbögen drucken nur einfache Buchstaben und können {letters} nicht drucken. Benennen Sie den Artikel in einfachen Buchstaben um, um das Etikett zu drucken.',
+  'labels.errCode': 'Der Barcode {code} wurde abgelehnt: Er ist keine gültige EAN-13- oder Code-128-Nummer. Prüfen Sie ihn in Adminium auf der Seite „Menü“.',
+  'labels.errMissing': '{name} hat keinen Barcode zum Drucken.',
+  'labels.errOff': 'Barcode Labels ist für Point of Sale ausgeschaltet, daher kann kein Etikett gesetzt werden.',
+  'labels.count': 'Wie viele Etiketten',
+  'labels.countHelp': 'Von 1 bis {max}. Ein Bogen fasst 24; weitere kommen auf weitere Seiten.',
+  'labels.countInvalid': 'Geben Sie eine ganze Zahl von 1 bis {max} ein.',
+  'labels.errGone': 'Dieser Artikel ist nicht mehr im Menü.',
+  'labels.errOffline': 'Adminium ist nicht erreichbar. Versuchen Sie es erneut, sobald die Kasse wieder online ist.',
+  'labels.errOther': 'Das Etikett konnte nicht gesetzt werden: {detail}',
+
+
+
+
+
+
 
   // ---- wave 2: barcode scanning (55-T74) ----
   'scan.toastUnknown': 'Kein Artikel hat den Barcode {code}',

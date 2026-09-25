@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePos } from '../state/store';
 import type { View } from '../data/types';
+import type { Features } from '../features';
 import { useT, type MessageKey } from '../i18n';
 import { Icon } from './Icon';
 import { css } from './css';
@@ -24,7 +25,12 @@ const TOOLS: { v: View; label: MessageKey; icon: string }[] = [
   { v: 'eod', label: 'nav.endOfDay', icon: 'chart-column' },
   { v: 'staff', label: 'nav.staff', icon: 'users' },
   { v: 'menu86', label: 'nav.menu86', icon: 'ban' },
+  // A retail shop's shelf labels, while Barcode Labels is attached (features.ts).
+  { v: 'labels', label: 'nav.labels', icon: 'tag' },
 ];
+
+/** The tools this till offers: shelf labels only in retail, and only while Barcode Labels is attached. */
+export const toolsFor = (retail: boolean, features: Features) => TOOLS.filter((x) => x.v !== 'labels' || (retail && features['shelf-labels']));
 
 const seg = (on: boolean) =>
   'width:44px;height:40px;border-radius:10px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;background:' +
@@ -139,7 +145,7 @@ export function TillNav() {
             {SCREENS.map((x) => item(x))}
             <div role="separator" style={css('height:1px;margin:6px 8px;background:var(--border);')} />
           </div>
-          {TOOLS.map((x) => item(x))}
+          {toolsFor(retail, s.features).map((x) => item(x))}
         </div>
       )}
     </div>

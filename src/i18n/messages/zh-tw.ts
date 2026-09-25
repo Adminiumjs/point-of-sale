@@ -340,7 +340,6 @@ export const zhTw: Translated<typeof enUS> = {
   'toast.cardSharePaid': '刷卡分攤已付 · 剩餘 {rem}',
   'toast.walletSharePaid': '電子錢包分攤已付 · 剩餘 {rem}',
   'toast.printSent': '列印已模擬 · 僅為示範',
-  'toast.receiptSentEmail': '電子郵件收據已模擬 · 僅為示範',
   'toast.receiptSentText': '簡訊收據已模擬 · 僅為示範',
 
   // ---- wave 1 and the Guests side (55-T58–T62) ----
@@ -788,6 +787,40 @@ export const zhTw: Translated<typeof enUS> = {
   'complete.guestWantsPrint': '顧客需要紙本收據',
   'complete.guestWantsEmail': '顧客希望以電子郵件收到收據：{to}',
   'complete.guestWantsText': '顧客希望以簡訊收到收據：{to}',
+
+  // ---- add-ons: emailed receipts and shelf labels ----
+  'complete.emailTitle': '以電子郵件寄送收據',
+  'complete.emailLabel': '顧客的電子郵件',
+  'complete.emailSend': '寄送收據',
+  'complete.emailInvalid': '這不是電子郵件地址',
+  'complete.emailQueued': '收據正寄往 {to}',
+  'complete.emailedTo': '已以電子郵件寄往 {to}',
+  'complete.emailNote': 'Adminium 會寄出這封郵件並附上收據。這個地址只隨這一封郵件保存，不做其他用途。',
+  'nav.labels': '貨架標籤',
+  'labels.sub': '依商品條碼產生一張標籤紙',
+  'labels.search': '尋找商品或條碼',
+  'labels.print': '列印標籤',
+  'labels.printFor': '為 {name} 列印標籤',
+  'labels.drawing': '正在排版…',
+  'labels.open': '開啟標籤紙',
+  'labels.noBarcode': '{count} 項商品沒有條碼。請在 Adminium 的「菜單」頁面加上條碼後再列印標籤。',
+  'labels.none': '沒有符合的商品',
+  'labels.errLatin': '「{name}」無法印在標籤上：標籤紙只能列印基本拉丁字母，無法列印 {letters}。請用基本拉丁字母重新命名商品後再列印標籤。',
+  'labels.errCode': '條碼 {code} 遭到拒絕：它不是有效的 EAN-13 或 Code 128 號碼。請在 Adminium 的「菜單」頁面檢查。',
+  'labels.errMissing': '{name} 沒有可列印的條碼。',
+  'labels.errOff': 'Barcode Labels 已對 Point of Sale 關閉，無法產生標籤。',
+  'labels.count': '標籤數量',
+  'labels.countHelp': '1 到 {max}。一張可放 24 個，多出的會排到後面幾頁。',
+  'labels.countInvalid': '請輸入 1 到 {max} 之間的整數。',
+  'labels.errGone': '這項商品已不在菜單上。',
+  'labels.errOffline': '無法連線到 Adminium。請在收銀機恢復連線後再試一次。',
+  'labels.errOther': '標籤無法產生：{detail}',
+
+
+
+
+
+
 
   // ---- wave 2: barcode scanning (55-T74) ----
   'scan.toastUnknown': '沒有條碼為 {code} 的品項',

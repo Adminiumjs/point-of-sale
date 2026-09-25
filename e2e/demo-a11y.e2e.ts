@@ -57,6 +57,18 @@ const STOPS: Stop[] = [
   { label: 'payment, card declined', frame: 'tablet', screen: 'payment', shortcut: 'declined' },
   { label: 'reservations, new booking', frame: 'tablet', screen: 'reservations', shortcut: 'new-reservation' },
   { label: 'manage, booking found', frame: 'phone', screen: 'manage', shortcut: 'prefill-code' },
+  // The receipt emailed to a guest: the address form under the receipt, on a tablet and a phone.
+  ...(['tablet', 'phone'] as const).map(
+    (frame): Stop => ({
+      label: `complete, email the receipt (${frame})`,
+      frame,
+      screen: 'complete',
+      act: async (app) => {
+        await app.locator('button[aria-controls="receipt-mail"]').click();
+        await expect(app.locator('#receipt-mail input[type="email"]')).toBeVisible();
+      },
+    }),
+  ),
   // The customer display's pad (its tip group's last choice, Custom) and its sign-and-receipt step.
   {
     label: 'display, custom tip pad',

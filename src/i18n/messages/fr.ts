@@ -345,7 +345,6 @@ export const fr: Translated<typeof enUS> = {
   'toast.cardSharePaid': 'Part carte payée · reste {rem}',
   'toast.walletSharePaid': 'Part portefeuille payée · reste {rem}',
   'toast.printSent': 'Impression simulée · démo seulement',
-  'toast.receiptSentEmail': 'Reçu par e-mail simulé · démo seulement',
   'toast.receiptSentText': 'Reçu par SMS simulé · démo seulement',
 
   // ---- wave 1 and the Guests side (55-T58–T62) ----
@@ -793,6 +792,40 @@ export const fr: Translated<typeof enUS> = {
   'complete.guestWantsPrint': 'Le client a demandé un reçu imprimé',
   'complete.guestWantsEmail': 'Le client a demandé le reçu par e-mail : {to}',
   'complete.guestWantsText': 'Le client a demandé le reçu par SMS : {to}',
+
+  // ---- add-ons: emailed receipts and shelf labels ----
+  'complete.emailTitle': 'Envoyer le reçu par e-mail',
+  'complete.emailLabel': 'Adresse e-mail du client',
+  'complete.emailSend': 'Envoyer le reçu',
+  'complete.emailInvalid': 'Ce n’est pas une adresse e-mail',
+  'complete.emailQueued': 'Reçu en route vers {to}',
+  'complete.emailedTo': 'Envoyé par e-mail à {to}',
+  'complete.emailNote': 'Adminium l’envoie avec le reçu en pièce jointe. L’adresse reste attachée à ce seul e-mail et ne sert à rien d’autre.',
+  'nav.labels': 'Étiquettes de rayon',
+  'labels.sub': 'Une feuille d’étiquettes à partir du code-barres d’un article',
+  'labels.search': 'Chercher un article ou un code-barres',
+  'labels.print': 'Imprimer l’étiquette',
+  'labels.printFor': 'Imprimer une étiquette pour {name}',
+  'labels.drawing': 'Mise en page…',
+  'labels.open': 'Ouvrir la feuille d’étiquettes',
+  'labels.noBarcode': '{count} article n’a pas de code-barres. Ajoutez-le sur la page Menu d’Adminium pour imprimer son étiquette.|{count} articles n’ont pas de code-barres. Ajoutez-le sur la page Menu d’Adminium pour imprimer leurs étiquettes.',
+  'labels.none': 'Aucun article ne correspond',
+  'labels.errLatin': '« {name} » ne peut pas figurer sur une étiquette : les feuilles d’étiquettes n’impriment que des lettres simples et ne peuvent pas imprimer {letters}. Renommez l’article en lettres simples pour imprimer son étiquette.',
+  'labels.errCode': 'Le code-barres {code} a été refusé : ce n’est pas un numéro EAN-13 ou Code 128 valide. Vérifiez-le sur la page Menu d’Adminium.',
+  'labels.errMissing': '{name} n’a pas de code-barres à imprimer.',
+  'labels.errOff': 'Barcode Labels est désactivé pour Point of Sale : aucune étiquette ne peut être mise en page.',
+  'labels.count': 'Combien d’étiquettes',
+  'labels.countHelp': 'De 1 à {max}. Une feuille en contient 24 ; les autres vont sur des pages suivantes.',
+  'labels.countInvalid': 'Saisissez un nombre entier de 1 à {max}.',
+  'labels.errGone': 'Cet article n’est plus au menu.',
+  'labels.errOffline': 'Impossible de joindre Adminium. Réessayez quand la caisse sera de nouveau en ligne.',
+  'labels.errOther': 'L’étiquette n’a pas pu être mise en page : {detail}',
+
+
+
+
+
+
 
   // ---- wave 2: barcode scanning (55-T74) ----
   'scan.toastUnknown': 'Aucun article n’a le code-barres {code}',

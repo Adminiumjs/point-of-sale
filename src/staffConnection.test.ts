@@ -1,5 +1,5 @@
 /**
- * The staff surface's connection binding (29 D9).
+ * The staff surface's connection binding.
  *
  * Every case here is a way the answer can be ABSENT, because absent is the
  * common case — unbound surfaces, and any Adminium older than the binding —
@@ -101,6 +101,9 @@ describe("loadStaffConfig", () => {
       currency: "EUR",
       user: { id: "usr_1", name: "Cara", email: "cara@example.com" },
       csrfToken: "tok",
+      publicKeys: { kiosk: "adm_pub_k", broken: 3 },
+      access: { tables: { tickets: ["read", "update", "fly"], odd: "all" }, roles: [{ slug: "pos-cashier", name: "POS cashier" }, { name: "no slug" }] },
+      addOns: { invoices: { version: "1.0.3", settings: { business_name: "Daybreak" } }, "barcode-labels": { version: 2, settings: "none" }, odd: true },
     });
     expect(await loadStaffConfig({ hostedStaff: true, base: "/apps/pos/staff/", fetchImpl })).toEqual({
       connectionId: "con_42",
@@ -113,7 +116,19 @@ describe("loadStaffConfig", () => {
       currency: "EUR",
       user: { id: "usr_1", name: "Cara", email: "cara@example.com" },
       csrfToken: "tok",
+      publicKeys: { kiosk: "adm_pub_k" },
+      access: { tables: { tickets: ["read", "update"] }, roles: [{ slug: "pos-cashier", name: "POS cashier" }] },
+      addOns: { invoices: { version: "1.0.3", settings: { business_name: "Daybreak" } }, "barcode-labels": { version: null, settings: {} } },
     });
+  });
+
+  it("says nothing of access when the server said nothing, so no button is hidden on a guess", async () => {
+    const fetchImpl = ok({ connectionId: "con_42", tables: {} });
+    const config = await loadStaffConfig({ hostedStaff: true, base: "/apps/pos/staff/", fetchImpl });
+    expect(config?.access).toBeNull();
+    expect(config?.publicKeys).toEqual({});
+    // No add-on attached, or an Adminium too old to say: every feature built on one is off.
+    expect(config?.addOns).toEqual({});
   });
 
   it("is null outside a hosted staff build", async () => {

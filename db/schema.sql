@@ -5,6 +5,7 @@
 -- by hand: change the manifest and regenerate. src/data/sample-drift.test.ts
 -- fails when this file and the manifest disagree.
 
+DROP TABLE IF EXISTS pos_messages CASCADE;
 DROP TABLE IF EXISTS pos_settings CASCADE;
 DROP TABLE IF EXISTS pos_booking_rules CASCADE;
 DROP TABLE IF EXISTS pos_gift_card_ledger CASCADE;
@@ -160,6 +161,7 @@ CREATE TABLE pos_tickets (
   tax NUMERIC(12, 2) NOT NULL DEFAULT 0,
   tip NUMERIC(12, 2) NOT NULL DEFAULT 0,
   total NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  charged NUMERIC(12, 2),
   reservation_id INTEGER REFERENCES pos_reservations (id),
   customer_id INTEGER REFERENCES pos_customers (id),
   channel TEXT CHECK (channel IN ('till', 'phone', 'web', 'app')),
@@ -295,6 +297,19 @@ CREATE TABLE pos_settings (
   receipt_footer VARCHAR(200)
 );
 
+CREATE TABLE pos_messages (
+  id UUID PRIMARY KEY,
+  kind TEXT NOT NULL DEFAULT 'receipt' CHECK (kind IN ('receipt')),
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'sent', 'failed', 'skipped')),
+  to_address VARCHAR(254),
+  language VARCHAR(16),
+  ticket_id INTEGER REFERENCES pos_tickets (id),
+  customer_id INTEGER REFERENCES pos_customers (id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  sent_at TIMESTAMPTZ,
+  error TEXT
+);
+
 CREATE INDEX idx_menu_items_category_id ON pos_menu_items (category_id);
 CREATE INDEX idx_modifier_groups_item_id ON pos_modifier_groups (item_id);
 CREATE INDEX idx_modifiers_group_id ON pos_modifiers (group_id);
@@ -329,3 +344,5 @@ CREATE INDEX idx_loyalty_ledger_staff_id ON pos_loyalty_ledger (staff_id);
 CREATE INDEX idx_gift_card_ledger_card_id ON pos_gift_card_ledger (card_id);
 CREATE INDEX idx_gift_card_ledger_ticket_id ON pos_gift_card_ledger (ticket_id);
 CREATE INDEX idx_gift_card_ledger_staff_id ON pos_gift_card_ledger (staff_id);
+CREATE INDEX idx_messages_ticket_id ON pos_messages (ticket_id);
+CREATE INDEX idx_messages_customer_id ON pos_messages (customer_id);

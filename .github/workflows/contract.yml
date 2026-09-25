@@ -1,0 +1,108 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Point of Sale's own contract check — beside `ci.yml`, which is the fleet's
+# synced workflow (build, the suite, the manifest) and is never hand-edited.
+#
+# `src/contract/contract.test.ts` installs this repo's manifest on a BUILT
+# Adminium beside the two add-ons it suggests (Invoices & Receipts, Barcode
+# Labels), on SQLite, Postgres and MySQL, and drives what the till does over
+# HTTP: the install check's suggestions, the staff config's add-ons, a paid
+# ticket's amount with its tip, an emailed receipt carrying the 80 mm receipt,
+# a sheet of shelf labels and each of its refusals, and both add-ons switched
+# off. It skips without the two checkouts; here `ADMINIUM_REQUIRE_CONTRACT=1`
+# makes a skip a failure, so it cannot go quietly green.
+#
+# The add-ons are taken at the release the manifest's ranges name
+# (`ADD_ONS_REF`). Both product checkouts are moved out of the workspace before
+# the suite runs: vitest collects every `*.test.ts` under the repo root, and
+# the products' own suites are not this repo's to run.
+
+name: contract
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  ADD_ONS_REF: v1.0.4
+
+jobs:
+  contract:
+    name: three-engine contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check out Adminium
+        uses: actions/checkout@v4
+        with:
+          repository: MoSofi/Adminium
+          path: .adminium-product
+
+      - name: Check out the add-ons, at the release the manifest names
+        uses: actions/checkout@v4
+        with:
+          repository: Adminiumjs/add-ons
+          ref: ${{ env.ADD_ONS_REF }}
+          path: .add-ons
+
+      # The e2e boot script serves the built server and the built dashboard, on
+      # the engine it is asked for — the same composition `adminium start` runs.
+      - name: Build Adminium (the server, the dashboard, the e2e boot)
+        run: |
+          cd .adminium-product
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm turbo run build --filter="@adminium/e2e..."
+
+      - name: Build the add-ons
+        run: |
+          cd .add-ons
+          npm ci
+          npm run build
+
+      - name: Move both checkouts out of the workspace
+        run: |
+          mv "$GITHUB_WORKSPACE/.adminium-product" "$RUNNER_TEMP/adminium-product"
+          mv "$GITHUB_WORKSPACE/.add-ons" "$RUNNER_TEMP/add-ons"
+
+      - name: The contract, on three engines
+        env:
+          ADMINIUM_REPO: ${{ runner.temp }}/adminium-product
+          ADD_ONS_REPO: ${{ runner.temp }}/add-ons
+          ADMINIUM_REQUIRE_CONTRACT: "1"
+          TEST_POSTGRES_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+          TEST_MYSQL_URL: mysql://root@127.0.0.1:3306
+        run: npx vitest run src/contract

@@ -24,6 +24,7 @@ import { CloseShift } from '../screens/CloseShift';
 import { EndOfDay } from '../screens/EndOfDay';
 import { StaffClock } from '../screens/StaffClock';
 import { Menu86 } from '../screens/Menu86';
+import { ShelfLabels } from '../screens/ShelfLabels';
 import { Loyalty } from '../screens/Loyalty';
 import { GiftCards } from '../screens/GiftCards';
 import { Pickup, PickupSheet } from '../screens/Pickup';
@@ -78,6 +79,7 @@ const SCREENS = {
   eod: EndOfDay,
   staff: StaffClock,
   menu86: Menu86,
+  labels: ShelfLabels,
   loyalty: Loyalty,
   giftcards: GiftCards,
   pickup: Pickup,

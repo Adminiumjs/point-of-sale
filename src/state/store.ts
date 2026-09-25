@@ -14,7 +14,8 @@ import { t } from '../i18n/ambient';
 import { source } from '../data/source';
 import { seedTicket } from '../data/demo';
 import { dbKey, type SinkError, type SinkRow } from '../data/sink';
-import { tenantZone } from '../i18n/ambient';
+import { locale, tenantZone } from '../i18n/ambient';
+import { DEMO_FEATURES, NO_FEATURES, type Features } from '../features';
 import { DEMO, HOSTED } from '../surface';
 import { bookingDays, seatFor, slotFull } from './bookings';
 import { demoMembers, demoRewards, loyalty } from '../data/loyalty';
@@ -141,6 +142,8 @@ export interface PosState {
 
   // sale + kitchen
   lastSale: Sale | null;
+  /** What the add-ons attached to this till switch on (features.ts). */
+  features: Features;
   kds: KdsOrder[];
 
   toast: Toast | null;
@@ -298,8 +301,15 @@ export interface PosState {
   onCharge: () => void;
   newOrder: () => void;
   printReceipt: () => void;
-  /** Channel id, not display copy — the toast is looked up from it. */
-  sendReceipt: (kind: 'email' | 'text') => void;
+  /** A texted receipt: the demo's only, until a text-message add-on exists. */
+  sendReceipt: (kind: 'text') => void;
+  /**
+   * Email the receipt of the sale that just closed to the guest's address:
+   * one message in the outbox, which Adminium sends with the receipt drawn by
+   * Invoices & Receipts attached. `invalid` for an address that is not one,
+   * `off` while the feature is off, `none` with no saved sale to send.
+   */
+  emailReceipt: (to: string) => 'queued' | 'invalid' | 'off' | 'none';
 
   bumpK: (n: number) => void;
   openTable: (t: TableInfo) => void;
@@ -456,6 +466,14 @@ function demoGiftCode(): string {
   for (let i = 0; i < 8; i += 1) code += alphabet[Math.floor(Math.random() * alphabet.length)];
   return code;
 }
+
+/**
+ * An address a receipt can be sent to: something@somewhere.tld, no spaces, at
+ * most 254 characters. Deliberately loose — the mail server is the judge of an
+ * address; this only catches a name or a number typed into the wrong field.
+ */
+export const isEmailAddress = (value: string): boolean =>
+  value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 const initialTheme = (): Theme => {
   try {
@@ -756,6 +774,8 @@ export const usePos = create<PosState>()((set, get) => {
     const member = s.ticket.rid === undefined ? undefined : settlePoints(s, s.ticket.rid);
     if (s.ticket.rid !== undefined) settleGiftLoads(s, s.ticket.rid);
     const sale: Sale = {
+      ...(s.ticket.rid === undefined ? {} : { rid: s.ticket.rid }),
+      ...(s.ticket.customerId === undefined ? {} : { customerId: s.ticket.customerId }),
       number: s.ticket.number,
       table: s.ticket.table,
       items: s.ticket.items.map((x) => ({
@@ -952,6 +972,7 @@ export const usePos = create<PosState>()((set, get) => {
     splitCustom: '',
 
     lastSale: null,
+    features: DEMO ? DEMO_FEATURES : NO_FEATURES,
     kds: source.kitchenOrders(),
 
     toast: null,
@@ -1487,8 +1508,45 @@ export const usePos = create<PosState>()((set, get) => {
     },
     // To whatever printer the tablet can reach; the print stylesheet sizes it for an 80 mm roll.
     printReceipt: () => printOnly('receipt'),
-    sendReceipt: (kind) =>
-      get().showToast(t(kind === 'email' ? 'toast.receiptSentEmail' : 'toast.receiptSentText')),
+    sendReceipt: () => get().showToast(t('toast.receiptSentText')),
+    emailReceipt: (raw) => {
+      const s = get();
+      if (!s.features['emailed-receipts']) return 'off';
+      const sale = s.lastSale;
+      if (sale === null || sale.rid === undefined) return 'none';
+      const to = raw.trim();
+      if (!isEmailAddress(to)) return 'invalid';
+      /*
+       * One row in the outbox, and nothing else. The address goes only there —
+       * a personal column Adminium masks for anyone who does not need it — and
+       * the ticket keeps no copy. Queued behind the ticket's own writes, so a
+       * sale still on its way to the server is saved before its receipt is
+       * asked for; offline, it waits with them.
+       */
+      const rid = sale.rid;
+      void outbox().insert(
+        rid,
+        'messages',
+        {
+          id: deviceKey(),
+          kind: 'receipt',
+          status: 'queued',
+          to_address: to,
+          language: locale(),
+          ticket_id: rid,
+          ...(sale.customerId === undefined ? {} : { customer_id: dbKey(sale.customerId) }),
+        },
+        {
+          onRefused: (error) => {
+            set((st) => ({ lastSale: st.lastSale?.rid === rid ? { ...st.lastSale, emailedTo: (st.lastSale.emailedTo ?? []).filter((x) => x !== to) } : st.lastSale }));
+            refused(error);
+          },
+        },
+      );
+      set((st) => ({ lastSale: st.lastSale?.rid === rid ? { ...st.lastSale, emailedTo: [...(st.lastSale.emailedTo ?? []).filter((x) => x !== to), to] } : st.lastSale }));
+      get().showToast(t('complete.emailQueued', { to }), 'success');
+      return 'queued';
+    },
 
     // ---- kitchen ----
     bumpK: (n) => {

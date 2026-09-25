@@ -313,14 +313,23 @@ async function boot(): Promise<void> {
     // Gift cards are looked up by their code, on demand.
     const { setGiftCards, portGiftCards } = await import('./data/giftCards');
     setGiftCards(portGiftCards(client));
-    const [{ usePos }, { openInBusinessType }] = await Promise.all([import('./state/store'), import('./state/businessType')]);
+    const [{ usePos }, { openInBusinessType }, { featuresOf }] = await Promise.all([
+      import('./state/store'),
+      import('./state/businessType'),
+      import('./features'),
+    ]);
     usePos.setState((st) => ({ rewards, members: member === null ? st.members : { ...st.members, [member.id]: member } }));
     // A shop set up as retail opens in retail: the store's default is restaurant.
     openInBusinessType(staffConfig?.settings, usePos.getState());
+    // What the add-ons attached to this app switch on: an emailed receipt, shelf labels.
+    usePos.setState({ features: featuresOf(staffConfig?.addOns) });
     // Every action at the till is saved as the signed-in staff member, from here on.
     if (transport !== null) {
       const tables = { ...WRITE_TABLES, ...(staffConfig?.tables ?? {}) };
       setSink(sessionSink(transport, tables));
+      // Label sheets are drawn by Adminium, asked for through the same session.
+      const { setDocuments, portDocuments } = await import('./data/documents');
+      setDocuments(portDocuments(transport));
       /*
        * LIVE UPDATES: other tills, the kitchen screen and guests' bookings. The
        * store reads the source at module scope, so it (and what writes into it)

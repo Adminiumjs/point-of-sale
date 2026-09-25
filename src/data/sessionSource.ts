@@ -31,12 +31,12 @@
  *
  * ─── Where the tenant's timezone comes from ─────────────────────────────────
  *
- * The CONNECTION carries it (28-T34). This transport already fetches
+ * The CONNECTION carries it. This transport already fetches
  * `/api/v1/connections` to discover which database the app reads, so the zone
  * arrives on the same response with no extra request and nothing to configure
  * in the build.
  *
- * It was a build argument until 28-T34, which made a property of the BUSINESS a
+ * It used to be a build argument, which made a property of the BUSINESS a
  * property of the artifact: changing your timezone meant rebuilding the front
  * end. The one answer that is always wrong is
  * `Intl.DateTimeFormat().resolvedOptions().timeZone` — that is the READER's
@@ -99,6 +99,27 @@ export interface SessionPortOptions {
   refreshToken?: () => Promise<string | null>;
   /** Test seam. */
   fetchImpl?: typeof fetch;
+  /** Test seam: how a read waits out a rate limit. */
+  sleep?: (ms: number) => Promise<void>;
+}
+
+/*
+ * A READ REFUSED FOR RATE is read again. Adminium answers 429 before it runs
+ * anything, so repeating a GET is safe, and the desk opening needs a burst of
+ * them: a desk that meets the limit while it starts must wait and go on, not
+ * stop on a screen that says "try again in 15 seconds" and never does. Twice,
+ * after what `Retry-After` asks (capped), then the refusal stands. A write is
+ * never repeated here: the person sees it refused and decides.
+ */
+const RATE_RETRIES = 2;
+const RATE_WAIT_CAP_MS = 30_000;
+const RATE_WAIT_DEFAULT_MS = 5_000;
+
+/** How long a 429 asks to wait, from `Retry-After` in seconds; a default when it says nothing usable. */
+export function rateLimitWait(retryAfter: string | null): number {
+  const seconds = retryAfter === null ? Number.NaN : Number(retryAfter);
+  if (!Number.isFinite(seconds) || seconds < 0) return RATE_WAIT_DEFAULT_MS;
+  return Math.min(Math.ceil(seconds * 1000), RATE_WAIT_CAP_MS);
 }
 
 /*
@@ -121,7 +142,7 @@ interface BootstrapReply {
 interface ConnectionRow {
   id: string;
   name?: string;
-  /** 28-T34. Null when the operator has not configured one. */
+  /** The tenant's timezone. Null when the operator has not configured one. */
   timezone?: string | null;
   /**
    * Who chose `timezone` (Adminium meta wave 0018): `operator`, or `host` when
@@ -222,6 +243,7 @@ export function sessionPort(opts: SessionPortOptions): SnapshotPort {
 
 function buildTransport(opts: SessionPortOptions): SessionTransport {
   const doFetch = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   let csrfToken: string | null = null;
   let connectionId: string | null = opts.connectionId ?? null;
   /** Adminium's own zone, for the fallback below. Null on an older Adminium. */
@@ -242,16 +264,22 @@ function buildTransport(opts: SessionPortOptions): SessionTransport {
 
   async function call<T>(path: string, init?: RequestInit): Promise<T> {
     const mutating = (init?.method ?? "GET").toUpperCase() !== "GET";
-    const response = await doFetch(path, {
-      credentials: "same-origin",
-      ...init,
-      headers: {
-        accept: "application/json",
-        ...(init?.body !== undefined ? { "content-type": "application/json" } : {}),
-        ...(mutating && csrfToken !== null ? { [CSRF_HEADER]: csrfToken } : {}),
-        ...init?.headers,
-      },
-    });
+    const send = () =>
+      doFetch(path, {
+        credentials: "same-origin",
+        ...init,
+        headers: {
+          accept: "application/json",
+          ...(init?.body !== undefined ? { "content-type": "application/json" } : {}),
+          ...(mutating && csrfToken !== null ? { [CSRF_HEADER]: csrfToken } : {}),
+          ...init?.headers,
+        },
+      });
+    let response = await send();
+    for (let retry = 0; !mutating && response.status === 429 && retry < RATE_RETRIES; retry += 1) {
+      await sleep(rateLimitWait(response.headers.get("retry-after")));
+      response = await send();
+    }
 
     let body: unknown = null;
     try {
@@ -531,7 +559,7 @@ function buildTransport(opts: SessionPortOptions): SessionTransport {
       }
     },
 
-    async list<T>(ref: string, { limit, offset, where, order }: ListOptions) {
+    async list<T>(ref: string, { limit, offset, where, order, count }: ListOptions) {
       const conn = await discover();
       const table = opts.tableOfRef[ref];
       if (table === undefined) {
@@ -541,10 +569,12 @@ function buildTransport(opts: SessionPortOptions): SessionTransport {
       let query = `limit=${String(size)}&offset=${String(offset)}`;
       if (where !== undefined) query += `&where=${encodeURIComponent(JSON.stringify(where))}`;
       if (order !== undefined) query += `&order=${encodeURIComponent(order)}`;
-      const res = await call<{ data?: T[] }>(
+      if (count === true) query += "&count=exact";
+      const res = await call<{ data?: T[]; page?: { total?: number | null } }>(
         `/api/v1/data/${encodeURIComponent(conn)}/${encodeURIComponent(table)}?${query}`,
       );
-      return { data: res.data ?? [] };
+      // Only a count that was asked for is reported: an absent one is not zero.
+      return count === true ? { data: res.data ?? [], total: res.page?.total ?? null } : { data: res.data ?? [] };
     },
   };
 
@@ -578,6 +608,12 @@ function buildTransport(opts: SessionPortOptions): SessionTransport {
       }
       const boot = await call<BootstrapReply>("/api/v1/bootstrap");
       csrfToken = boot.data?.csrfToken ?? null;
+    },
+    async get<T>(path: string): Promise<T> {
+      // The connection is discovered first so a booted-from-config transport
+      // has its session, exactly as a list would.
+      await discover();
+      return call<T>(path);
     },
     async mutate<T>(
       path: string,
@@ -621,6 +657,14 @@ export interface SessionTransport {
    * `CSRF_FAILED` that looks like a permissions problem.
    */
   mutate: <T>(path: string, method: "POST" | "PATCH" | "DELETE", body?: unknown) => Promise<T>;
+  /**
+   * A `GET` of a dashboard route through the same session, for the reads a
+   * `SnapshotPort` has no method for — a booking table's free times, one
+   * record by its key. The path is the caller's, whole; the answer is the
+   * route's own envelope. Never carries the CSRF token (the server checks
+   * none on a read).
+   */
+  get: <T>(path: string) => Promise<T>;
   /** The connection the app's tables are in (discovered on first use). */
   connection: () => Promise<string>;
   /**

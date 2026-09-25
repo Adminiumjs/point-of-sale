@@ -13,11 +13,11 @@ The demo card beside it switches screens — the till, its tools and the guest b
 - **Login** — staff chips, a PIN pad that auto-verifies at 4 digits (shake on error), and an opening-float drawer count.
 - **Register** — quick-add favourites, category filter + density toggle, a menu grid, a **modifier bottom-sheet** (size / milk / extras / seat / note with live price deltas), and a ticket pane that merges identical lines by a composite key. Hold / Send, coursing by seat, and **type-VOID-to-confirm** for sent items.
 - **Payment** — tip presets, a cash keypad with change, a **simulated card reader** (waiting → reading → approved / declined), QR, and a **split-payment ledger** (even + fraction splits with last-payer remainder absorption).
-- **Receipt** — printable receipt facsimile, email / text actions, new order.
+- **Receipt** — printable receipt facsimile (the till's own, printed at once, offline too), an emailed receipt when Invoices & Receipts is attached (see [Add-ons](#add-ons)), new order.
 - **Floor** — zones, live table states, seat/auto-hold flow.
 - **Kitchen display** — three-column bump flow with an all-day aggregate.
 - Held-tickets tray, move / merge, discount & comps.
-- **Customer display** — the guest's view of their order: the items, the money, the tip (the same buttons as Payment, custom amount on a keypad — and Payment keeps the guest's choice), then a signature and how they want their receipt. Nothing sends an emailed or texted receipt yet: the choice is kept on the ticket and shown on the receipt screen.
+- **Customer display** — the guest's view of their order: the items, the money, the tip (the same buttons as Payment, custom amount on a keypad — and Payment keeps the guest's choice), then a signature and how they want their receipt. The choice is kept on the ticket and shown on the receipt screen; an address the guest typed there fills in the receipt screen's Email form. Email is offered only while the till can send one. Nothing sends a texted receipt yet.
 - **Pickup** — mark a ticket for pickup (at the till or by phone, with the name and number to call), and work the queue in three lanes: Start, Mark ready, Hand off; Notify opens the device's own messages on the guest's number. A paid order waits until it is collected.
 - **Gift cards** — look a card up by its code (or scan it), put money on it through the ticket — untaxed, and credited once the ticket is paid — pay a ticket from it, issue a new one, and see its history. A refund of a sale paid by gift card can go back onto the card.
 - **Loyalty & rewards** — find a member by phone, member number or name (or scan their code), enroll someone new, put them on the ticket, and spend their points on a reward that joins the ticket free. Points are earned when the ticket is paid — one per whole unit spent on goods — and a tier follows every point ever earned (Silver, Gold from 1,000, Platinum from 2,500).
@@ -112,6 +112,23 @@ npm run test:e2e     # every demo screen under axe, light/dark × English/Arabic
 ```
 
 ---
+
+## Add-ons
+
+Point of Sale needs no add-on to sell. Installed from Adminium, it **suggests** two, and each switches on one feature of the till. The install check offers them unticked; either can be added, switched off or removed later, and the till follows what its staff config says is attached.
+
+| Add-on | Feature | What the till does with it |
+| --- | --- | --- |
+| **Invoices & Receipts** | Emailed receipts | The receipt screen's **Email** button asks for the guest's address and queues one message in the app's outbox (`messages`). Adminium sends it with the receipt the add-on draws on an 80 mm roll attached: a PDF, or the print copy in a language a PDF's standard fonts cannot set (Arabic, Chinese). The receipt is the sale line by line (without the lines voided before it was paid), with the figures the till stored — subtotal, a discount as its own row, tax, tip, total — what was taken, tip included (`tickets.charged`, worked out by Adminium), the order number and who served. Without the add-on there is no Email button, and the customer display does not offer an emailed receipt. |
+| **Barcode Labels** | Shelf labels (retail) | **Shelf labels**, in the till's menu in retail mode, lists every item with a barcode and draws labels for one from its own `barcode`, `name` and key, through Adminium's staff document route — as many as you ask for, 1 to 240, 24 to an A4 sheet. The sheet opens as a PDF. |
+
+What to know:
+
+- **The printed receipt stays the till's own.** It is drawn in the browser and printed at once, with or without a connection; the emailed one is a second, separate document.
+- **The guest's address is kept in one place:** on that one message (`messages.to_address`), a column marked personal, so Adminium masks it for anyone who has no need to see it. No public page reads it. The ticket keeps nothing of it unless the guest typed it on the customer display (`tickets.receipt_to`, personal too).
+- **An address on a reserved domain** (`example.com`, `.test`) is never sent: Adminium skips it.
+- **A label sheet prints plain letters only.** It is set in the standard PDF fonts, which carry ASCII and nothing else, so an item named *Café crème* is refused and the till says which letters it cannot print — it never prints a label with holes in it. A number that is not a valid EAN-13 (thirteen digits, check digit included) or Code 128 is refused too, and so is an item with no barcode.
+- Every emailed receipt is a row on the **Emailed receipts** page (Records): sent, not sent and why, and a manager can queue a failed one again.
 
 ## Connecting to Adminium
 

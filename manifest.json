@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "key": "pos",
   "name": "Point of Sale",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": {
     "id": "adminium",
     "name": "Adminium",
@@ -17,7 +17,7 @@
     "hospitality"
   ],
   "compatibility": {
-    "minAdminiumVersion": "0.3.0",
+    "minAdminiumVersion": "0.3.2",
     "engines": [
       "sqlite",
       "postgres",
@@ -1544,6 +1544,29 @@
             }
           },
           {
+            "ref": "charged",
+            "type": "money",
+            "nullable": true,
+            "label": {
+              "en-US": "Charged, with tip",
+              "de-DE": "Kassiert, mit Trinkgeld",
+              "fr-FR": "Encaissé, pourboire compris",
+              "da-DK": "Opkrævet, med drikkepenge",
+              "cs-CZ": "Zaplaceno včetně spropitného",
+              "ar-EG": "المبلغ المدفوع مع البقشيش",
+              "zh-CN": "实收（含小费）",
+              "zh-TW": "實收（含小費）"
+            },
+            "rules": {
+              "formula": {
+                "add": [
+                  "total",
+                  "tip"
+                ]
+              }
+            }
+          },
+          {
             "ref": "reservation_id",
             "type": "fk",
             "references": "reservations",
@@ -1851,6 +1874,9 @@
               "ar-EG": "الإيصال إلى",
               "zh-CN": "收据发送至",
               "zh-TW": "收據寄至"
+            },
+            "rules": {
+              "personal": true
             }
           },
           {
@@ -4294,6 +4320,259 @@
           "zh-CN": "设置",
           "zh-TW": "設定"
         }
+      },
+      {
+        "ref": "messages",
+        "label": {
+          "en-US": "Emailed receipt",
+          "de-DE": "Beleg per E-Mail",
+          "fr-FR": "Reçu par e-mail",
+          "da-DK": "Kvittering på e-mail",
+          "cs-CZ": "Účtenka e-mailem",
+          "ar-EG": "إيصال بالبريد الإلكتروني",
+          "zh-CN": "电子邮件收据",
+          "zh-TW": "電子郵件收據"
+        },
+        "labelPlural": {
+          "en-US": "Emailed receipts",
+          "de-DE": "Belege per E-Mail",
+          "fr-FR": "Reçus par e-mail",
+          "da-DK": "Kvitteringer på e-mail",
+          "cs-CZ": "Účtenky e-mailem",
+          "ar-EG": "الإيصالات بالبريد الإلكتروني",
+          "zh-CN": "电子邮件收据",
+          "zh-TW": "電子郵件收據"
+        },
+        "columns": [
+          {
+            "ref": "id",
+            "type": "uuid",
+            "role": "pk"
+          },
+          {
+            "ref": "kind",
+            "type": "enum",
+            "enum": [
+              "receipt"
+            ],
+            "default": "receipt",
+            "label": {
+              "en-US": "Kind",
+              "de-DE": "Art",
+              "fr-FR": "Type",
+              "da-DK": "Type",
+              "cs-CZ": "Druh",
+              "ar-EG": "النوع",
+              "zh-CN": "类型",
+              "zh-TW": "類型"
+            },
+            "rules": {
+              "enumLabels": {
+                "labels": {
+                  "receipt": {
+                    "en-US": "Receipt",
+                    "de-DE": "Beleg",
+                    "fr-FR": "Reçu",
+                    "da-DK": "Kvittering",
+                    "cs-CZ": "Účtenka",
+                    "ar-EG": "إيصال",
+                    "zh-CN": "收据",
+                    "zh-TW": "收據"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "ref": "status",
+            "type": "enum",
+            "enum": [
+              "queued",
+              "sent",
+              "failed",
+              "skipped"
+            ],
+            "default": "queued",
+            "label": {
+              "en-US": "Status",
+              "de-DE": "Status",
+              "fr-FR": "Statut",
+              "da-DK": "Status",
+              "cs-CZ": "Stav",
+              "ar-EG": "الحالة",
+              "zh-CN": "状态",
+              "zh-TW": "狀態"
+            },
+            "rules": {
+              "enumLabels": {
+                "labels": {
+                  "queued": {
+                    "en-US": "Going out",
+                    "de-DE": "Wird gesendet",
+                    "fr-FR": "En cours d’envoi",
+                    "da-DK": "Sendes",
+                    "cs-CZ": "Odesílá se",
+                    "ar-EG": "قيد الإرسال",
+                    "zh-CN": "待发送",
+                    "zh-TW": "待寄出"
+                  },
+                  "sent": {
+                    "en-US": "Sent",
+                    "de-DE": "Gesendet",
+                    "fr-FR": "Envoyé",
+                    "da-DK": "Sendt",
+                    "cs-CZ": "Odesláno",
+                    "ar-EG": "أُرسلت",
+                    "zh-CN": "已发送",
+                    "zh-TW": "已寄出"
+                  },
+                  "failed": {
+                    "en-US": "Not sent",
+                    "de-DE": "Nicht gesendet",
+                    "fr-FR": "Non envoyé",
+                    "da-DK": "Ikke sendt",
+                    "cs-CZ": "Neodesláno",
+                    "ar-EG": "لم تُرسل",
+                    "zh-CN": "未发送",
+                    "zh-TW": "未寄出"
+                  },
+                  "skipped": {
+                    "en-US": "Skipped",
+                    "de-DE": "Übersprungen",
+                    "fr-FR": "Ignoré",
+                    "da-DK": "Sprunget over",
+                    "cs-CZ": "Přeskočeno",
+                    "ar-EG": "تم تخطيها",
+                    "zh-CN": "已跳过",
+                    "zh-TW": "已略過"
+                  }
+                },
+                "tones": {
+                  "queued": "info",
+                  "sent": "pos",
+                  "failed": "danger",
+                  "skipped": "neutral"
+                }
+              }
+            }
+          },
+          {
+            "ref": "to_address",
+            "type": "text",
+            "maxLength": 254,
+            "nullable": true,
+            "semantic": "email",
+            "label": {
+              "en-US": "To",
+              "de-DE": "An",
+              "fr-FR": "À",
+              "da-DK": "Til",
+              "cs-CZ": "Komu",
+              "ar-EG": "إلى",
+              "zh-CN": "收件人",
+              "zh-TW": "收件人"
+            },
+            "rules": {
+              "validation": {
+                "format": "email"
+              },
+              "personal": true
+            }
+          },
+          {
+            "ref": "language",
+            "type": "text",
+            "maxLength": 16,
+            "nullable": true,
+            "label": {
+              "en-US": "Language",
+              "de-DE": "Sprache",
+              "fr-FR": "Langue",
+              "da-DK": "Sprog",
+              "cs-CZ": "Jazyk",
+              "ar-EG": "اللغة",
+              "zh-CN": "语言",
+              "zh-TW": "語言"
+            }
+          },
+          {
+            "ref": "ticket_id",
+            "type": "fk",
+            "references": "tickets",
+            "nullable": true,
+            "label": {
+              "en-US": "Ticket",
+              "de-DE": "Bon",
+              "fr-FR": "Ticket",
+              "da-DK": "Bon",
+              "cs-CZ": "Účet",
+              "ar-EG": "فاتورة",
+              "zh-CN": "账单",
+              "zh-TW": "訂單"
+            }
+          },
+          {
+            "ref": "customer_id",
+            "type": "fk",
+            "references": "customers",
+            "nullable": true,
+            "label": {
+              "en-US": "Member",
+              "de-DE": "Mitglied",
+              "fr-FR": "Membre",
+              "da-DK": "Medlem",
+              "cs-CZ": "Člen",
+              "ar-EG": "العضو",
+              "zh-CN": "会员",
+              "zh-TW": "會員"
+            }
+          },
+          {
+            "ref": "created_at",
+            "type": "timestamptz",
+            "default": "now",
+            "label": {
+              "en-US": "Asked for",
+              "de-DE": "Angefordert",
+              "fr-FR": "Demandé le",
+              "da-DK": "Bestilt",
+              "cs-CZ": "Vyžádáno",
+              "ar-EG": "طُلب في",
+              "zh-CN": "请求时间",
+              "zh-TW": "要求時間"
+            }
+          },
+          {
+            "ref": "sent_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "label": {
+              "en-US": "Sent",
+              "de-DE": "Gesendet",
+              "fr-FR": "Envoyé le",
+              "da-DK": "Sendt",
+              "cs-CZ": "Odesláno",
+              "ar-EG": "أُرسلت في",
+              "zh-CN": "发送时间",
+              "zh-TW": "寄出時間"
+            }
+          },
+          {
+            "ref": "error",
+            "type": "text",
+            "nullable": true,
+            "label": {
+              "en-US": "Why it was not sent",
+              "de-DE": "Warum nicht gesendet",
+              "fr-FR": "Pourquoi il n’est pas parti",
+              "da-DK": "Hvorfor den ikke blev sendt",
+              "cs-CZ": "Proč neodešla",
+              "ar-EG": "سبب عدم الإرسال",
+              "zh-CN": "未发送原因",
+              "zh-TW": "未寄出原因"
+            }
+          }
+        ]
       }
     ]
   },
@@ -6000,6 +6279,32 @@
           ]
         }
       }
+    },
+    {
+      "ref": "pos-receipts",
+      "template": "page-crud",
+      "title": {
+        "key": "mft.pos.page.receipts",
+        "fallback": "Emailed receipts"
+      },
+      "titles": {
+        "de-DE": "Belege per E-Mail",
+        "fr-FR": "Reçus par e-mail",
+        "da-DK": "Kvitteringer på e-mail",
+        "cs-CZ": "Účtenky e-mailem",
+        "ar-EG": "الإيصالات بالبريد الإلكتروني",
+        "zh-CN": "电子邮件收据",
+        "zh-TW": "電子郵件收據"
+      },
+      "nav": {
+        "group": "records",
+        "icon": "mail",
+        "order": 16
+      },
+      "bindings": {
+        "rows": "messages"
+      },
+      "feature": "emailed-receipts"
     }
   ],
   "roles": [
@@ -6055,6 +6360,8 @@
         "table:@gift_cards:update",
         "table:@gift_card_ledger:read",
         "table:@gift_card_ledger:create",
+        "table:@messages:read",
+        "table:@messages:create",
         "app:@:staff"
       ]
     },
@@ -6184,6 +6491,9 @@
         "page:@pos-points:edit",
         "page:@pos-gift-card-history:view",
         "page:@pos-gift-card-history:edit",
+        "table:@messages:read",
+        "table:@messages:create",
+        "table:@messages:update",
         "app:@:staff"
       ]
     }
@@ -6485,6 +6795,416 @@
         "party_size",
         "status"
       ]
+    }
+  ],
+  "addOns": {
+    "suggests": [
+      {
+        "key": "invoices",
+        "range": ">=1.0.4",
+        "reason": {
+          "en-US": "Email a receipt to a guest, drawn on an 80 mm till roll.",
+          "de-DE": "Einem Gast den Beleg per E-Mail schicken, gesetzt auf eine 80-mm-Kassenrolle.",
+          "fr-FR": "Envoyer le reçu à un client par e-mail, mis en page sur un rouleau de caisse de 80 mm.",
+          "da-DK": "Send en gæst kvitteringen på e-mail, sat op som en 80 mm kasserulle.",
+          "cs-CZ": "Poslat hostovi účtenku e-mailem, vysázenou na 80mm pokladní pásku.",
+          "ar-EG": "أرسل الإيصال إلى الضيف بالبريد الإلكتروني، بتنسيق شريط كاشير عرضه 80 مم.",
+          "zh-CN": "通过电子邮件把收据发给客人，版式为 80 毫米收银小票。",
+          "zh-TW": "以電子郵件把收據寄給客人，版面為 80 公釐收銀紙捲。"
+        }
+      },
+      {
+        "key": "barcode-labels",
+        "range": ">=1.0.4",
+        "reason": {
+          "en-US": "Print shelf labels in retail, from the barcode each item already has.",
+          "de-DE": "Im Einzelhandel Regaletiketten drucken, aus dem Barcode, den jeder Artikel schon hat.",
+          "fr-FR": "En boutique, imprimer des étiquettes de rayon à partir du code-barres de chaque article.",
+          "da-DK": "I butikken: udskriv hyldeetiketter ud fra den stregkode, hver vare allerede har.",
+          "cs-CZ": "V obchodě tisknout regálové štítky z čárového kódu, který položka už má.",
+          "ar-EG": "في وضع المتجر، اطبع ملصقات الأرفف من الباركود الموجود على كل صنف.",
+          "zh-CN": "零售模式下，用每件商品已有的条码打印货架标签。",
+          "zh-TW": "零售模式下，用每項商品已有的條碼列印貨架標籤。"
+        }
+      }
+    ],
+    "features": [
+      {
+        "id": "emailed-receipts",
+        "label": {
+          "en-US": "Emailed receipts",
+          "de-DE": "Belege per E-Mail",
+          "fr-FR": "Reçus par e-mail",
+          "da-DK": "Kvitteringer på e-mail",
+          "cs-CZ": "Účtenky e-mailem",
+          "ar-EG": "الإيصالات بالبريد الإلكتروني",
+          "zh-CN": "电子邮件收据",
+          "zh-TW": "電子郵件收據"
+        },
+        "requires": [
+          "invoices"
+        ]
+      },
+      {
+        "id": "shelf-labels",
+        "label": {
+          "en-US": "Shelf labels",
+          "de-DE": "Regaletiketten",
+          "fr-FR": "Étiquettes de rayon",
+          "da-DK": "Hyldeetiketter",
+          "cs-CZ": "Regálové štítky",
+          "ar-EG": "ملصقات الأرفف",
+          "zh-CN": "货架标签",
+          "zh-TW": "貨架標籤"
+        },
+        "requires": [
+          "barcode-labels"
+        ]
+      }
+    ]
+  },
+  "documents": [
+    {
+      "kind": "receipt",
+      "addOn": "invoices",
+      "table": "tickets",
+      "feature": "emailed-receipts",
+      "name": {
+        "en-US": "Till receipt",
+        "de-DE": "Kassenbeleg",
+        "fr-FR": "Reçu de caisse",
+        "da-DK": "Kassekvittering",
+        "cs-CZ": "Pokladní účtenka",
+        "ar-EG": "إيصال الكاشير",
+        "zh-CN": "收银小票",
+        "zh-TW": "收銀收據"
+      },
+      "mapping": {
+        "items": {
+          "collection": {
+            "table": "ticket_items",
+            "via": "ticket_id",
+            "orderBy": "id",
+            "unless": "voided_at",
+            "columns": {
+              "desc": "name",
+              "qty": "qty",
+              "rate": "unit_price"
+            }
+          }
+        },
+        "subtotal": {
+          "column": "subtotal"
+        },
+        "tax": {
+          "column": "tax"
+        },
+        "total": {
+          "column": "total"
+        },
+        "tip": {
+          "column": "tip"
+        },
+        "amount": {
+          "column": "charged"
+        },
+        "reference": {
+          "column": "number"
+        },
+        "issuedAt": {
+          "column": "closed_at"
+        },
+        "attendedBy": {
+          "via": "staff_id",
+          "column": "name"
+        }
+      }
+    },
+    {
+      "kind": "label-sheet",
+      "addOn": "barcode-labels",
+      "table": "menu_items",
+      "feature": "shelf-labels",
+      "name": {
+        "en-US": "Shelf label",
+        "de-DE": "Regaletikett",
+        "fr-FR": "Étiquette de rayon",
+        "da-DK": "Hyldeetiket",
+        "cs-CZ": "Regálový štítek",
+        "ar-EG": "ملصق رف",
+        "zh-CN": "货架标签",
+        "zh-TW": "貨架標籤"
+      },
+      "mapping": {
+        "sku": {
+          "column": "id"
+        },
+        "code": {
+          "column": "barcode"
+        },
+        "reference": {
+          "column": "name"
+        }
+      },
+      "requestValues": [
+        "count"
+      ]
+    }
+  ],
+  "outbox": {
+    "table": "messages",
+    "columns": {
+      "kind": "kind",
+      "status": "status",
+      "to": "to_address",
+      "language": "language",
+      "sentAt": "sent_at",
+      "error": "error"
+    },
+    "links": {
+      "ticket": "ticket_id",
+      "customer": "customer_id"
+    },
+    "recipient": {
+      "via": "customer_id",
+      "table": "customers",
+      "email": "email",
+      "name": "name"
+    },
+    "settings": {
+      "table": "settings",
+      "name": "venue_name",
+      "phone": "phone"
+    },
+    "kinds": {
+      "receipt": "pos-receipt"
+    }
+  },
+  "emailTemplates": [
+    {
+      "key": "pos-receipt",
+      "name": {
+        "en-US": "Receipt",
+        "de-DE": "Beleg",
+        "fr-FR": "Reçu",
+        "da-DK": "Kvittering",
+        "cs-CZ": "Účtenka",
+        "ar-EG": "الإيصال",
+        "zh-CN": "收据",
+        "zh-TW": "收據"
+      },
+      "vars": [
+        "appName",
+        "ticket.number",
+        "ticket.charged",
+        "ticket.closed_at.date"
+      ],
+      "attach": {
+        "kind": "receipt",
+        "link": "ticket"
+      },
+      "locales": {
+        "en-US": {
+          "subject": "Your receipt from {{appName}}",
+          "preheader": "Order {{ticket.number}} · {{ticket.charged}}",
+          "blocks": [
+            {
+              "block": "email.text",
+              "id": "thanks",
+              "data": {
+                "paras": [
+                  "Thank you for coming in."
+                ]
+              }
+            },
+            {
+              "block": "email.text",
+              "id": "body",
+              "data": {
+                "paras": [
+                  "Your receipt for order {{ticket.number}} on {{ticket.closed_at.date}} is attached: {{ticket.charged}}, tip included."
+                ]
+              }
+            }
+          ],
+          "footer": "{{appName}}. You are getting this email because you asked for your receipt at the till."
+        },
+        "de-DE": {
+          "subject": "Ihr Beleg von {{appName}}",
+          "preheader": "Bestellung {{ticket.number}} · {{ticket.charged}}",
+          "blocks": [
+            {
+              "block": "email.text",
+              "id": "thanks",
+              "data": {
+                "paras": [
+                  "Vielen Dank für Ihren Besuch."
+                ]
+              }
+            },
+            {
+              "block": "email.text",
+              "id": "body",
+              "data": {
+                "paras": [
+                  "Im Anhang finden Sie Ihren Beleg für die Bestellung {{ticket.number}} vom {{ticket.closed_at.date}}: {{ticket.charged}}, Trinkgeld inbegriffen."
+                ]
+              }
+            }
+          ],
+          "footer": "{{appName}}. Sie erhalten diese E-Mail, weil Sie an der Kasse um Ihren Beleg gebeten haben."
+        },
+        "fr-FR": {
+          "subject": "Votre reçu de {{appName}}",
+          "preheader": "Commande {{ticket.number}} · {{ticket.charged}}",
+          "blocks": [
+            {
+              "block": "email.text",
+              "id": "thanks",
+              "data": {
+                "paras": [
+                  "Merci de votre visite."
+                ]
+              }
+            },
+            {
+              "block": "email.text",
+              "id": "body",
+              "data": {
+                "paras": [
+                  "Vous trouverez en pièce jointe votre reçu pour la commande {{ticket.number}} du {{ticket.closed_at.date}} : {{ticket.charged}}, pourboire compris."
+                ]
+              }
+            }
+          ],
+          "footer": "{{appName}}. Vous recevez cet e-mail parce que vous avez demandé votre reçu en caisse."
+        },
+        "da-DK": {
+          "subject": "Din kvittering fra {{appName}}",
+          "preheader": "Ordre {{ticket.number}} · {{ticket.charged}}",
+          "blocks": [
+            {
+              "block": "email.text",
+              "id": "thanks",
+              "data": {
+                "paras": [
+                  "Tak for besøget."
+                ]
+              }
+            },
+            {
+              "block": "email.text",
+              "id": "body",
+              "data": {
+                "paras": [
+                  "Din kvittering for ordre {{ticket.number}} den {{ticket.closed_at.date}} er vedhæftet: {{ticket.charged}}, drikkepenge inklusive."
+                ]
+              }
+            }
+          ],
+          "footer": "{{appName}}. Du får denne e-mail, fordi du bad om din kvittering ved kassen."
+        },
+        "cs-CZ": {
+          "subject": "Vaše účtenka od {{appName}}",
+          "preheader": "Objednávka {{ticket.number}} · {{ticket.charged}}",
+          "blocks": [
+            {
+              "block": "email.text",
+              "id": "thanks",
+              "data": {
+                "paras": [
+                  "Děkujeme za návštěvu."
+                ]
+              }
+            },
+            {
+              "block": "email.text",
+              "id": "body",
+              "data": {
+                "paras": [
+                  "V příloze je vaše účtenka k objednávce {{ticket.number}} ze dne {{ticket.closed_at.date}}: {{ticket.charged}} včetně spropitného."
+                ]
+              }
+            }
+          ],
+          "footer": "{{appName}}. Tento e-mail dostáváte, protože jste si u pokladny řekli o účtenku."
+        },
+        "ar-EG": {
+          "subject": "إيصالك من {{appName}}",
+          "preheader": "الطلب {{ticket.number}} · {{ticket.charged}}",
+          "blocks": [
+            {
+              "block": "email.text",
+              "id": "thanks",
+              "data": {
+                "paras": [
+                  "شكرًا لزيارتك."
+                ]
+              }
+            },
+            {
+              "block": "email.text",
+              "id": "body",
+              "data": {
+                "paras": [
+                  "مرفق إيصالك للطلب {{ticket.number}} بتاريخ {{ticket.closed_at.date}}: {{ticket.charged}} شاملًا البقشيش."
+                ]
+              }
+            }
+          ],
+          "footer": "{{appName}}. تصلك هذه الرسالة لأنك طلبت إيصالك عند الكاشير."
+        },
+        "zh-CN": {
+          "subject": "您在 {{appName}} 的收据",
+          "preheader": "订单 {{ticket.number}} · {{ticket.charged}}",
+          "blocks": [
+            {
+              "block": "email.text",
+              "id": "thanks",
+              "data": {
+                "paras": [
+                  "感谢光临。"
+                ]
+              }
+            },
+            {
+              "block": "email.text",
+              "id": "body",
+              "data": {
+                "paras": [
+                  "附件是您 {{ticket.closed_at.date}} 订单 {{ticket.number}} 的收据：{{ticket.charged}}，含小费。"
+                ]
+              }
+            }
+          ],
+          "footer": "{{appName}}。您收到这封邮件，是因为您在收银台索取了收据。"
+        },
+        "zh-TW": {
+          "subject": "您在 {{appName}} 的收據",
+          "preheader": "訂單 {{ticket.number}} · {{ticket.charged}}",
+          "blocks": [
+            {
+              "block": "email.text",
+              "id": "thanks",
+              "data": {
+                "paras": [
+                  "感謝光臨。"
+                ]
+              }
+            },
+            {
+              "block": "email.text",
+              "id": "body",
+              "data": {
+                "paras": [
+                  "附件是您 {{ticket.closed_at.date}} 訂單 {{ticket.number}} 的收據：{{ticket.charged}}，含小費。"
+                ]
+              }
+            }
+          ],
+          "footer": "{{appName}}。您收到這封郵件，是因為您在收銀台索取了收據。"
+        }
+      }
     }
   ],
   "sampleData": {

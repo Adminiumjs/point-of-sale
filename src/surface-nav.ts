@@ -79,7 +79,7 @@ export const SURFACE_EXTRAS = {
    * till itself, and none is a place a shift is worked from — Refund and Close
    * shift start from what the till holds now, which a link cannot rebuild.
    */
-  staff: ['login', 'payment', 'complete', 'refund', 'shiftclose', 'eod', 'staff', 'menu86', 'loyalty', 'giftcards', 'display'],
+  staff: ['login', 'payment', 'complete', 'refund', 'shiftclose', 'eod', 'staff', 'menu86', 'labels', 'loyalty', 'giftcards', 'display'],
   /* The confirmation email's preview: the demo's only (DP27) — a guest reads the real one in their mail. */
   customer: ['email'],
 } as const satisfies Record<'staff' | 'customer', readonly View[]>;

@@ -22,6 +22,7 @@ export type View =
   | 'eod'
   | 'staff'
   | 'menu86'
+  | 'labels'
   | 'loyalty'
   | 'giftcards'
   | 'pickup'
@@ -164,6 +165,10 @@ export interface SaleLine {
 }
 
 export interface Sale {
+  /** The ticket's row, so the receipt can be emailed after it closed. */
+  rid?: string;
+  /** The member the ticket was for, when there was one (`tickets.customer_id`). */
+  customerId?: string;
   number: number;
   table: string | null;
   items: SaleLine[];
@@ -184,6 +189,8 @@ export interface Sale {
   member?: { name: string; earned: number; balance: number | null };
   /** How the guest asked for their receipt on the customer display (wave 2). */
   receipt?: { via: ReceiptVia; to: string | null };
+  /** The addresses its receipt was emailed to from the till, in order. */
+  emailedTo?: string[];
 }
 
 export type KdsStatus = 'new' | 'cooking' | 'ready';

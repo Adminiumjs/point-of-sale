@@ -31,6 +31,7 @@ export const WRITE_TABLES: Readonly<Record<string, string>> = Object.fromEntries
     'loyalty_ledger',
     'gift_cards',
     'gift_card_ledger',
+    'messages',
   ].map((short) => [short, `pos_${short}`]),
 );
 

@@ -345,7 +345,6 @@ export const cs: Translated<typeof enUS> = {
   'toast.cardSharePaid': 'Podíl kartou zaplacen · zbývá {rem}',
   'toast.walletSharePaid': 'Podíl peněženkou zaplacen · zbývá {rem}',
   'toast.printSent': 'Tisk simulován · jen ukázka',
-  'toast.receiptSentEmail': 'Účtenka e-mailem simulována · jen ukázka',
   'toast.receiptSentText': 'Účtenka SMS simulována · jen ukázka',
 
   // ---- wave 1 and the Guests side (55-T58–T62) ----
@@ -793,6 +792,40 @@ export const cs: Translated<typeof enUS> = {
   'complete.guestWantsPrint': 'Host si přeje vytištěnou účtenku',
   'complete.guestWantsEmail': 'Host si přeje účtenku e-mailem: {to}',
   'complete.guestWantsText': 'Host si přeje účtenku SMS: {to}',
+
+  // ---- add-ons: emailed receipts and shelf labels ----
+  'complete.emailTitle': 'Poslat účtenku e-mailem',
+  'complete.emailLabel': 'E-mail hosta',
+  'complete.emailSend': 'Poslat účtenku',
+  'complete.emailInvalid': 'To není e-mailová adresa',
+  'complete.emailQueued': 'Účtenka je na cestě na {to}',
+  'complete.emailedTo': 'Posláno e-mailem na {to}',
+  'complete.emailNote': 'Adminium ji pošle s účtenkou v příloze. Adresa zůstane jen u tohoto jednoho e-mailu a k ničemu jinému se nepoužije.',
+  'nav.labels': 'Regálové štítky',
+  'labels.sub': 'Arch štítků z čárového kódu položky',
+  'labels.search': 'Najít položku nebo čárový kód',
+  'labels.print': 'Vytisknout štítek',
+  'labels.printFor': 'Vytisknout štítek pro {name}',
+  'labels.drawing': 'Sází se…',
+  'labels.open': 'Otevřít arch štítků',
+  'labels.noBarcode': '{count} položka nemá čárový kód. Doplňte ho v Adminiu na stránce Menu, abyste mohli vytisknout štítek.|{count} položky nemají čárový kód. Doplňte ho v Adminiu na stránce Menu, abyste mohli vytisknout jejich štítky.|{count} položek nemá čárový kód. Doplňte ho v Adminiu na stránce Menu, abyste mohli vytisknout jejich štítky.',
+  'labels.none': 'Žádná položka neodpovídá',
+  'labels.errLatin': '„{name}“ nemůže být na štítku: archy štítků tisknou jen základní písmena bez diakritiky a {letters} vytisknout neumějí. Přejmenujte položku bez diakritiky, abyste mohli štítek vytisknout.',
+  'labels.errCode': 'Čárový kód {code} byl odmítnut: není to platné číslo EAN-13 ani Code 128. Zkontrolujte ho v Adminiu na stránce Menu.',
+  'labels.errMissing': '{name} nemá čárový kód k tisku.',
+  'labels.errOff': 'Barcode Labels je pro Point of Sale vypnutý, takže štítek nejde vysázet.',
+  'labels.count': 'Kolik štítků',
+  'labels.countHelp': 'Od 1 do {max}. Arch pojme 24; další se vytisknou na další stránky.',
+  'labels.countInvalid': 'Zadejte celé číslo od 1 do {max}.',
+  'labels.errGone': 'Tato položka už v menu není.',
+  'labels.errOffline': 'Adminium není dostupné. Zkuste to znovu, až bude pokladna zase online.',
+  'labels.errOther': 'Štítek se nepodařilo vysázet: {detail}',
+
+
+
+
+
+
 
   // ---- wave 2: barcode scanning (55-T74) ----
   'scan.toastUnknown': 'Žádná položka nemá čárový kód {code}',

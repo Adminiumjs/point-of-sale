@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { usePos, curStaffOf } from '../state/store';
 import { source } from '../data/source';
 import { demoSale, money, tableName } from '../state/calc';
@@ -11,6 +13,8 @@ const MONO = "font-family:'JetBrains Mono',monospace;";
 export function Complete() {
   const s = usePos();
   const { t, date, number } = useI18n();
+  const [mailOpen, setMailOpen] = useState(false);
+  const emailing = s.features['emailed-receipts'];
   /*
    * The receipt of the sale that just closed. Only the demo makes one up for a
    * receipt opened with no sale behind it (its dock can open this screen
@@ -132,18 +136,38 @@ export function Complete() {
               <Icon name="printer" size={21} />
               {t('complete.printReceipt')}
             </button>
-            {/* No receipt e-mail or text exists yet (T72): the demo only (DP30). */}
-            {DEMO && (
-            <div style={css('display:flex;gap:11px;')}>
-              <button className="pos-press" onClick={() => s.sendReceipt('email')} style={css('flex:1;height:62px;border-radius:15px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;')}>
-                <Icon name="mail" size={19} />
-                {t('complete.email')}
-              </button>
-              <button className="pos-press" onClick={() => s.sendReceipt('text')} style={css('flex:1;height:62px;border-radius:15px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;')}>
-                <Icon name="message-square" size={19} />
-                {t('complete.text')}
-              </button>
-            </div>
+            {/*
+              * Email only while Invoices & Receipts is attached: it draws the
+              * receipt the email carries. Without it there is no button at all.
+              * A texted receipt has no add-on to send it yet, so it stays the
+              * demo's.
+              */}
+            {(emailing || DEMO) && (
+              <div style={css('display:flex;gap:11px;')}>
+                {emailing && (
+                  <button className="pos-press" aria-expanded={mailOpen} aria-controls="receipt-mail" onClick={() => setMailOpen((open) => !open)} style={css('flex:1;height:62px;border-radius:15px;border:1px solid ' + (mailOpen ? 'var(--accent)' : 'var(--border-strong)') + ';background:' + (mailOpen ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (mailOpen ? 'var(--accent)' : 'var(--fg)') + ';font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;')}>
+                    <Icon name="mail" size={19} />
+                    {t('complete.email')}
+                  </button>
+                )}
+                {DEMO && (
+                  <button className="pos-press" onClick={() => s.sendReceipt('text')} style={css('flex:1;height:62px;border-radius:15px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;')}>
+                    <Icon name="message-square" size={19} />
+                    {t('complete.text')}
+                  </button>
+                )}
+              </div>
+            )}
+            {emailing && mailOpen && <ReceiptMail initial={sale.receipt?.via === 'email' ? (sale.receipt.to ?? '') : ''} onDone={() => setMailOpen(false)} />}
+            {emailing && (sale.emailedTo ?? []).length > 0 && (
+              <div role="status" style={css('display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--fg-muted);')}>
+                {(sale.emailedTo ?? []).map((to) => (
+                  <span key={to} style={css('display:flex;align-items:center;gap:7px;')}>
+                    <Icon name="mail-check" size={15} color="var(--pos)" />
+                    <bdi>{t('complete.emailedTo', { to })}</bdi>
+                  </span>
+                ))}
+              </div>
             )}
             <div style={css('height:1px;background:var(--border);margin:6px 0;')} />
             <button className="pos-press" onClick={s.newOrder} style={css('height:66px;border-radius:16px;border:1.5px solid var(--accent);background:var(--accent-soft);color:var(--accent);font-size:17px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:11px;')}>
@@ -160,6 +184,76 @@ export function Complete() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The guest's address, asked for at the till, and the receipt queued to it.
+ *
+ * Filled in when the guest already chose email on the customer display; the
+ * cashier checks it with them and sends. Nothing else keeps the address: it is
+ * written only onto the one email, a personal column in Adminium.
+ */
+function ReceiptMail({ initial, onDone }: { initial: string; onDone: () => void }) {
+  const s = usePos();
+  const { t } = useI18n();
+  const [to, setTo] = useState(initial);
+  const [invalid, setInvalid] = useState(false);
+  const input = 'width:100%;height:52px;padding:0 15px;border-radius:13px;border:1.5px solid ' + (invalid ? 'var(--danger)' : 'var(--border-strong)') + ';background:var(--surface);color:var(--fg);font-size:16px;font-weight:600;font-family:inherit;outline:none;box-sizing:border-box;';
+  return (
+    <form
+      id="receipt-mail"
+      aria-labelledby="receipt-mail-title"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        const outcome = s.emailReceipt(to);
+        if (outcome === 'invalid') {
+          setInvalid(true);
+          return;
+        }
+        if (outcome === 'queued') onDone();
+      }}
+      style={css('display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:15px;border:1px solid var(--border);background:var(--surface);')}
+    >
+      <div id="receipt-mail-title" style={css('font-size:15px;font-weight:800;')}>{t('complete.emailTitle')}</div>
+      <div>
+        <label htmlFor="receipt-mail-to" style={css('display:block;font-size:12.5px;font-weight:800;color:var(--fg-muted);margin-bottom:6px;')}>
+          {t('complete.emailLabel')}
+        </label>
+        <input
+          id="receipt-mail-to"
+          type="email"
+          inputMode="email"
+          dir="ltr"
+          value={to}
+          onChange={(e) => {
+            setTo(e.target.value);
+            setInvalid(false);
+          }}
+          autoComplete="off"
+          autoFocus
+          aria-invalid={invalid}
+          aria-describedby={invalid ? 'receipt-mail-error receipt-mail-note' : 'receipt-mail-note'}
+          style={css(input)}
+        />
+        {invalid && (
+          <div id="receipt-mail-error" role="alert" style={css('margin-top:6px;font-size:13px;font-weight:700;color:var(--danger);')}>
+            {t('complete.emailInvalid')}
+          </div>
+        )}
+      </div>
+      <div id="receipt-mail-note" style={css('font-size:12.5px;line-height:1.45;color:var(--fg-muted);')}>{t('complete.emailNote')}</div>
+      <div style={css('display:flex;gap:9px;')}>
+        <button type="button" className="pos-press" onClick={onDone} style={css('width:120px;height:54px;border-radius:14px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;')}>
+          {t('common.cancel')}
+        </button>
+        <button type="submit" className="pos-press" style={css('flex:1;height:54px;border-radius:14px;border:none;background:var(--accent);color:var(--accent-fg);font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
+          <Icon name="send" size={17} />
+          {t('complete.emailSend')}
+        </button>
+      </div>
+    </form>
   );
 }
 

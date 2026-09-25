@@ -36,6 +36,20 @@ describe('the receipt', () => {
   });
 });
 
+describe('the emailed receipt', () => {
+  it('offers Email while Invoices & Receipts is attached (the demo stands for such a shop)', () => {
+    const html = renderToStaticMarkup(
+      <I18nProvider>
+        <Complete />
+      </I18nProvider>,
+    );
+    // The button opens the address form; it is not the receipt, so it never prints.
+    expect(html).toContain('aria-controls="receipt-mail"');
+    expect(html).toContain('>Email<');
+    expect(html).not.toContain('id="receipt-mail-to"');
+  });
+});
+
 describe('printing one part of the screen', () => {
   it('names the part on the page, prints, and clears it after', () => {
     const listeners: Record<string, () => void> = {};

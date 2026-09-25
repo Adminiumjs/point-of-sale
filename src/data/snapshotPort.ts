@@ -30,7 +30,7 @@ export interface SnapshotPort {
      */
     timezoneSource?: 'operator' | 'host' | 'fallback' | null;
     /**
-     * Nullable on the wire (28 §5.5: a scope exposing no money needs none), so
+     * Nullable on the wire (a scope exposing no money needs no currency), so
      * `null` and not `undefined` — matching `PublicConfig` exactly is what lets
      * `PublicClient` satisfy this port structurally, with no adapter.
      */
@@ -43,7 +43,7 @@ export interface SnapshotPort {
    * accepts too: a read of only what the till needs (open tickets, today's
    * payments) rather than the whole history.
    */
-  list<T>(ref: string, opts: ListOptions): Promise<{ data: T[] }>;
+  list<T>(ref: string, opts: ListOptions): Promise<{ data: T[]; total?: number | null }>;
 }
 
 export type ListCondition =
@@ -57,4 +57,11 @@ export interface ListOptions {
   where?: ListCondition;
   /** `column.desc,column2.asc`, at most three keys. */
   order?: string;
+  /**
+   * Also count every row the `where` matches, not only the page — "31 on the
+   * list" over a page of twenty. A count is a second query on the server, so it
+   * is asked for, never sent by default. `total` is null when the server gave
+   * none.
+   */
+  count?: boolean;
 }

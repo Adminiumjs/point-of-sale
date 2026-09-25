@@ -13,6 +13,7 @@ function transport(answers: ((path: string, method: string, body: unknown) => un
     tableId: async (name: string) => `public.${name}`,
     relation: vi.fn(async (child: string, column: string) => `rel:${child}.${column}`),
     refresh: vi.fn(async () => undefined),
+    get: async <T,>(): Promise<T> => ({}) as T,
     mutate: async <T,>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> => {
       calls.push({ path, method, body });
       const answer = answers.shift();

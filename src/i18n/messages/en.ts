@@ -351,7 +351,6 @@ export const enUS = {
   'toast.cardSharePaid': 'Card share paid · {rem} left',
   'toast.walletSharePaid': 'Wallet share paid · {rem} left',
   'toast.printSent': 'Printing simulated · demo only',
-  'toast.receiptSentEmail': 'Email receipt simulated · demo only',
   'toast.receiptSentText': 'Text receipt simulated · demo only',
 
   // ---- wave 1: the till's own screens (translations: 55-T63) ----
@@ -797,6 +796,40 @@ export const enUS = {
   'complete.guestWantsPrint': 'The guest asked for a printed receipt',
   'complete.guestWantsEmail': 'The guest asked for the receipt by email: {to}',
   'complete.guestWantsText': 'The guest asked for the receipt by text: {to}',
+
+  // ---- add-ons: emailed receipts and shelf labels ----
+  'complete.emailTitle': 'Email the receipt',
+  'complete.emailLabel': 'Guest’s email address',
+  'complete.emailSend': 'Send receipt',
+  'complete.emailInvalid': 'That is not an email address',
+  'complete.emailQueued': 'Receipt on its way to {to}',
+  'complete.emailedTo': 'Emailed to {to}',
+  'complete.emailNote': 'Adminium sends it with the receipt attached. The address is kept with that one email and used for nothing else.',
+  'nav.labels': 'Shelf labels',
+  'labels.sub': 'A sheet of labels from an item’s barcode',
+  'labels.search': 'Find an item or a barcode',
+  'labels.print': 'Print label',
+  'labels.printFor': 'Print a label for {name}',
+  'labels.drawing': 'Drawing…',
+  'labels.open': 'Open the label sheet',
+  'labels.noBarcode': '{count} item has no barcode. Add one on the Menu page in Adminium to print its label.|{count} items have no barcode. Add one on the Menu page in Adminium to print their labels.',
+  'labels.none': 'No item matches',
+  'labels.errLatin': '“{name}” cannot go on a label: label sheets print plain letters only and cannot print {letters}. Rename the item in plain letters to print its label.',
+  'labels.errCode': 'The barcode {code} was refused: it is not a valid EAN-13 or Code 128 number. Check it on the Menu page in Adminium.',
+  'labels.errMissing': '{name} has no barcode to print.',
+  'labels.errOff': 'Barcode Labels is switched off for Point of Sale, so no label can be drawn.',
+  'labels.count': 'How many labels',
+  'labels.countHelp': 'From 1 to {max}. A sheet holds 24; more go on further pages.',
+  'labels.countInvalid': 'Type a whole number from 1 to {max}.',
+  'labels.errGone': 'This item is no longer on the menu.',
+  'labels.errOffline': 'Adminium could not be reached. Try again once the till is back online.',
+  'labels.errOther': 'The label could not be drawn: {detail}',
+
+
+
+
+
+
 
   // ---- wave 2: barcode scanning (55-T74) ----
   'scan.toastUnknown': 'No item has the barcode {code}',

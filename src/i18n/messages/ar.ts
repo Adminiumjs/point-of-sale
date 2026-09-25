@@ -347,7 +347,6 @@ export const ar: Translated<typeof enUS> = {
   'toast.cardSharePaid': 'دُفعت حصة البطاقة · تبقّى {rem}',
   'toast.walletSharePaid': 'دُفعت حصة المحفظة · تبقّى {rem}',
   'toast.printSent': 'محاكاة الطباعة · عرض توضيحي فقط',
-  'toast.receiptSentEmail': 'محاكاة إرسال الإيصال بالبريد · عرض توضيحي فقط',
   'toast.receiptSentText': 'محاكاة إرسال الإيصال برسالة نصية · عرض توضيحي فقط',
 
   // ---- wave 1 and the Guests side (55-T58–T62) ----
@@ -795,6 +794,40 @@ export const ar: Translated<typeof enUS> = {
   'complete.guestWantsPrint': 'طلب الضيف إيصالًا مطبوعًا',
   'complete.guestWantsEmail': 'طلب الضيف الإيصال بالبريد الإلكتروني: {to}',
   'complete.guestWantsText': 'طلب الضيف الإيصال برسالة نصية: {to}',
+
+  // ---- add-ons: emailed receipts and shelf labels ----
+  'complete.emailTitle': 'إرسال الإيصال بالبريد الإلكتروني',
+  'complete.emailLabel': 'البريد الإلكتروني للضيف',
+  'complete.emailSend': 'إرسال الإيصال',
+  'complete.emailInvalid': 'هذا ليس عنوان بريد إلكتروني',
+  'complete.emailQueued': 'الإيصال في طريقه إلى {to}',
+  'complete.emailedTo': 'أُرسل بالبريد الإلكتروني إلى {to}',
+  'complete.emailNote': 'يرسله Adminium مع الإيصال مرفقًا. يُحفظ العنوان مع هذه الرسالة وحدها ولا يُستخدم لأي شيء آخر.',
+  'nav.labels': 'ملصقات الأرفف',
+  'labels.sub': 'ورقة ملصقات من باركود الصنف',
+  'labels.search': 'ابحث عن صنف أو باركود',
+  'labels.print': 'طباعة الملصق',
+  'labels.printFor': 'طباعة ملصق لـ {name}',
+  'labels.drawing': 'جارٍ التجهيز…',
+  'labels.open': 'فتح ورقة الملصقات',
+  'labels.noBarcode': 'لا توجد أصناف بلا باركود.|صنف واحد ({count}) بلا باركود. أضفه في صفحة القائمة في Adminium لطباعة ملصقه.|صنفان ({count}) بلا باركود. أضفه في صفحة القائمة في Adminium لطباعة ملصقاتهما.|{count} أصناف بلا باركود. أضفه في صفحة القائمة في Adminium لطباعة ملصقاتها.|{count} صنفًا بلا باركود. أضفه في صفحة القائمة في Adminium لطباعة ملصقاتها.|{count} صنف بلا باركود. أضفه في صفحة القائمة في Adminium لطباعة ملصقاتها.',
+  'labels.none': 'لا يوجد صنف مطابق',
+  'labels.errLatin': 'لا يمكن وضع «{name}» على ملصق: أوراق الملصقات تطبع الحروف اللاتينية البسيطة فقط ولا يمكنها طباعة {letters}. أعد تسمية الصنف بحروف لاتينية بسيطة لطباعة ملصقه.',
+  'labels.errCode': 'رُفض الباركود {code}: ليس رقم EAN-13 أو Code 128 صالحًا. تحقق منه في صفحة القائمة في Adminium.',
+  'labels.errMissing': 'لا يوجد باركود لطباعته للصنف {name}.',
+  'labels.errOff': 'Barcode Labels متوقف لـ Point of Sale، لذا لا يمكن تجهيز ملصق.',
+  'labels.count': 'عدد الملصقات',
+  'labels.countHelp': 'من 1 إلى {max}. تتسع الورقة لـ 24، والباقي في صفحات تالية.',
+  'labels.countInvalid': 'اكتب عددًا صحيحًا من 1 إلى {max}.',
+  'labels.errGone': 'لم يعد هذا الصنف في القائمة.',
+  'labels.errOffline': 'تعذّر الوصول إلى Adminium. حاول مرة أخرى عندما تعود نقطة البيع إلى الاتصال.',
+  'labels.errOther': 'تعذّر تجهيز الملصق: {detail}',
+
+
+
+
+
+
 
   // ---- wave 2: barcode scanning (55-T74) ----
   'scan.toastUnknown': 'لا يوجد صنف بالرمز الشريطي {code}',

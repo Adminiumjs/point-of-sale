@@ -344,7 +344,6 @@ export const da: Translated<typeof enUS> = {
   'toast.cardSharePaid': 'Kortandel betalt · {rem} tilbage',
   'toast.walletSharePaid': 'Wallet-andel betalt · {rem} tilbage',
   'toast.printSent': 'Udskrift simuleret · kun demo',
-  'toast.receiptSentEmail': 'Kvittering på e-mail simuleret · kun demo',
   'toast.receiptSentText': 'Kvittering på SMS simuleret · kun demo',
 
   // ---- wave 1 and the Guests side (55-T58–T62) ----
@@ -792,6 +791,40 @@ export const da: Translated<typeof enUS> = {
   'complete.guestWantsPrint': 'Gæsten ønsker en udskrevet kvittering',
   'complete.guestWantsEmail': 'Gæsten ønsker kvitteringen på e-mail: {to}',
   'complete.guestWantsText': 'Gæsten ønsker kvitteringen på SMS: {to}',
+
+  // ---- add-ons: emailed receipts and shelf labels ----
+  'complete.emailTitle': 'Send kvitteringen på e-mail',
+  'complete.emailLabel': 'Gæstens e-mailadresse',
+  'complete.emailSend': 'Send kvittering',
+  'complete.emailInvalid': 'Det er ikke en e-mailadresse',
+  'complete.emailQueued': 'Kvitteringen er på vej til {to}',
+  'complete.emailedTo': 'Sendt på e-mail til {to}',
+  'complete.emailNote': 'Adminium sender den med kvitteringen vedhæftet. Adressen gemmes kun sammen med den ene e-mail og bruges ikke til andet.',
+  'nav.labels': 'Hyldeetiketter',
+  'labels.sub': 'Et ark etiketter ud fra en vares stregkode',
+  'labels.search': 'Find en vare eller en stregkode',
+  'labels.print': 'Udskriv etiket',
+  'labels.printFor': 'Udskriv en etiket til {name}',
+  'labels.drawing': 'Sættes op…',
+  'labels.open': 'Åbn etiketarket',
+  'labels.noBarcode': '{count} vare har ingen stregkode. Tilføj den på siden Menu i Adminium for at udskrive dens etiket.|{count} varer har ingen stregkode. Tilføj den på siden Menu i Adminium for at udskrive deres etiketter.',
+  'labels.none': 'Ingen varer passer',
+  'labels.errLatin': '“{name}” kan ikke komme på en etiket: etiketark udskriver kun almindelige bogstaver og kan ikke udskrive {letters}. Omdøb varen med almindelige bogstaver for at udskrive dens etiket.',
+  'labels.errCode': 'Stregkoden {code} blev afvist: det er ikke et gyldigt EAN-13- eller Code 128-nummer. Tjek den på siden Menu i Adminium.',
+  'labels.errMissing': '{name} har ingen stregkode at udskrive.',
+  'labels.errOff': 'Barcode Labels er slået fra for Point of Sale, så der kan ikke sættes en etiket op.',
+  'labels.count': 'Hvor mange etiketter',
+  'labels.countHelp': 'Fra 1 til {max}. Et ark rummer 24; flere kommer på de næste sider.',
+  'labels.countInvalid': 'Skriv et helt tal fra 1 til {max}.',
+  'labels.errGone': 'Varen er ikke længere på menuen.',
+  'labels.errOffline': 'Adminium kunne ikke nås. Prøv igen, når kassen er online igen.',
+  'labels.errOther': 'Etiketten kunne ikke sættes op: {detail}',
+
+
+
+
+
+
 
   // ---- wave 2: barcode scanning (55-T74) ----
   'scan.toastUnknown': 'Ingen vare har stregkoden {code}',

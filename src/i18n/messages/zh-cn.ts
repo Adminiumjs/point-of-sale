@@ -342,7 +342,6 @@ export const zhCn: Translated<typeof enUS> = {
   'toast.cardSharePaid': '刷卡份额已付 · 剩余 {rem}',
   'toast.walletSharePaid': '钱包份额已付 · 剩余 {rem}',
   'toast.printSent': '打印已模拟 · 仅为演示',
-  'toast.receiptSentEmail': '邮件小票已模拟 · 仅为演示',
   'toast.receiptSentText': '短信小票已模拟 · 仅为演示',
 
   // ---- wave 1 and the Guests side (55-T58–T62) ----
@@ -790,6 +789,40 @@ export const zhCn: Translated<typeof enUS> = {
   'complete.guestWantsPrint': '顾客需要纸质收据',
   'complete.guestWantsEmail': '顾客希望通过邮件收到收据：{to}',
   'complete.guestWantsText': '顾客希望通过短信收到收据：{to}',
+
+  // ---- add-ons: emailed receipts and shelf labels ----
+  'complete.emailTitle': '通过邮件发送收据',
+  'complete.emailLabel': '顾客的电子邮箱',
+  'complete.emailSend': '发送收据',
+  'complete.emailInvalid': '这不是电子邮箱地址',
+  'complete.emailQueued': '收据正在发往 {to}',
+  'complete.emailedTo': '已通过邮件发往 {to}',
+  'complete.emailNote': 'Adminium 会发送这封邮件，并附上收据。该地址只随这一封邮件保存，不作他用。',
+  'nav.labels': '货架标签',
+  'labels.sub': '根据商品条码生成一张标签纸',
+  'labels.search': '查找商品或条码',
+  'labels.print': '打印标签',
+  'labels.printFor': '为 {name} 打印标签',
+  'labels.drawing': '正在排版…',
+  'labels.open': '打开标签纸',
+  'labels.noBarcode': '{count} 件商品没有条码。请在 Adminium 的“菜单”页面添加条码后再打印标签。',
+  'labels.none': '没有匹配的商品',
+  'labels.errLatin': '“{name}”无法印在标签上：标签纸只能打印基本拉丁字母，无法打印 {letters}。请用基本拉丁字母重命名该商品后再打印标签。',
+  'labels.errCode': '条码 {code} 被拒绝：它不是有效的 EAN-13 或 Code 128 号码。请在 Adminium 的“菜单”页面检查。',
+  'labels.errMissing': '{name} 没有可打印的条码。',
+  'labels.errOff': 'Barcode Labels 已对 Point of Sale 关闭，无法生成标签。',
+  'labels.count': '标签数量',
+  'labels.countHelp': '1 到 {max}。一张可放 24 个，多出的会排到后面几页。',
+  'labels.countInvalid': '请输入 1 到 {max} 之间的整数。',
+  'labels.errGone': '该商品已不在菜单中。',
+  'labels.errOffline': '无法连接 Adminium。请在收银台恢复在线后重试。',
+  'labels.errOther': '标签无法生成：{detail}',
+
+
+
+
+
+
 
   // ---- wave 2: barcode scanning (55-T74) ----
   'scan.toastUnknown': '没有条码为 {code} 的商品',

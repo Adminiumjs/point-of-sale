@@ -15,6 +15,9 @@ const RECEIPTS: { via: ReceiptVia; label: MessageKey; icon: string }[] = [
   { via: 'none', label: 'display.receiptNone', icon: 'x' },
 ];
 
+/** The receipt choices a guest is offered: by email only while the till can send one (Invoices & Receipts attached). */
+export const receiptChoices = (emailing: boolean) => RECEIPTS.filter((o) => o.via !== 'email' || emailing);
+
 const chip = (on: boolean) =>
   'flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:62px;border-radius:15px;border:2px solid ' +
   (on ? 'var(--accent)' : 'var(--border-strong)') +
@@ -190,7 +193,7 @@ function SignStep() {
         </button>
         <div id="display-receipt" style={css('font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin:24px 0 11px;')}>{t('display.receipt')}</div>
         <div role="radiogroup" aria-labelledby="display-receipt" style={css('display:flex;flex-wrap:wrap;gap:10px;')}>
-          {RECEIPTS.map((o) => {
+          {receiptChoices(s.features['emailed-receipts']).map((o) => {
             const on = d.receipt === o.via;
             return (
               <button key={o.via} role="radio" aria-checked={on} className="pos-press" onClick={() => s.displayReceipt(o.via)} style={css('flex:1;min-width:118px;display:flex;align-items:center;justify-content:center;gap:8px;height:56px;border-radius:14px;font-family:inherit;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border-strong)') + ';background:' + (on ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (on ? 'var(--accent)' : 'var(--fg)') + ';font-size:15px;font-weight:800;cursor:pointer;')}>

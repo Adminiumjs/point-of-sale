@@ -1,5 +1,5 @@
 /**
- * WHICH CONNECTION a hosted STAFF surface reads (29-app-surfaces.md D9).
+ * WHICH CONNECTION a hosted STAFF surface reads.
  *
  * ─── Why this has to be asked at all ─────────────────────────────────────────
  *
@@ -96,6 +96,67 @@ export interface StaffConfig {
   currency: string | null;
   user: { id: string; name: string; email: string } | null;
   csrfToken: string | null;
+  /**
+   * The app's staff-bound browser keys this person may use, by purpose (a
+   * kiosk's). Empty for everyone else. A key opens nothing without this same
+   * person's sign-in beside it, so it is a handle, not a credential.
+   */
+  publicKeys: Record<string, string>;
+  /**
+   * What this person may do with the app's own tables (by short name) and the
+   * app's roles they hold — so a screen can leave out a button whose write
+   * would be refused. Null from a server that does not say: then every button
+   * shows, and the server refuses what it refuses.
+   */
+  access: StaffAccess | null;
+  /**
+   * The add-ons attached to this app and switched on for it, by key: each
+   * one's version and the settings its author marked for a browser. An add-on
+   * that is not here is not there for the app — a feature built on it is off.
+   * Empty from a server that attaches none, or is too old to say.
+   */
+  addOns: Record<string, AttachedAddOn>;
+}
+
+export interface AttachedAddOn {
+  version: string | null;
+  settings: Record<string, unknown>;
+}
+
+/** `addOns` as the server sent it: every key with an object, nothing else. */
+function addOnsOf(value: unknown): Record<string, AttachedAddOn> {
+  const out: Record<string, AttachedAddOn> = {};
+  for (const [key, entry] of Object.entries(record(value))) {
+    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) continue;
+    const e = entry as Record<string, unknown>;
+    out[key] = { version: text(e.version), settings: record(e.settings) };
+  }
+  return out;
+}
+
+export type TableAction = "read" | "create" | "update" | "delete";
+export interface StaffAccess {
+  tables: Record<string, TableAction[]>;
+  roles: { slug: string; name: string }[];
+}
+
+const ACTIONS: readonly TableAction[] = ["read", "create", "update", "delete"];
+
+/** `access` as the server sent it, keeping only what it means; null when it sent none. */
+function accessOf(value: unknown): StaffAccess | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  const doc = value as Record<string, unknown>;
+  const tables: Record<string, TableAction[]> = {};
+  for (const [ref, actions] of Object.entries(record(doc.tables))) {
+    if (!Array.isArray(actions)) continue;
+    tables[ref] = ACTIONS.filter((action) => actions.includes(action));
+  }
+  const roles = (Array.isArray(doc.roles) ? doc.roles : []).flatMap((role) => {
+    const r = record(role);
+    const slug = text(r.slug);
+    return slug === null ? [] : [{ slug, name: text(r.name) ?? slug }];
+  });
+  return { tables, roles };
 }
 
 type StaffConfigOptions = {
@@ -141,6 +202,11 @@ export async function loadStaffConfig(opts: StaffConfigOptions = {}): Promise<St
           ? null
           : { id: String(user.id), name: text(user.name) ?? "", email: text(user.email) ?? "" },
       csrfToken: text(d.csrfToken),
+      publicKeys: Object.fromEntries(
+        Object.entries(record(d.publicKeys)).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== ""),
+      ),
+      access: accessOf(d.access),
+      addOns: addOnsOf(d.addOns),
     };
   } catch {
     // An older server answers this path with the SPA index (HTML).
