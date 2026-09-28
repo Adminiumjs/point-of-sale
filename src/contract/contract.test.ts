@@ -19,7 +19,14 @@
  *      no barcode each refused in the words the till shows;
  *   6. an add-on switched off for the app: its feature is off in the staff
  *      config, the label route says so, and a receipt is never sent without
- *      its receipt.
+ *      its receipt;
+ *   7. a guest's table, through the Guests pages' own port and the real
+ *      public client: the stored slot rule's times per day (none outside the
+ *      window), a booking with its code and emailed confirmation, a full time
+ *      and one outside the hours refused, the claim by code and mobile, a move
+ *      and a cancel inside and outside the venue's window, and the stop on a
+ *      guest who keeps guessing — each refusal as the page words it and as the
+ *      code the released client knows.
  *
  * It runs where an Adminium checkout with its built server and dashboard is
  * (`ADMINIUM_REPO`) and the add-ons checkout beside this repo (`ADD_ONS_REPO`),
@@ -30,10 +37,13 @@
  */
 import { randomUUID } from 'node:crypto';
 
+import { createPublicClient, fromTenantLocal, PUBLIC_ERROR_CODES, toTenantDay } from '@adminiumjs/public-client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { labelOutcomeOf } from '../data/documents';
 import { featuresOf } from '../features';
+import { GuestError, publicGuestsPort, type GuestBooking, type GuestsPort, type Slot } from '../guests/api';
+import { resolveSurfaceConfig } from '../publicConfig';
 import type { AttachedAddOn } from '../staffConnection';
 import { ADD_ON_DIRS, addOnBundle, appBundle, attachedFiles, packedFloor, boot, Caller, ENGINES, mailbox, missing, ok, packedVersion, until, type Engine, type Server } from './harness';
 
@@ -57,6 +67,22 @@ const REHEARSAL =
     : '';
 
 const money = (value: unknown) => Math.round(Number(value) * 100) / 100;
+
+/** The venue's clock for a guest's booking. */
+const ZONE = 'Europe/London';
+const minutesOf = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+const plusDays = (day: string, n: number) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+/** The refusal a guest's action met, as the Guests page holds it. */
+async function refusal(run: () => Promise<unknown>): Promise<GuestError> {
+  try {
+    await run();
+  } catch (error) {
+    if (error instanceof GuestError) return error;
+    throw error;
+  }
+  throw new Error('expected a refusal, and it went through');
+}
 
 describe.skipIf(why !== null)(`the contract with a built Adminium${why === null ? (REHEARSAL === '' ? '' : ` (${REHEARSAL}: their release not yet stamped)`) : ` — skipped: ${why}`}`, () => {
   ENGINES.forEach(([engine, available]) => {
@@ -297,6 +323,125 @@ describe.skipIf(why !== null)(`the contract with a built Adminium${why === null 
         expect((await mailbox(server)).some((m) => m.to.includes(to))).toBe(false);
         ok(await staff.patch('/api/v1/add-ons/invoices', { attachedTo: 'pos', enabled: true }));
       }, 180_000);
+
+      // ── a guest's table, through the Guests pages' own port ─────────────────
+      // `publicGuestsPort` over the real public client, with the key and table
+      // names the customer surface serves: what a guest's browser does. Each
+      // refusal is checked twice — the page's word for it, and the server's
+      // code, which the released client must know or it reads as "offline".
+      let guests: GuestsPort;
+      let day = '';
+      let booking: GuestBooking;
+      let rulesId: unknown;
+      const heard: { status: number; code: string | undefined }[] = [];
+      const lastCode = () => heard.at(-1)?.code;
+      const at = (time: string) => Date.parse(fromTenantLocal(day, minutesOf(time), ZONE));
+      const times = (slots: Slot[]) => slots.map((s) => s.time);
+      const stateAt = (slots: Slot[], time: string) => slots.find((s) => s.time === time)?.state;
+      const guestPort = async () => {
+        const config = await resolveSurfaceConfig({ baked: {}, hostedCustomer: true, base: `${server.base}/apps/pos/customer/`, origin: server.base });
+        if (config === null) throw new Error('the customer surface served no key');
+        // As a browser on the hosted page sends it: the page's own origin, with every refusal noted.
+        const asBrowser: typeof fetch = async (input, init) => {
+          const res = await fetch(input, { ...init, headers: { ...(init?.headers as Record<string, string>), origin: server.base } });
+          if (!res.ok) heard.push({ status: res.status, code: ((await res.clone().json().catch(() => null)) as { error?: { code?: string } } | null)?.error?.code });
+          return res;
+        };
+        const client = createPublicClient({ baseUrl: config.baseUrl, publishableKey: config.publishableKey, fetch: asBrowser });
+        return publicGuestsPort(client!, config.tables ?? {});
+      };
+
+      it('answers a day’s tables as the Guests page asks: every slot from opening, free, and none outside the window', async () => {
+        ok(await staff.patch(`/api/v1/connections/${connectionId}`, { timezone: ZONE }));
+        rulesId = (await insert('booking_rules', { opens: '17:00', closes: '21:00', slot_minutes: 30, covers_per_slot: 6, days_ahead: 5, max_party: 8, hold_minutes: 15, cancel_hours: 2 }))['id'];
+        guests = await guestPort();
+        expect(guests.timeZone()).toBe(ZONE);
+        expect((await guests.venue()).name).toBe(VENUE);
+        expect(await guests.rules()).toMatchObject({ opens: '17:00', closes: '21:00', slotMinutes: 30, maxParty: 8, daysAhead: 5, cancelHours: 2 });
+        day = toTenantDay(new Date(Date.now() + 86_400_000).toISOString(), ZONE);
+        // The stored rule's answer per day: each half hour whose slot ends by the close.
+        const tomorrow = await guests.availability(day, 2);
+        expect(times(tomorrow)).toEqual(['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30']);
+        expect(tomorrow.every((s) => s.state === 'free')).toBe(true);
+        // A day past the window, and a day gone by: nothing a guest may take.
+        for (const other of [plusDays(day, 6), plusDays(day, -2)]) {
+          const slots = await guests.availability(other, 2);
+          expect(slots.filter((s) => s.state === 'free'), other).toEqual([]);
+          expect(slots.every((s) => s.state === 'full'), other).toBe(true);
+        }
+      }, 60_000);
+
+      it('books a table: Adminium gives it its code, confirms it by email, and counts it against the time', async () => {
+        const to = `table-${engine}@tillmail.net`;
+        booking = await guests.book({ startsAt: at('18:00'), party: 4, name: 'Nell Varga', mobile: '+44 7700 900461', email: to, occasion: null, request: null });
+        expect(booking.code).toMatch(/^MR-[0-9A-Z]{4}$/);
+        expect(booking).toMatchObject({ partySize: 4, startsAt: at('18:00'), status: 'confirmed' });
+        // The till's row: booked online, with the code the guest was given.
+        const row = await one('reservations', booking.id);
+        expect([row['code'], row['channel'], row['status'], row['mobile']]).toEqual([booking.code, 'online', 'confirmed', '+44 7700 900461']);
+        // Six a slot: a party of four leaves room for two, not three.
+        expect(stateAt(await guests.availability(day, 3), '18:00')).toBe('full');
+        expect(stateAt(await guests.availability(day, 2), '18:00')).toBe('free');
+        expect(stateAt(await guests.availability(day, 3), '18:30')).toBe('free');
+        // The confirmation carries the code, and the link back to "Manage my booking".
+        const mail = await until(async () => (await mailbox(server)).find((m) => m.to.includes(to)), `the confirmation to ${to}`, 150_000);
+        expect(mail.text).toContain(booking.code);
+        expect(mail.text).toContain(`manage?code=${booking.code}`);
+        expect(mail.text).toContain(VENUE);
+      }, 180_000);
+
+      it('refuses a time with no room, and one outside the hours, in the words the page shows', async () => {
+        const full = await refusal(() => guests.book({ startsAt: at('18:00'), party: 3, name: 'Ida Lund', mobile: '+44 7700 900462', email: null, occasion: null, request: null }));
+        expect([full.kind, lastCode()]).toEqual(['full', 'PUBLIC_SLOT_FULL']);
+        const late = await refusal(() => guests.book({ startsAt: at('21:30'), party: 2, name: 'Ida Lund', mobile: '+44 7700 900462', email: null, occasion: null, request: null }));
+        expect([late.kind, lastCode()]).toEqual(['refused', 'PUBLIC_WRITE_REFUSED']);
+        // Neither wrote a row.
+        const rows = ok(await staff.get<{ data: Row[] }>(`${data('reservations')}?limit=50`)).data;
+        expect(rows.filter((r) => r['name'] === 'Ida Lund')).toEqual([]);
+        expect(heard.map((h) => h.code).filter((code) => !(PUBLIC_ERROR_CODES as readonly (string | undefined)[]).includes(code))).toEqual([]);
+      }, 60_000);
+
+      it('finds the booking by its code and mobile, and nothing with a wrong mobile', async () => {
+        const stranger = await guestPort();
+        const miss = await refusal(() => stranger.find(booking.code, '+44 7700 900999'));
+        expect(miss.kind).toBe('no-match');
+        const found = await guests.find(booking.code, '+44 7700 900461');
+        expect(found).toMatchObject({ id: booking.id, code: booking.code, name: 'Nell Varga', partySize: 4, startsAt: at('18:00'), status: 'confirmed' });
+      }, 60_000);
+
+      it('moves the booking and cancels it within the rules: the room follows it, and too late is refused', async () => {
+        const moved = await guests.change(booking.id, { startsAt: at('19:00'), party: 4 });
+        expect(moved).toMatchObject({ id: booking.id, startsAt: at('19:00'), partySize: 4, status: 'confirmed' });
+        // Another guest sees the room follow it: 18:00 free again, 19:00 full for a party of three.
+        const after = await (await guestPort()).availability(day, 3);
+        expect([stateAt(after, '18:00'), stateAt(after, '19:00')]).toEqual(['free', 'full']);
+        // The guest who holds it is not counted against their own booking (the Change page's times).
+        expect(stateAt(await guests.availability(day, 3), '19:00')).toBe('free');
+        // Inside the cancellation window (the venue's own setting): refused, and the booking stands.
+        await update('booking_rules', rulesId, { cancel_hours: 48 });
+        const tooLate = await refusal(() => guests.cancel(booking.id));
+        expect([tooLate.kind, lastCode()]).toEqual(['too-late', 'PUBLIC_TOO_LATE']);
+        expect((await one('reservations', booking.id))['status']).toBe('confirmed');
+        await update('booking_rules', rulesId, { cancel_hours: 2 });
+        const cancelled = await guests.cancel(booking.id);
+        expect(cancelled.status).toBe('cancelled');
+        // A cancelled booking holds nothing, to anyone.
+        expect(stateAt(await (await guestPort()).availability(day, 6), '19:00')).toBe('free');
+      }, 60_000);
+
+      it('stops a guest who keeps guessing, and says for how long', async () => {
+        const guesser = await guestPort();
+        let locked: GuestError | undefined;
+        for (let tries = 0; tries < 8 && locked === undefined; tries += 1) {
+          const miss = await refusal(() => guesser.find(booking.code, `+44 7700 90${String(1000 + tries)}`));
+          if (miss.kind === 'locked') locked = miss;
+          else expect(miss.kind).toBe('no-match');
+        }
+        expect(locked, 'a guest is stopped within a handful of wrong guesses').toBeDefined();
+        expect(lastCode()).toBe('PUBLIC_RATE_LIMITED');
+        expect(locked!.retryAfter).toBeGreaterThan(0);
+        expect(locked!.retryAfter).toBeLessThanOrEqual(60);
+      }, 60_000);
     });
   });
 });
