@@ -5,6 +5,7 @@ import { useT, type MessageKey } from '../i18n';
 import { Icon } from '../components/Icon';
 import { css } from '../components/css';
 import type { ReceiptVia } from '../data/types';
+import { DEMO } from '../surface';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
 
@@ -15,8 +16,14 @@ const RECEIPTS: { via: ReceiptVia; label: MessageKey; icon: string }[] = [
   { via: 'none', label: 'display.receiptNone', icon: 'x' },
 ];
 
-/** The receipt choices a guest is offered: by email only while the till can send one (Invoices & Receipts attached). */
-export const receiptChoices = (emailing: boolean) => RECEIPTS.filter((o) => o.via !== 'email' || emailing);
+/**
+ * The receipt choices a guest is offered: by email only while the till can
+ * send one (Invoices & Receipts attached), and by text only in the demo — a
+ * hosted till has nothing that sends a text, so the choice was a promise that
+ * ended as a reminder line on the cashier's screen.
+ */
+export const receiptChoices = (emailing: boolean, texting: boolean = DEMO) =>
+  RECEIPTS.filter((o) => (o.via !== 'email' || emailing) && (o.via !== 'text' || texting));
 
 const chip = (on: boolean) =>
   'flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:62px;border-radius:15px;border:2px solid ' +

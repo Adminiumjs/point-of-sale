@@ -25,7 +25,10 @@ describe('the till’s tools', () => {
 
 describe('the receipt choices on the customer display', () => {
   it('offers email only while the till can send one', () => {
-    expect(receiptChoices(true).map((o) => o.via)).toEqual(['email', 'text', 'print', 'none']);
-    expect(receiptChoices(false).map((o) => o.via)).toEqual(['text', 'print', 'none']);
+    expect(receiptChoices(true, true).map((o) => o.via)).toEqual(['email', 'text', 'print', 'none']);
+    expect(receiptChoices(false, true).map((o) => o.via)).toEqual(['text', 'print', 'none']);
+    // A hosted till sends no text: the guest is not offered one.
+    expect(receiptChoices(true, false).map((o) => o.via)).toEqual(['email', 'print', 'none']);
+    expect(receiptChoices(false, false).map((o) => o.via)).toEqual(['print', 'none']);
   });
 });

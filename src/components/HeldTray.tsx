@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 import { usePos } from '../state/store';
 import { dur, lineName, linesTotal, money, tableName } from '../state/calc';
 import { useT } from '../i18n';
@@ -9,14 +11,26 @@ const MONO = "font-family:'JetBrains Mono',monospace;";
 export function HeldTray() {
   const s = usePos();
   const t = useT();
+  const tray = useRef<HTMLDivElement | null>(null);
+  const open = s.heldOpen;
+  useEffect(() => {
+    if (!open) return;
+    tray.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') usePos.getState().closeHeld();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
   if (!s.heldOpen) return null;
 
   return (
     <>
       <div onClick={s.closeHeld} style={css('position:absolute;inset:0;z-index:210;background:var(--scrim);animation:pos-scrim .2s ease;')} />
-      <div className="pos-drawer">
+      {/* A dialog like the till's other sheets: named, modal, closed by Escape, focus moved into it. */}
+      <div className="pos-drawer" role="dialog" aria-modal="true" aria-labelledby="held-tray-title" tabIndex={-1} ref={tray}>
         <div style={css('flex-shrink:0;display:flex;align-items:center;gap:12px;padding:20px 22px;border-bottom:1px solid var(--border);')}>
-          <div style={css('font-size:19px;font-weight:800;letter-spacing:-.02em;')}>{t('held.title')}</div>
+          <div id="held-tray-title" style={css('font-size:19px;font-weight:800;letter-spacing:-.02em;')}>{t('held.title')}</div>
           <span style={css('font-size:13px;font-weight:800;' + MONO + 'padding:3px 10px;border-radius:20px;background:var(--surface-3);color:var(--fg-muted);')}>{s.held.length}</span>
           <button className="pos-press" onClick={s.closeHeld} aria-label={t('common.close')} style={css('margin-inline-start:auto;width:44px;height:44px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;')}>
             <Icon name="x" size={20} />
