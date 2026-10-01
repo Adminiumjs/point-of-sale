@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STAFF, TABLES, demoGroupId, demoSelection, type DemoSize } from '../data/demo';
 import { keyOf } from '../data/key';
 import { remaining, subtotal, total } from './calc';
-import { usePos } from './store';
+import { usePos, worded } from './store';
 import { outbox } from './writes';
 
 /*
@@ -500,6 +500,22 @@ describe('discounts across tickets', () => {
     s().applyDiscount('pct', 20, '20% off');
     s().resumeHeld(1041);
     expect(s().discount).toBeNull();
+  });
+
+  it('stays with its own ticket: parked with it on hold, back when it is resumed', () => {
+    // Its row keeps the discount, so a held ticket that came back at full price was charged wrong.
+    const number = s().ticket.number;
+    s().applyDiscount('pct', 20, '20% off');
+    s().hold();
+    expect(s().held.find((h) => h.number === number)?.discount).toEqual({ kind: 'pct', value: 20, label: '20% off' });
+    s().resumeHeld(number);
+    expect(s().discount).toEqual({ kind: 'pct', value: 20, label: '20% off' });
+  });
+
+  it('is worded in the till’s language when its row is read back with no label', () => {
+    expect(worded({ kind: 'pct', value: 10, label: '' })).toEqual({ kind: 'pct', value: 10, label: '10% off' });
+    expect(worded({ kind: 'comp', value: 0, label: '' })?.label).not.toBe('');
+    expect(worded(undefined)).toBeNull();
   });
 
   it('does not follow the register onto a newly seated table', () => {

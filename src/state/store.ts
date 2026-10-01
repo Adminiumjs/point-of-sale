@@ -442,7 +442,7 @@ function demoCode(taken: Reservation[]): string {
 }
 
 /** The ticket on the register, parked on the held tray — its member goes with it. */
-const parked = (tk: Ticket): HeldTicket => ({
+const parked = (tk: Ticket, discount: Discount | null = null): HeldTicket => ({
   number: tk.number,
   rid: tk.rid,
   table: tk.table,
@@ -450,7 +450,24 @@ const parked = (tk: Ticket): HeldTicket => ({
   seats: tk.seats,
   items: tk.items,
   ...(tk.customerId === undefined ? {} : { customerId: tk.customerId }),
+  ...(discount === null ? {} : { discount }),
 });
+
+/**
+ * A discount read back from its ticket's row, worded as the discount sheet
+ * words one — in the till's language now, since the row keeps no label.
+ */
+export const worded = (discount: Discount | undefined): Discount | null => {
+  if (discount === undefined) return null;
+  if (discount.label !== '') return discount;
+  const label =
+    discount.kind === 'comp'
+      ? t('discount.comp')
+      : discount.kind === 'pct'
+        ? t('discount.pctOff', { pct: discount.value })
+        : t('discount.amountOff', { amount: money(discount.value) });
+  return { ...discount, label };
+};
 
 /** Which member search is the latest: an older answer arriving late is dropped. */
 let searchSeq = 0;
@@ -957,7 +974,8 @@ export const usePos = create<PosState>()((set, get) => {
     voidKey: null,
     moveOpen: false,
     discountOpen: false,
-    discount: null,
+    // The discount the open ticket's row holds: a reload must not charge full price.
+    discount: worded(source.openTicket().discount),
 
     payMethod: 'card',
     cash: '',
@@ -1244,10 +1262,10 @@ export const usePos = create<PosState>()((set, get) => {
       }
       const tk = s.ticket;
       void saveTicket(tk.rid, { held: true });
-      const held = s.held.concat([parked(tk)]);
+      const held = s.held.concat([parked(tk, s.discount)]);
       // A discount applies to the ticket on the register; it must not follow the
-      // register onto the next one. (Held tickets do not carry a discount, so a
-      // held-then-resumed ticket has to have it re-applied.)
+      // register onto the next one. It is parked with its own ticket (its row
+      // keeps it), and comes back when that ticket is resumed.
       set({ held, ticket: freshTicket(), discount: null });
       get().showToast(t('toast.ticketHeld'));
     },
@@ -1261,7 +1279,7 @@ export const usePos = create<PosState>()((set, get) => {
       const cur = s.ticket;
       if (cur.items.length) {
         void saveTicket(cur.rid, { held: true });
-        held.push(parked(cur));
+        held.push(parked(cur, s.discount));
       }
       void saveTicket(h.rid, { held: false });
       set({
@@ -1277,7 +1295,8 @@ export const usePos = create<PosState>()((set, get) => {
         },
         heldOpen: false,
         view: 'register',
-        discount: null,
+        // Its own discount, as its row holds it — never the one of the ticket it replaces.
+        discount: worded(h.discount),
       });
       knowMember(h.customerId);
       get().showToast(t('toast.resumed', { table: tableName(h.table, s.mode) }));

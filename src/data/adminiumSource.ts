@@ -34,6 +34,7 @@ import type {
   BookingRules,
   Category,
   ClockEntry,
+  Discount,
   HeldTicket,
   KdsOrder,
   KdsStatus,
@@ -151,6 +152,9 @@ interface WireTicket {
   closed_at: string | null;
   /** The loyalty member it is for (wave 2). */
   customer_id: Key | null;
+  /** The discount the till saved on it: read back, or a reload charges full price. */
+  discount_kind?: 'percent' | 'amount' | 'comp' | null;
+  discount_value?: Num | null;
   /** Pickup (wave 2): how it came in, and where it is. */
   channel: PickupOrder['channel'] | null;
   pickup_stage: PickupStage | null;
@@ -537,6 +541,19 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
     };
     const tableLabel = (id: Key | null) => (id === null ? null : (labelOf.get(key(id)) ?? null));
 
+    /*
+     * A ticket's saved discount. The till wrote it to the row and never read
+     * it back, so after a reload the ticket on the register showed — and
+     * charged — full price while its row still said 10 % off.
+     */
+    const discountOf = (row: WireTicket): { discount: Discount } | Record<string, never> => {
+      const kind = row.discount_kind === 'percent' ? 'pct' : row.discount_kind === 'amount' ? 'amt' : row.discount_kind === 'comp' ? 'comp' : null;
+      if (kind === null) return {};
+      const value = num(row.discount_value);
+      if (kind !== 'comp' && !(value > 0)) return {};
+      return { discount: { kind, value, label: '' } };
+    };
+
     const current = live.find((t) => !yes(t.held));
     const openTicket: Ticket =
       current === undefined
@@ -549,6 +566,7 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
             openedAt: instant(current.opened_at),
             items: linesOf(current),
             ...(current.customer_id === null || current.customer_id === undefined ? {} : { customerId: key(current.customer_id) }),
+            ...discountOf(current),
           };
     const held: HeldTicket[] = live
       .filter((t) => t !== current)
@@ -560,6 +578,7 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
         seats: row.table_id === null ? num(row.guests) : (seatsOf.get(key(row.table_id)) ?? num(row.guests)),
         items: linesOf(row),
         ...(row.customer_id === null || row.customer_id === undefined ? {} : { customerId: key(row.customer_id) }),
+        ...discountOf(row),
       }));
 
     /* --- the floor ------------------------------------------------------ */

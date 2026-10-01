@@ -274,6 +274,31 @@ describe('what comes from the rows', () => {
     expect(snap.held.map((h) => [h.number, h.rid, h.table])).toEqual([[1041, '52', 'P1']]);
   });
 
+  it('reads a ticket’s saved discount back with it, on the till and on the held tray', async () => {
+    /*
+     * The till wrote `discount_kind` / `discount_value` and never read them:
+     * after a reload the ticket came back at full price, and was charged it,
+     * while its row still said 10 % off.
+     */
+    const rows = {
+      ...ROWS,
+      tickets: ROWS['tickets']!.map((row) =>
+        row['id'] === 51
+          ? { ...row, discount_kind: 'percent', discount_value: '10' }
+          : row['id'] === 52
+            ? { ...row, discount_kind: 'comp', discount_value: null }
+            : row,
+      ),
+    };
+    const snap = (await loadSnapshot(fakePort(rows).port))!;
+    expect(snap.openTicket.discount).toEqual({ kind: 'pct', value: 10, label: '' });
+    expect(snap.held.map((h) => h.discount)).toEqual([{ kind: 'comp', value: 0, label: '' }]);
+    // A ticket with none has none — and a kind with nothing off is no discount.
+    expect((await load()).snap.openTicket.discount).toBeUndefined();
+    const empty = { ...ROWS, tickets: ROWS['tickets']!.map((row) => (row['id'] === 51 ? { ...row, discount_kind: 'amount', discount_value: 0 } : row)) };
+    expect((await loadSnapshot(fakePort(empty).port))!.openTicket.discount).toBeUndefined();
+  });
+
   it('marks a table taken when a live ticket sits on it, and keeps the table’s key', async () => {
     const { snap } = await load();
     expect(snap.tables.map((t) => [t.id, t.label, t.status])).toEqual([

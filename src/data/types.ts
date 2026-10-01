@@ -106,6 +106,11 @@ export interface Ticket {
   seats: number;
   openedAt: number;
   items: LineItem[];
+  /**
+   * The discount saved on the ticket's row, read back with it. Its label is
+   * empty here — the register words it in the till's language when it loads.
+   */
+  discount?: Discount;
 }
 
 export interface HeldTicket {
@@ -117,6 +122,8 @@ export interface HeldTicket {
   at: number;
   seats: number;
   items: LineItem[];
+  /** Its discount, parked with it: resuming the ticket brings it back. */
+  discount?: Discount;
 }
 
 export type TableStatus = 'open' | 'occupied' | 'attention';
