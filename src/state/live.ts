@@ -81,7 +81,7 @@ export interface ApplyDeps {
 }
 
 /** Tables this till adds rows to: their frames can outrun the till's own answer. */
-const WRITTEN_HERE = new Set(['tickets', 'ticket_items', 'ticket_item_modifiers']);
+const WRITTEN_HERE = new Set(['tickets', 'ticket_items', 'ticket_item_modifiers', 'reservations']);
 
 export function applyFrame(frame: LiveFrame, deps: ApplyDeps = {}): void {
   const id = frame.id;

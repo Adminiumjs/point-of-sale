@@ -93,6 +93,23 @@ describe('what another till changes, this one shows', () => {
     expect(s().held).toEqual([]);
   });
 
+  it('knows its own phone booking when the server announces it before it answers', async () => {
+    // The booking showed twice: the till's draft under its temporary key, and the echo under the real one.
+    const inner = memorySink();
+    let answer!: () => void;
+    const gate = new Promise<void>((resolve) => (answer = resolve));
+    setSink({ ...inner, insert: async (ref, values, children) => (await gate, inner.insert(ref, values, children)) });
+    usePos.setState({ reservations: [] });
+    const startsAt = Date.now() + 86_400_000;
+    expect(s().createResv({ name: 'Wu family', mobile: '+15550100', party: 4, startsAt, note: '' })).toBe(true);
+    await Promise.resolve();
+    applyFrame({ table: 'reservations', kind: 'record.create', id: '1', row: { id: 1, name: null, party_size: 4, starts_at: new Date(startsAt).toISOString(), status: 'confirmed', channel: 'phone' } });
+    expect(s().reservations).toHaveLength(1);
+    answer();
+    await settled();
+    expect(s().reservations.map((r) => [r.id, r.name])).toEqual([['1', 'Wu family']]);
+  });
+
   it('fills in a line’s options as they arrive, and the kitchen reads them', () => {
     applyFrame({ table: 'tickets', kind: 'record.create', id: '70', row: { id: 70, status: 'sent', kitchen_status: 'new', table_id: 41, sent_at: new Date().toISOString() } });
     applyFrame({ table: 'ticket_items', kind: 'record.create', id: '80', row: { id: 80, ticket_id: 70, menu_item_id: 'latte', qty: 1, sent_at: new Date().toISOString() } });
