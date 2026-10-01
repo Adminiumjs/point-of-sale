@@ -12,7 +12,7 @@ import { css } from '../components/css';
  *
  * "Print report" prints this page. "Email owner" is drawn in the comp but has
  * nothing behind it — there is no report e-mail — so, like the receipt's Email
- * and Text (DP30), it is shown in the demo only.
+ * and Text, it is shown in the demo only.
  */
 export function EndOfDay() {
   const s = usePos();

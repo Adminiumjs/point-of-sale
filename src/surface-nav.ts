@@ -1,6 +1,6 @@
 /**
  * This app's screens, as data — the ONE declaration two build outputs and one
- * runtime all read (29-app-surfaces.md D7/D8).
+ * runtime all read.
  *
  * ── Why this exists ──────────────────────────────────────────────────────────
  *
@@ -31,8 +31,8 @@ export const APP_KEY = 'pos';
  * The sidebar section heading when the till is blended into Adminium.
  *
  * The PRODUCT's name, not the café's: the demo venue is seed fiction
- * (`BRAND` in `data/demo.ts`) and a real shop's name has no column to come from
- * (WS-I G-1), so "Daybreak Coffee" in an operator's own dashboard would be a
+ * (`BRAND` in `data/demo.ts`) and a real shop's name has no column to come
+ * from, so "Daybreak Coffee" in an operator's own dashboard would be a
  * demo presenting itself as their business.
  */
 export const APP_LABEL_KEY: MessageKey = 'nav.app';
@@ -80,7 +80,7 @@ export const SURFACE_EXTRAS = {
    * shift start from what the till holds now, which a link cannot rebuild.
    */
   staff: ['login', 'payment', 'complete', 'refund', 'shiftclose', 'eod', 'staff', 'menu86', 'labels', 'loyalty', 'giftcards', 'display'],
-  /* The confirmation email's preview: the demo's only (DP27) — a guest reads the real one in their mail. */
+  /* The confirmation email's preview: the demo's only — a guest reads the real one in their mail. */
   customer: ['email'],
 } as const satisfies Record<'staff' | 'customer', readonly View[]>;
 

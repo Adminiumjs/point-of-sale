@@ -1,5 +1,5 @@
 /**
- * A barcode scanner, told apart from a person typing (wave 2, 55-T74; §9 O4).
+ * A barcode scanner, told apart from a person typing (wave 2).
  *
  * Most scanners are keyboards: they type the code, one character every few
  * milliseconds, and press Enter. A person types far slower. So a run of at

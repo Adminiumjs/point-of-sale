@@ -10,7 +10,7 @@
 // TEN READS MOVED HERE WHEN CONNECTED MODE LANDED, and they were not tidying.
 // `state/calc.ts` — the pricing engine — imported the menu, the categories, the
 // milk surcharges, the TAX RATE and the tip presets straight from the seed, at
-// module scope. That is §5.1's caveat (a) in the flesh: rows behind the seam do
+// module scope. That is the caveat in the flesh: rows behind the seam do
 // nothing for code that reaches around it, and a connected till would have
 // charged Daybreak Coffee's 8.25% on another shop's sales.
 
@@ -80,7 +80,7 @@ export interface DataSource {
 /*
  * The demo's catalogue lives in its own module (`demoSource.ts`) and is reached
  * ONLY behind the build-time `DEMO` flag, so a hosted or connected bundle does
- * not carry the demo café — its roster, their PINs, its menu (§0.6). Every
+ * not carry the demo café — its roster, their PINs, its menu. Every
  * other build is handed its source by `main.tsx` before anything reads.
  */
 import { demoSource } from './demoSource';

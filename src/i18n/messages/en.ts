@@ -353,7 +353,7 @@ export const enUS = {
   'toast.printSent': 'Printing simulated · demo only',
   'toast.receiptSentText': 'Text receipt simulated · demo only',
 
-  // ---- wave 1: the till's own screens (translations: 55-T63) ----
+  // ---- wave 1: the till's own screens ----
   'nav.refund': 'Refund',
   'nav.closeShift': 'Close shift',
   'nav.endOfDay': 'End of day',
@@ -514,7 +514,7 @@ export const enUS = {
   'occasion.business': 'Business',
   'occasion.date': 'Date night',
 
-  // ---- the Guests side: book a table, manage my booking (translations: 55-T63) ----
+  // ---- the Guests side: book a table, manage my booking ----
   'guest.bookTitle': 'Book a table',
   'guest.manageTitle': 'Manage your booking',
   'guest.stepWhen': '1 · When',
@@ -621,7 +621,7 @@ export const enUS = {
   'email.cancel': 'Cancel free up to {count} hour before.|Cancel free up to {count} hours before.',
   'guest.tryAgain': 'Try again',
 
-  // ---- wave 2: loyalty (55-T69) ----
+  // ---- wave 2: loyalty ----
   'nav.loyalty': 'Loyalty',
   'dock.screen.loyalty': 'Loyalty',
   'loyalty.title': 'Loyalty & rewards',
@@ -683,7 +683,7 @@ export const enUS = {
   'complete.pointsEarned': '+{n} points',
   'complete.pointsEarnedBalance': '+{n} points · {balance} in all',
 
-  // ---- wave 2: gift cards (55-T70) ----
+  // ---- wave 2: gift cards ----
   'nav.giftCards': 'Gift cards',
   'dock.screen.giftCards': 'Gift cards',
   'gift.lineName': 'Gift card {code}',
@@ -724,7 +724,7 @@ export const enUS = {
   'gift.toastNothingDue': 'Nothing left to pay',
   'gift.toastApplied': 'Applied {amount} to the ticket',
 
-  // ---- wave 2: pickup (55-T71) ----
+  // ---- wave 2: pickup ----
   'nav.pickup': 'Pickup',
   'ticket.forPickup': 'For pickup',
   'ticket.pickupFor': 'Pickup · {name} · {stage}',
@@ -759,7 +759,7 @@ export const enUS = {
   'pickup.toastHanded': '#{n} handed off',
   'pickup.toastNotified': 'Notified {name}',
 
-  // ---- wave 2: customer display (55-T72) ----
+  // ---- wave 2: customer display ----
   'nav.display': 'Customer display',
   'display.customTip': 'Custom tip',
   'display.backspace': 'Delete',
@@ -831,7 +831,7 @@ export const enUS = {
 
 
 
-  // ---- wave 2: barcode scanning (55-T74) ----
+  // ---- wave 2: barcode scanning ----
   'scan.toastUnknown': 'No item has the barcode {code}',
   'scan.toastOff': '{name} is sold out',
 } as const;

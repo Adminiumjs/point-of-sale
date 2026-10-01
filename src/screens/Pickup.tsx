@@ -27,10 +27,10 @@ const itemsOf = (items: LineItem[]): string[] => items.map((li) => (li.qty > 1 ?
 
 /**
  * Order-ahead pickup (COMP 735-766, logic 2053-2065): the orders taken for
- * collection — at the till or by phone (D28; Online ordering's come later) —
+ * collection — at the till or by phone (Online ordering's come later) —
  * in three lanes, each moved on with one button: Start, Mark ready, Hand off.
  * A ready order can be Notified: the device's own messages open on the
- * guest's number (as Reservations' Message does, DP29), and the order notes
+ * guest's number (as Reservations' Message does), and the order notes
  * when.
  */
 export function Pickup() {

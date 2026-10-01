@@ -19,7 +19,7 @@ const METHODS: { m: PayMethod; label: MessageKey; icon: string }[] = [
 
 /**
  * Refund. It starts from "Today's tickets", drawn like the held tray, with a
- * search by ticket number that also finds older sales (F2, D62) — the comp only
+ * search by ticket number that also finds older sales — the comp only
  * refunds the last sale. A chosen sale opens the comp's refund screen
  * (539-579): pick the lines, where the money goes back, and issue it.
  */

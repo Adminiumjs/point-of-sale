@@ -1,5 +1,5 @@
 /**
- * PICKUP (wave 2, 55-T71): a ticket becomes an order someone collects — its
+ * PICKUP (wave 2): a ticket becomes an order someone collects — its
  * customer found by their number or made — and moves Queued → Making → Ready
  * → handed off, each step saved on the ticket; a paid order still waits.
  */

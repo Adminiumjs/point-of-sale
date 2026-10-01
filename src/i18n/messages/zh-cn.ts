@@ -344,7 +344,7 @@ export const zhCn: Translated<typeof enUS> = {
   'toast.printSent': '打印已模拟 · 仅为演示',
   'toast.receiptSentText': '短信小票已模拟 · 仅为演示',
 
-  // ---- wave 1 and the Guests side (55-T58–T62) ----
+  // ---- wave 1 and the Guests side ----
   'payment.cardTerminal': '请在您的刷卡机上收款——此处记录该笔付款',
   'complete.servedByOnly': '服务员：{staff}',
   'complete.noSale': '暂无可显示的销售。',
@@ -614,7 +614,7 @@ export const zhCn: Translated<typeof enUS> = {
   'email.cancel': '最迟可在 {count} 小时前免费取消。',
   'guest.tryAgain': '重试',
 
-  // ---- wave 2: loyalty (55-T69) ----
+  // ---- wave 2: loyalty ----
   'nav.loyalty': '会员积分',
   'dock.screen.loyalty': '会员积分',
   'loyalty.title': '会员与奖励',
@@ -676,7 +676,7 @@ export const zhCn: Translated<typeof enUS> = {
   'complete.pointsEarned': '+{n} 积分',
   'complete.pointsEarnedBalance': '+{n} 积分 · 共 {balance}',
 
-  // ---- wave 2: gift cards (55-T70) ----
+  // ---- wave 2: gift cards ----
   'nav.giftCards': '礼品卡',
   'dock.screen.giftCards': '礼品卡',
   'gift.lineName': '礼品卡 {code}',
@@ -717,7 +717,7 @@ export const zhCn: Translated<typeof enUS> = {
   'gift.toastNothingDue': '已无需付款',
   'gift.toastApplied': '已抵扣 {amount}',
 
-  // ---- wave 2: pickup (55-T71) ----
+  // ---- wave 2: pickup ----
   'nav.pickup': '自取',
   'ticket.forPickup': '设为自取',
   'ticket.pickupFor': '自取 · {name} · {stage}',
@@ -752,7 +752,7 @@ export const zhCn: Translated<typeof enUS> = {
   'pickup.toastHanded': '#{n} 已交付',
   'pickup.toastNotified': '已通知 {name}',
 
-  // ---- wave 2: customer display (55-T72) ----
+  // ---- wave 2: customer display ----
   'nav.display': '顾客屏',
   'display.customTip': '自定义小费',
   'display.backspace': '删除',
@@ -824,7 +824,7 @@ export const zhCn: Translated<typeof enUS> = {
 
 
 
-  // ---- wave 2: barcode scanning (55-T74) ----
+  // ---- wave 2: barcode scanning ----
   'scan.toastUnknown': '没有条码为 {code} 的商品',
   'scan.toastOff': '{name} 已售罄',
 };

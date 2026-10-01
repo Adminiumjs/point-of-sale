@@ -1,6 +1,6 @@
 /**
  * THE DEMO CARD AND THE APP — the declaration the website builds from, and the
- * app's half of the protocol (plan §4.2, §4.4).
+ * app's half of the protocol.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -87,7 +87,7 @@ describe('what the card asks, the demo does', () => {
     expect([usePos.getState().view, usePos.getState().resvNewOpen]).toEqual(['reservations', true]);
   });
 
-  it('moves MR-4829 for the timing shortcuts, and fills Manage with its whole number (F16)', () => {
+  it('moves MR-4829 for the timing shortcuts, and fills Manage with its whole number', () => {
     const at = () => usePos.getState().reservations.find((r) => r.code === 'MR-4829')!.startsAt;
     const original = at();
     applyDemoMessage(msg({ type: 'adminium:demo:do', shortcut: 'timing-soon' }));
@@ -102,7 +102,7 @@ describe('what the card asks, the demo does', () => {
   });
 });
 
-describe('the protocol’s rules (§4.4)', () => {
+describe('the protocol’s rules', () => {
   const frame = () => {
     const sent: { message: unknown; target: string }[] = [];
     const listeners: ((e: MessageEvent) => void)[] = [];

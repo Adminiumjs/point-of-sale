@@ -4,8 +4,8 @@
  * ── Why the till has to ask ──────────────────────────────────────────────────
  *
  * The demo opens on a PIN pad over a three-person roster, and that roster is
- * seed fiction: `db/schema.sql` has no staff table and no PIN column (WS-I G-1,
- * see `adminiumSource.ts`). A real database has nobody to pick and nothing to
+ * seed fiction: `db/schema.sql` has no staff table and no PIN column (see
+ * `adminiumSource.ts`). A real database has nobody to pick and nothing to
  * check a PIN against, which is why a STANDALONE build cannot open a till at
  * all.
  *

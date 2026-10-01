@@ -30,7 +30,7 @@ const REASONS: MessageKey[] = [
 export function DiscountModal() {
   const s = usePos();
   const t = useT();
-  // Why: picked before the discount itself, and saved with it (§0.6 — they could not be chosen).
+  // Why: picked before the discount itself, and saved with it (before, they could not be chosen).
   const [reason, setReason] = useState<MessageKey | null>(null);
   if (!s.discountOpen) return null;
 

@@ -44,7 +44,7 @@ const fallbackT: TFunction = (key, params, count) => {
  * Every figure on the till used to be formatted as `"USD"`, which was true of
  * the demo café and of nothing else: a hosted till over a database configured
  * for EUR would have rung up euros and printed dollar signs. The connection
- * carries the currency (28-T34); it lands here once, at boot.
+ * carries the currency; it lands here once, at boot.
  *
  * Held at module scope for the same reason the locale is: `state/calc.ts` and
  * the store format money outside React, where no hook reaches a provider.

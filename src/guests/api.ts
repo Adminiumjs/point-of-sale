@@ -10,7 +10,7 @@
  *   demoGuestsPort     the demo (guests/demoPort.ts), over the till's own
  *                      bookings so a guest's table shows up at the till.
  *
- * Adminium decides (§2.11): it answers free or full, never how many seats;
+ * Adminium decides: it answers free or full, never how many seats;
  * it gives the booking its code; it re-checks the slot on every write; it
  * keeps the cancellation window and the claim's lockout. The page only says
  * what came back, in the guest's language — every refusal arrives here as a

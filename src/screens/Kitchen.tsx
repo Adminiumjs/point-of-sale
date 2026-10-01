@@ -33,7 +33,7 @@ export function Kitchen() {
         </div>
         <div>
           <div style={css('font-size:18px;font-weight:800;letter-spacing:-.02em;')}>{t('kitchen.title')}</div>
-          {/* A real shop's name has no column (WS-I G-1), so `brand()` is empty
+          {/* A real shop's name has no column, so `brand()` is empty
               outside the demo — and "{brand} · live order tickets" then opens
               with a stray separator. The product's name stands in. */}
           <div style={css('font-size:12.5px;color:var(--fg-muted);')}>{t('kitchen.subtitle', { brand: source.brand() || t('nav.app') })}</div>

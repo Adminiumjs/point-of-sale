@@ -1,5 +1,5 @@
 /**
- * The app's half of the demo protocol (plan §4.4, D58): the website's demo
+ * The app's half of the demo protocol: the website's demo
  * card drives the demo through these messages, and the demo tells the card
  * where it is.
  *
@@ -7,7 +7,7 @@
  * line of it (`surfaceBuild.test.ts` checks that no surface build speaks the
  * protocol).
  *
- * Security, as §4.4 has it: a message is taken only from THIS origin, only
+ * Security, as the protocol has it: a message is taken only from THIS origin, only
  * from the window that framed the demo, and only at this protocol version;
  * everything goes back to `location.origin`, never to `*`.
  */
@@ -46,7 +46,7 @@ const SHORTCUTS: Record<DemoShortcutId, () => void> = {
     if (g.bookStep === 'when' && g.time !== '') g.bookNext();
   },
   'restart-booking': () => useGuests.getState().bookReset(),
-  // The whole number the booking holds (the comp's prefill disagreed with its own booking — §5.8.8, 8).
+  // The whole number the booking holds (the comp's prefill disagreed with its own booking).
   'prefill-code': () => {
     useGuests.getState().openManage(DEMO_CODE);
     useGuests.getState().setField('findMobile', DEMO_MOBILE);
@@ -58,7 +58,7 @@ const SHORTCUTS: Record<DemoShortcutId, () => void> = {
 };
 
 /**
- * F16: the timing moves MR-4829 itself — under two hours (an hour from now),
+ * The timing moves MR-4829 itself — under two hours (an hour from now),
  * plenty of time (tomorrow at seven), or back to where the demo put it —
  * rather than faking a clock the server would not share.
  */

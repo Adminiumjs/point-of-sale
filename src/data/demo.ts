@@ -250,7 +250,7 @@ export function seedTicket(): Ticket {
 
 /**
  * The tickets open at the other tables — every occupied table on the floor has
- * one, as it does at a connected till, so tapping it opens ITS ticket (§0.6).
+ * one, as it does at a connected till, so tapping it opens ITS ticket.
  * The kitchen's cards (below) are three of them.
  */
 export function seedHeld(): HeldTicket[] {

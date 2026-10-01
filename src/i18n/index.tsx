@@ -70,7 +70,7 @@ const I18nContext = createContext<I18nValue | null>(null);
 
 /**
  * The locale the Adminium host frame pushed, and the live setter that applies
- * it (29-app-surfaces.md D11).
+ * it.
  *
  * Module scope because it arrives from the embed bridge BEFORE React mounts —
  * the dashboard hands its locale over during the handshake — and again later

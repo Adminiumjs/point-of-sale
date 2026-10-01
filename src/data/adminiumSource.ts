@@ -3,7 +3,7 @@
  * Connected mode: the till's read set, read once at boot and mapped into the
  * shapes `demoSource` returns.
  *
- * ── WHAT IT READS (plan §3.2) ──────────────────────────────────────────────
+ * ── WHAT IT READS ──────────────────────────────────────────────────────────
  *
  *   in full    the venue's settings and booking rules, the staff, the menu
  *              (categories, items, their groups and options) and the floor —
@@ -428,7 +428,7 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
             occasions: list(rulesRow.occasions).map(String),
           };
 
-    /* --- staff: a roster without PINs (D61), matched by e-mail ---------- */
+    /* --- staff: a roster without PINs, matched by e-mail ---------------- */
 
     const staff: Staff[] = staffRows
       .filter((row) => yes(row.active))
@@ -750,7 +750,7 @@ function initialsOf(name: string): string {
  * `operator` is the person the hosted build's session names. They are the
  * staff row carrying their e-mail when there is one — so what they ring up is
  * recorded against that row — and otherwise themselves, recorded against no
- * row. The PIN pad opens nobody: there is no PIN column (D61), and the session
+ * row. The PIN pad opens nobody: there is no PIN column, and the session
  * opened the till.
  */
 export function snapshotSource(snap: Snapshot, operator: Staff | null = null, email: string | null = null): DataSource {

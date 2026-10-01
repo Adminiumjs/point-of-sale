@@ -190,9 +190,9 @@ async function boot(): Promise<void> {
     const hostedStaff = HOSTED && SURFACE_SIDE === 'staff';
 
     /*
-     * The staff surface asks WHICH DATABASE it belongs to before it reads one
-     * (29 D9). Null — unbound, or an Adminium too old to answer — keeps the
-     * old inference, so this is additive on every single-connection instance.
+     * The staff surface asks WHICH DATABASE it belongs to before it reads
+     * one. Null — unbound, or an Adminium too old to answer — keeps the old
+     * inference, so this is additive on every single-connection instance.
      */
     /*
      * THE STAFF CONFIG is everything the till boots from: the database, the
@@ -238,7 +238,7 @@ async function boot(): Promise<void> {
     /*
      * A STANDALONE TILL HAS NOBODY TO SIGN IN, so it says so before it reads.
      *
-     * There is no staff table and no PIN column (WS-I G-1, `adminiumSource.ts`),
+     * There is no staff table and no PIN column (see `adminiumSource.ts`),
      * so its roster is empty. It used to boot onto the PIN pad anyway, whose
      * first render read the name of a roster member that does not exist and
      * threw — a blank page, with the reason only in the console. The hosted
@@ -368,7 +368,7 @@ async function boot(): Promise<void> {
     ]);
     onGuestsNavigate((view) => usePos.getState().go(view));
     void useGuests.getState().start(demoGuestsPort());
-    // The website's demo card drives the demo through its protocol (D58).
+    // The website's demo card drives the demo through its protocol.
     const { startDemoBridge } = await import('./demoBridge');
     startDemoBridge();
   }
@@ -391,7 +391,7 @@ async function boot(): Promise<void> {
 
   /*
    * URL ⇄ SCREEN, and the host bridge — both hosted-only, both before the first
-   * paint (29-app-surfaces.md D6/D8).
+   * paint.
    *
    * Order matters:
    *

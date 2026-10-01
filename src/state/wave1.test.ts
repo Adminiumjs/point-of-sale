@@ -1,6 +1,6 @@
 /**
  * THE TILL'S OWN SCREENS SAVE WHAT THEY DO — Refund, Close shift, Staff & time
- * clock, 86 and Reservations (plan §3.6), action by action.
+ * clock, 86 and Reservations, action by action.
  *
  * As in store-writes.test.ts, the outbox sits on a fresh memory sink, so what
  * reached "the server" is read back: the table, the operation, the values.
@@ -300,7 +300,7 @@ describe('Reservations', () => {
   });
 });
 
-describe('§0.6 — the floor, the discount, the tip', () => {
+describe('the floor, the discount, the tip', () => {
   it('an occupied table opens ITS ticket from the tray, never a second one', () => {
     const tray = [{ number: 1040, rid: '40', table: 'P1', at: 0, seats: 4, items: [] }];
     usePos.setState({ floor: [table('P1', 4, 'occupied', '41'), table('W3', 2)], held: tray });

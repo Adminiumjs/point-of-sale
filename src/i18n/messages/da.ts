@@ -346,7 +346,7 @@ export const da: Translated<typeof enUS> = {
   'toast.printSent': 'Udskrift simuleret · kun demo',
   'toast.receiptSentText': 'Kvittering på SMS simuleret · kun demo',
 
-  // ---- wave 1 and the Guests side (55-T58–T62) ----
+  // ---- wave 1 and the Guests side ----
   'payment.cardTerminal': 'Tag kortet på jeres egen terminal — her registreres betalingen',
   'complete.servedByOnly': 'Betjent af {staff}',
   'complete.noSale': 'Intet salg at vise endnu.',
@@ -616,7 +616,7 @@ export const da: Translated<typeof enUS> = {
   'email.cancel': 'Gratis afbestilling indtil {count} time før.|Gratis afbestilling indtil {count} timer før.',
   'guest.tryAgain': 'Prøv igen',
 
-  // ---- wave 2: loyalty (55-T69) ----
+  // ---- wave 2: loyalty ----
   'nav.loyalty': 'Loyalitet',
   'dock.screen.loyalty': 'Loyalitet',
   'loyalty.title': 'Loyalitet og belønninger',
@@ -678,7 +678,7 @@ export const da: Translated<typeof enUS> = {
   'complete.pointsEarned': '+{n} point',
   'complete.pointsEarnedBalance': '+{n} point · {balance} i alt',
 
-  // ---- wave 2: gift cards (55-T70) ----
+  // ---- wave 2: gift cards ----
   'nav.giftCards': 'Gavekort',
   'dock.screen.giftCards': 'Gavekort',
   'gift.lineName': 'Gavekort {code}',
@@ -719,7 +719,7 @@ export const da: Translated<typeof enUS> = {
   'gift.toastNothingDue': 'Intet tilbage at betale',
   'gift.toastApplied': '{amount} brugt på bonen',
 
-  // ---- wave 2: pickup (55-T71) ----
+  // ---- wave 2: pickup ----
   'nav.pickup': 'Afhentning',
   'ticket.forPickup': 'Til afhentning',
   'ticket.pickupFor': 'Afhentning · {name} · {stage}',
@@ -754,7 +754,7 @@ export const da: Translated<typeof enUS> = {
   'pickup.toastHanded': '#{n} udleveret',
   'pickup.toastNotified': '{name} har fået besked',
 
-  // ---- wave 2: customer display (55-T72) ----
+  // ---- wave 2: customer display ----
   'nav.display': 'Kundeskærm',
   'display.customTip': 'Valgfri drikkepenge',
   'display.backspace': 'Slet',
@@ -826,7 +826,7 @@ export const da: Translated<typeof enUS> = {
 
 
 
-  // ---- wave 2: barcode scanning (55-T74) ----
+  // ---- wave 2: barcode scanning ----
   'scan.toastUnknown': 'Ingen vare har stregkoden {code}',
   'scan.toastOff': '{name} er udsolgt',
 };

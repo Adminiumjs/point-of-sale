@@ -13,7 +13,7 @@ const rowBtn =
   'height:46px;padding:0 15px;border-radius:12px;border:1px solid var(--border-strong);font-size:13.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:7px;flex-shrink:0;';
 
 /**
- * Staff & time clock (comp 785-800, D61/DP20): who works here, who is on
+ * Staff & time clock (comp 785-800): who works here, who is on
  * shift, clock in and out, add and deactivate. There is no PIN sign-in yet, so
  * "PINs" is not in the title and "Reset PIN" is not drawn.
  */

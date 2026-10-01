@@ -12,10 +12,10 @@ const LIGHT = { frame: '#f1f1f4', edge: '#ececef', card: '#ffffff', fg: '#191920
 const DARK = { frame: '#0a0a0d', edge: 'rgba(255,255,255,.1)', card: '#17171c', fg: '#f4f4f6', muted: '#b4b4be', faint: '#9a9aa6', rule: 'rgba(255,255,255,.1)', dash: 'rgba(255,255,255,.16)' };
 
 /**
- * The confirmation email, previewed (COMP 1133-1201) — a DEMO-only view (DP27).
+ * The confirmation email, previewed (COMP 1133-1201) — a DEMO-only view.
  *
  * Adminium sends the real email (its built-in `booking-confirmation`
- * template, 55-T75); the app never shows it. The demo shows what a guest
+ * template); the app never shows it. The demo shows what a guest
  * receives, in a light and a dark mail client, for the last booking made on
  * the guest page (else the demo's MR-4829, read from the till — this view is
  * rendered by the demo's till only). "Manage your booking" opens Manage with the

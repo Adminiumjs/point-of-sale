@@ -129,7 +129,7 @@ export interface TableInfo {
   seats: number;
   status: TableStatus;
   total?: number;
-  /** When it was seated: a millisecond stamp (it was minutes in the demo, and a stamp when connected — §0.6). */
+  /** When it was seated: a millisecond stamp (it was minutes in the demo, and a stamp when connected). */
   since?: number;
   server?: string;
   /** A message key (see TABLES in data/demo.ts), not literal copy. */

@@ -1,5 +1,5 @@
 /**
- * EVERY ACTION AT THE TILL IS SAVED — the table in plan §3.3, action by action.
+ * EVERY ACTION AT THE TILL IS SAVED, action by action.
  *
  * The store saves through the outbox; here the outbox sits on a fresh memory
  * sink per test, so what reached "the server" can be read back in order: the

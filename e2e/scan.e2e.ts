@@ -1,5 +1,5 @@
 /**
- * A barcode scan in a real browser (T74): a scanner is a fast keyboard, so the
+ * A barcode scan in a real browser: a scanner is a fast keyboard, so the
  * register must add the item when a code is "typed" at scanner speed and
  * ended with Enter — whether the focus is on the page or in the search field
  * — and must not when a person types the same keys.

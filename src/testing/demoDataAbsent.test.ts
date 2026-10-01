@@ -1,5 +1,5 @@
 /**
- * A REAL TILL'S BUNDLE CARRIES NOTHING OF THE DEMO CAFÉ (§0.6).
+ * A REAL TILL'S BUNDLE CARRIES NOTHING OF THE DEMO CAFÉ.
  *
  * The demo's roster shipped in every build, with their PINs, because the data
  * seam imported the seed statically. The seed is now reached only behind the

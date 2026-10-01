@@ -1,6 +1,6 @@
 /**
  * BOOKINGS AT THE TILL: the days, the slots, how full a slot is, and where a
- * party can sit — Appendix D's fixes, as rules.
+ * party can sit — the comp's faults fixed, as rules.
  */
 import { describe, expect, it } from 'vitest';
 

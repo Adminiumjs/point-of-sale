@@ -26,17 +26,17 @@ const KIND: Record<GiftCardEntry['kind'], MessageKey> = {
  * see its balance and history, put money on it, pay the ticket from it, or
  * issue a new one.
  *
- * Beyond the comp (numbered in the plan's progress):
- *   W2-5 a code field finds the card (a scanner typing the code works too) —
- *        the comp shows one card and no way to reach another;
- *   W2-6 an amount is PUT ON THE TICKET, and the card is credited when the
- *        ticket is paid — money in before value out (the comp adds it at once);
- *        a new card waits, inactive, for the ticket that sells it;
- *   W2-7 "Apply to ticket" pays the ticket from the card as a payment of its
- *        own, and opens Payment for whatever is left;
- *   W2-8 empty states: no card chosen, a new card not yet paid for;
- *   W2-9 the card's gradient starts darker than the comp's (accent → 62%):
- *        white text on the dark theme's light accent was 2.4:1 at its top.
+ * Beyond the comp:
+ *   - a code field finds the card (a scanner typing the code works too) —
+ *     the comp shows one card and no way to reach another;
+ *   - an amount is PUT ON THE TICKET, and the card is credited when the
+ *     ticket is paid — money in before value out (the comp adds it at once);
+ *     a new card waits, inactive, for the ticket that sells it;
+ *   - "Apply to ticket" pays the ticket from the card as a payment of its
+ *     own, and opens Payment for whatever is left;
+ *   - empty states: no card chosen, a new card not yet paid for;
+ *   - the card's gradient starts darker than the comp's (accent → 62%):
+ *     white text on the dark theme's light accent was 2.4:1 at its top.
  */
 export function GiftCards() {
   const s = usePos();

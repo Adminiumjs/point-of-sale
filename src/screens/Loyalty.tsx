@@ -19,7 +19,7 @@ const tierBg = (tier: Tier) => (tier === 'gold' ? 'var(--warn-soft)' : tier === 
  * phone or member number, see their points, visits and tier, spend points on a
  * reward, and enroll someone new.
  *
- * Beyond the comp (wave 2, numbered in the plan's progress):
+ * Beyond the comp (wave 2):
  *   - the search is real — a phone, a member number or a name — and a scanner
  *     that types the member's code into the field finds them the same way;
  *   - "Add to ticket" puts the member on the ticket on the register (the comp

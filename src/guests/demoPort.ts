@@ -3,7 +3,7 @@
  * memory over the TILL's own bookings — so a table booked on the guest page
  * is on the Reservations screen a tap later, as it would be for real.
  *
- * It keeps Adminium's rules rather than the comp's (§5.8.6): free or full per
+ * It keeps Adminium's rules rather than the comp's: free or full per
  * slot on the venue's clock, a code that never repeats, the slot re-checked on
  * every write, the whole mobile number matched (not its last four digits), a
  * lockout after five misses that lifts after fifteen minutes, and cancelling

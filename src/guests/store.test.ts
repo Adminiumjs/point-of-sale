@@ -59,7 +59,7 @@ describe('book a table', () => {
     expect(usePos.getState().reservations.find((r) => r.code === g().booked!.code)).toMatchObject({ channel: 'online', name: 'Ada Park' });
   });
 
-  it('cannot continue without a time, and a new party or day clears the time (DP9)', async () => {
+  it('cannot continue without a time, and a new party or day clears the time', async () => {
     g().bookNext();
     expect(g().bookStep).toBe('when');
     g().setDay(TOMORROW);
@@ -83,7 +83,7 @@ describe('book a table', () => {
     expect(g().toast).toBe('That time is fully booked');
   });
 
-  it('sends the guest back to the times when the slot filled up meanwhile (F12)', async () => {
+  it('sends the guest back to the times when the slot filled up meanwhile', async () => {
     g().setDay(TOMORROW);
     await answered();
     g().setParty(4);
@@ -110,7 +110,7 @@ describe('manage my booking', () => {
     await run;
   };
 
-  it('finds MR-4829 however the guest types it, and never by the last four digits (DP24, F15)', async () => {
+  it('finds MR-4829 however the guest types it, and never by the last four digits', async () => {
     await find('mr 4829', '(415) 555-0166');
     expect(g().manageStep).toBe('booking');
     expect(g().booking).toMatchObject({ code: 'MR-4829', name: 'Mara Rossi' });
@@ -118,7 +118,7 @@ describe('manage my booking', () => {
     expect(g().findError).toEqual({ kind: 'no-match' });
   });
 
-  it('locks the form after five misses, and says for how long (DP25)', async () => {
+  it('locks the form after five misses, and says for how long', async () => {
     for (let i = 0; i < 4; i += 1) {
       await find('MR-4829', '+1 415 555 9999');
       expect(g().findError?.kind).toBe('no-match');
@@ -146,7 +146,7 @@ describe('manage my booking', () => {
     expect(usePos.getState().reservations.find((r) => r.code === 'MR-4829')!.startsAt).toBe(tomorrowAt('20:00'));
   });
 
-  it('cancels outside the window, and refuses inside it (DP26)', async () => {
+  it('cancels outside the window, and refuses inside it', async () => {
     // MR-4829 tonight at seven: inside two hours from six o'clock, outside from four.
     const booking = usePos.getState().reservations.find((r) => r.code === 'MR-4829')!;
     vi.setSystemTime(booking.startsAt - 60 * 60_000);
@@ -171,7 +171,7 @@ describe('manage my booking', () => {
     expect(usePos.getState().reservations.find((r) => r.code === 'MR-4829')!.status).toBe('cancelled');
   });
 
-  it('manages a booking just made with the details just typed (F20), and Done starts over', async () => {
+  it('manages a booking just made with the details just typed, and Done starts over', async () => {
     g().setDay(TOMORROW);
     await answered();
     g().pickTime('17:00', 'full');

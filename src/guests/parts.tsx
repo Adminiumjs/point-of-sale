@@ -103,7 +103,7 @@ export function useWhen() {
   };
 }
 
-/** Party sizes 1 … `max_party` (DP10), then the venue's phone for anything bigger. */
+/** Party sizes 1 … `max_party`, then the venue's phone for anything bigger. */
 export function PartyGrid() {
   const t = useT();
   const s = useGuests();
@@ -147,7 +147,7 @@ export function DayGrid() {
   );
 }
 
-/** A day's times, free or full as Adminium answers; a full one is struck through AND says so (DP34). */
+/** A day's times, free or full as Adminium answers; a full one is struck through AND says so. */
 export function SlotGrid() {
   const t = useT();
   const s = useGuests();

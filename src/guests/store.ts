@@ -176,7 +176,7 @@ export const useGuests = create<GuestsState>()((set, get) => {
       return d === undefined || s.time === '' ? null : venueStamp(d.day, s.time, s.port?.timeZone());
     },
 
-    // A new party or a new day can make the chosen time full: it is cleared (DP9).
+    // A new party or a new day can make the chosen time full: it is cleared.
     setParty: (n) => {
       set({ party: n, time: '', bookError: null, manageError: null });
       void get().loadSlots();
@@ -231,7 +231,7 @@ export const useGuests = create<GuestsState>()((set, get) => {
         set({ booked: { ...booking, email, mobile: s.mobile.trim() }, bookStep: 'done', saving: false });
       } catch (error) {
         const notice = noticeOf(error);
-        // The time filled up meanwhile (F12): back to the times, fresh.
+        // The time filled up meanwhile: back to the times, fresh.
         set({ saving: false, bookError: notice, ...(notice.kind === 'full' ? { bookStep: 'when' as BookStep, time: '' } : {}) });
         if (notice.kind === 'full') void get().loadSlots();
       }
@@ -245,7 +245,7 @@ export const useGuests = create<GuestsState>()((set, get) => {
       set({ ...freshManage, code: code ?? get().code });
       get().setView('manage');
     },
-    // "Manage this booking" right after booking (F20): claimed with the code and mobile just entered.
+    // "Manage this booking" right after booking: claimed with the code and mobile just entered.
     manageThis: async () => {
       const b = get().booked;
       if (b === null) return;
@@ -287,7 +287,7 @@ export const useGuests = create<GuestsState>()((set, get) => {
           set({ time: '' });
           void get().loadSlots();
         }
-        // The session ran out (F13): back to Find, the code kept.
+        // The session ran out: back to Find, the code kept.
         if (notice.kind === 'expired') set({ manageStep: 'find', booking: null, findError: notice });
       }
     },

@@ -72,10 +72,10 @@ export default defineConfig({
   plugins: [
     react(),
     /*
-     * `surface.json` beside `index.html`, on surface builds only
-     * (29-app-surfaces.md D7). Adminium reads it to offer the till's screens in
-     * its own sidebar; a build without `VITE_ADMINIUM_SURFACE_SIDE` writes
-     * nothing, so the demo and standalone artifacts are untouched.
+     * `surface.json` beside `index.html`, on surface builds only. Adminium
+     * reads it to offer the till's screens in its own sidebar; a build
+     * without `VITE_ADMINIUM_SURFACE_SIDE` writes nothing, so the demo and
+     * standalone artifacts are untouched.
      *
      * The nav comes from `src/surface-nav.ts` — the SAME module the till routes
      * with — so the emitted file cannot describe a screen the bundle lacks.
@@ -87,7 +87,7 @@ export default defineConfig({
       messages: MESSAGES,
     }),
     /*
-     * `demo.json` beside the demo build (plan §4.2) — only the build whose
+     * `demo.json` beside the demo build — only the build whose
      * base is `/demo/point-of-sale/app/`, i.e. `build:demo`. The website's
      * card reads it; every other build writes nothing.
      */

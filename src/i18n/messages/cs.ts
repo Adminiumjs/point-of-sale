@@ -347,7 +347,7 @@ export const cs: Translated<typeof enUS> = {
   'toast.printSent': 'Tisk simulován · jen ukázka',
   'toast.receiptSentText': 'Účtenka SMS simulována · jen ukázka',
 
-  // ---- wave 1 and the Guests side (55-T58–T62) ----
+  // ---- wave 1 and the Guests side ----
   'payment.cardTerminal': 'Kartu zpracujte na svém terminálu — zde se platba zaznamená',
   'complete.servedByOnly': 'Obsluhoval(a) {staff}',
   'complete.noSale': 'Zatím není co zobrazit.',
@@ -617,7 +617,7 @@ export const cs: Translated<typeof enUS> = {
   'email.cancel': 'Zdarma zrušíte do {count} hodiny předem.|Zdarma zrušíte do {count} hodin předem.|Zdarma zrušíte do {count} hodin předem.',
   'guest.tryAgain': 'Zkusit znovu',
 
-  // ---- wave 2: loyalty (55-T69) ----
+  // ---- wave 2: loyalty ----
   'nav.loyalty': 'Věrnostní program',
   'dock.screen.loyalty': 'Věrnostní program',
   'loyalty.title': 'Věrnost a odměny',
@@ -679,7 +679,7 @@ export const cs: Translated<typeof enUS> = {
   'complete.pointsEarned': '+{n} bodů',
   'complete.pointsEarnedBalance': '+{n} bodů · celkem {balance}',
 
-  // ---- wave 2: gift cards (55-T70) ----
+  // ---- wave 2: gift cards ----
   'nav.giftCards': 'Dárkové karty',
   'dock.screen.giftCards': 'Dárkové karty',
   'gift.lineName': 'Dárková karta {code}',
@@ -720,7 +720,7 @@ export const cs: Translated<typeof enUS> = {
   'gift.toastNothingDue': 'Není co doplatit',
   'gift.toastApplied': 'Na účet uplatněno {amount}',
 
-  // ---- wave 2: pickup (55-T71) ----
+  // ---- wave 2: pickup ----
   'nav.pickup': 'Vyzvednutí',
   'ticket.forPickup': 'K vyzvednutí',
   'ticket.pickupFor': 'Vyzvednutí · {name} · {stage}',
@@ -755,7 +755,7 @@ export const cs: Translated<typeof enUS> = {
   'pickup.toastHanded': 'Č. {n} předáno',
   'pickup.toastNotified': '{name} upozorněn(a)',
 
-  // ---- wave 2: customer display (55-T72) ----
+  // ---- wave 2: customer display ----
   'nav.display': 'Zákaznický displej',
   'display.customTip': 'Vlastní spropitné',
   'display.backspace': 'Smazat',
@@ -827,7 +827,7 @@ export const cs: Translated<typeof enUS> = {
 
 
 
-  // ---- wave 2: barcode scanning (55-T74) ----
+  // ---- wave 2: barcode scanning ----
   'scan.toastUnknown': 'Žádná položka nemá čárový kód {code}',
   'scan.toastOff': '{name} je vyprodáno',
 };

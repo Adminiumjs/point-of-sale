@@ -1,6 +1,6 @@
 /**
- * THE CUSTOMER DISPLAY (wave 2, 55-T72): the guest's tip is the till's tip —
- * Payment keeps it (the plan's fix 7) — the custom pad works from both, and
+ * THE CUSTOMER DISPLAY (wave 2): the guest's tip is the till's tip —
+ * Payment keeps it — the custom pad works from both, and
  * Done saves the signature's time and the receipt choice on the ticket.
  */
 import { beforeEach, describe, expect, it } from 'vitest';

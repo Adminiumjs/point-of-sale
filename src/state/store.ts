@@ -87,7 +87,7 @@ type SplitMode = 'none' | 'even' | 'amount';
 export interface PosState {
   // display / behaviour
   theme: Theme;
-  /** True once the Adminium host frame chose the theme (29 D11) — never persisted. */
+  /** True once the Adminium host frame chose the theme — never persisted. */
   themeFromHost: boolean;
   mode: ServiceMode;
   online: boolean;
@@ -284,7 +284,7 @@ export interface PosState {
   doMerge: (n: number) => void;
   openDiscount: () => void;
   closeDiscount: () => void;
-  /** `reason`, when one was chosen, is what the ticket records as why (§0.6); the label is what the receipt prints. */
+  /** `reason`, when one was chosen, is what the ticket records as why; the label is what the receipt prints. */
   applyDiscount: (kind: DiscountKind, value: number, label: string, reason?: string) => void;
   clearDiscount: () => void;
 
@@ -961,7 +961,7 @@ export const usePos = create<PosState>()((set, get) => {
 
     payMethod: 'card',
     cash: '',
-    // No tip is chosen for the guest (the comp preselected 15% — §5.8.8, 11).
+    // No tip is chosen for the guest (the comp preselected 15%).
     tip: 0,
     tipCustom: '',
     card: 'waiting',
@@ -1450,7 +1450,7 @@ export const usePos = create<PosState>()((set, get) => {
         splitCustom: '',
         card: 'waiting',
         // NOT the tip: the guest may have chosen one on the customer display
-        // already (the plan's fix 7 — Appendix D 17), and Payment keeps it.
+        // already, and Payment keeps it.
       });
     },
     openHeld: () => set({ heldOpen: true }),
@@ -1574,7 +1574,7 @@ export const usePos = create<PosState>()((set, get) => {
         return;
       }
       /*
-       * An occupied table opens ITS ticket, not a fresh one (§0.6): the ticket
+       * An occupied table opens ITS ticket, not a fresh one: the ticket
        * waiting on the tray comes to the register, and the one there waits.
        */
       if (tbl.status !== 'open') {
@@ -1873,7 +1873,7 @@ export const usePos = create<PosState>()((set, get) => {
       const s = get();
       const r = s.reservations.find((x) => x.id === id);
       if (r === undefined || r.status === status) return;
-      // Reinstating takes a place back: the slot must still have room (DP32).
+      // Reinstating takes a place back: the slot must still have room.
       if (status === 'confirmed' && slotFull(s.reservations, source.bookingRules(), r.startsAt, r.partySize, r.id)) {
         get().showToast(t('resv.toastFull'), 'error');
         return;
@@ -1890,7 +1890,7 @@ export const usePos = create<PosState>()((set, get) => {
     createResv: ({ name, mobile, party, startsAt, note }) => {
       const s = get();
       if (name.trim() === '' || mobile.trim() === '') return false;
-      // A phone booking takes the same places an online one does (DP15).
+      // A phone booking takes the same places an online one does.
       if (slotFull(s.reservations, source.bookingRules(), startsAt, party)) {
         get().showToast(t('resv.toastFull'), 'error');
         return false;

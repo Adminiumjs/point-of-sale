@@ -1,5 +1,5 @@
 /**
- * BARCODE SCANNING (wave 2, 55-T74): a scanner's burst ending in Enter is a
+ * BARCODE SCANNING (wave 2): a scanner's burst ending in Enter is a
  * scan and adds its item; a person's typing never is.
  */
 import { beforeEach, describe, expect, it } from 'vitest';

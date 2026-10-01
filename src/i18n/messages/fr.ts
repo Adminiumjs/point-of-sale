@@ -347,7 +347,7 @@ export const fr: Translated<typeof enUS> = {
   'toast.printSent': 'Impression simulée · démo seulement',
   'toast.receiptSentText': 'Reçu par SMS simulé · démo seulement',
 
-  // ---- wave 1 and the Guests side (55-T58–T62) ----
+  // ---- wave 1 and the Guests side ----
   'payment.cardTerminal': 'Encaissez la carte sur votre terminal — la caisse enregistre le paiement',
   'complete.servedByOnly': 'Servi par {staff}',
   'complete.noSale': 'Aucune vente à afficher pour le moment.',
@@ -617,7 +617,7 @@ export const fr: Translated<typeof enUS> = {
   'email.cancel': 'Annulation gratuite jusqu’à {count} heure avant.|Annulation gratuite jusqu’à {count} heures avant.',
   'guest.tryAgain': 'Réessayer',
 
-  // ---- wave 2: loyalty (55-T69) ----
+  // ---- wave 2: loyalty ----
   'nav.loyalty': 'Fidélité',
   'dock.screen.loyalty': 'Fidélité',
   'loyalty.title': 'Fidélité et récompenses',
@@ -679,7 +679,7 @@ export const fr: Translated<typeof enUS> = {
   'complete.pointsEarned': '+{n} points',
   'complete.pointsEarnedBalance': '+{n} points · {balance} au total',
 
-  // ---- wave 2: gift cards (55-T70) ----
+  // ---- wave 2: gift cards ----
   'nav.giftCards': 'Cartes cadeaux',
   'dock.screen.giftCards': 'Cartes cadeaux',
   'gift.lineName': 'Carte cadeau {code}',
@@ -720,7 +720,7 @@ export const fr: Translated<typeof enUS> = {
   'gift.toastNothingDue': 'Plus rien à payer',
   'gift.toastApplied': '{amount} appliqué au ticket',
 
-  // ---- wave 2: pickup (55-T71) ----
+  // ---- wave 2: pickup ----
   'nav.pickup': 'Retrait',
   'ticket.forPickup': 'À retirer',
   'ticket.pickupFor': 'Retrait · {name} · {stage}',
@@ -755,7 +755,7 @@ export const fr: Translated<typeof enUS> = {
   'pickup.toastHanded': 'N° {n} remise',
   'pickup.toastNotified': '{name} prévenu·e',
 
-  // ---- wave 2: customer display (55-T72) ----
+  // ---- wave 2: customer display ----
   'nav.display': 'Écran client',
   'display.customTip': 'Pourboire libre',
   'display.backspace': 'Effacer',
@@ -827,7 +827,7 @@ export const fr: Translated<typeof enUS> = {
 
 
 
-  // ---- wave 2: barcode scanning (55-T74) ----
+  // ---- wave 2: barcode scanning ----
   'scan.toastUnknown': 'Aucun article n’a le code-barres {code}',
   'scan.toastOff': '{name} est épuisé',
 };

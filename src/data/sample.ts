@@ -141,7 +141,7 @@ export function buildSample(): SampleBundle {
     available: item.available !== false,
     featured: FAVOURITES.includes(item.id),
     position,
-    // Packaged goods carry a code the scanner reads (T74).
+    // Packaged goods carry a code the scanner reads.
     barcode: item.barcode ?? null,
   }));
   const groups: SampleRow[] = [];

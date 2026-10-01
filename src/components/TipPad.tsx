@@ -11,8 +11,7 @@ const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'back'] as 
 /**
  * The custom-tip pad (COMP 621-633, logic 1992-1995): the guest's own amount,
  * typed on a keypad. The customer display opens it, and so does Payment's
- * Custom — one pad, so the two screens offer the same four tip buttons (the
- * plan's fix 7).
+ * Custom — one pad, so the two screens offer the same four tip buttons.
  */
 export function TipPad() {
   const s = usePos();

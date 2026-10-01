@@ -30,16 +30,16 @@ const chip = (on: boolean) =>
 /**
  * The customer-facing display (COMP 581-619, logic 2001-2019): the guest sees
  * their order and the money, chooses a tip — the same buttons as Payment, and
- * Payment keeps the choice (fix 7) — then signs and says how they want their
+ * Payment keeps the choice — then signs and says how they want their
  * receipt (COMP 635-654). Done saves the signature's time and the choice on the
  * ticket (`signed_at`, `receipt_via`, `receipt_to`).
  *
- * Beyond the comp (numbered in the plan's progress):
- *   W2-11 the tip buttons are the venue's presets plus Custom (DP18's rule), not
- *         a fixed 15 % / 20 %;
- *   W2-12 the signature box shows ONE state at a time (comp defect 1: both
- *         bound to `cfdSigned`); a tap is the signature;
- *   W2-13 Email and Text ask where to send it; Done names what is missing.
+ * Beyond the comp:
+ *   - the tip buttons are the venue's presets plus Custom, not a fixed
+ *     15 % / 20 %;
+ *   - the signature box shows ONE state at a time (the comp bound both to
+ *     `cfdSigned`); a tap is the signature;
+ *   - Email and Text ask where to send it; Done names what is missing.
  */
 export function CustomerDisplay() {
   const s = usePos();

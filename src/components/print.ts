@@ -3,7 +3,7 @@
  * nothing around it.
  *
  * There is no printer driver: `window.print()` goes to whatever printer the
- * tablet can reach, an 80 mm receipt printer included (D11). The print
+ * tablet can reach, an 80 mm receipt printer included. The print
  * stylesheet (app.css) shows only the part named here, sized for the paper.
  */
 export function printOnly(part: 'receipt' | 'report'): void {

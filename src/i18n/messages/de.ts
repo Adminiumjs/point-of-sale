@@ -349,7 +349,7 @@ export const de: Translated<typeof enUS> = {
   'toast.printSent': 'Druck simuliert · nur Demo',
   'toast.receiptSentText': 'Beleg per SMS simuliert · nur Demo',
 
-  // ---- wave 1 and the Guests side (55-T58–T62) ----
+  // ---- wave 1 and the Guests side ----
   'payment.cardTerminal': 'Karte am eigenen Terminal abrechnen – hier wird die Zahlung erfasst',
   'complete.servedByOnly': 'Bedient von {staff}',
   'complete.noSale': 'Noch kein Verkauf zum Anzeigen.',
@@ -619,7 +619,7 @@ export const de: Translated<typeof enUS> = {
   'email.cancel': 'Kostenlos stornierbar bis {count} Stunde vorher.|Kostenlos stornierbar bis {count} Stunden vorher.',
   'guest.tryAgain': 'Erneut versuchen',
 
-  // ---- wave 2: loyalty (55-T69) ----
+  // ---- wave 2: loyalty ----
   'nav.loyalty': 'Treueprogramm',
   'dock.screen.loyalty': 'Treueprogramm',
   'loyalty.title': 'Treue & Prämien',
@@ -681,7 +681,7 @@ export const de: Translated<typeof enUS> = {
   'complete.pointsEarned': '+{n} Punkte',
   'complete.pointsEarnedBalance': '+{n} Punkte · {balance} insgesamt',
 
-  // ---- wave 2: gift cards (55-T70) ----
+  // ---- wave 2: gift cards ----
   'nav.giftCards': 'Gutscheinkarten',
   'dock.screen.giftCards': 'Gutscheinkarten',
   'gift.lineName': 'Gutscheinkarte {code}',
@@ -722,7 +722,7 @@ export const de: Translated<typeof enUS> = {
   'gift.toastNothingDue': 'Nichts mehr zu zahlen',
   'gift.toastApplied': '{amount} auf den Bon angerechnet',
 
-  // ---- wave 2: pickup (55-T71) ----
+  // ---- wave 2: pickup ----
   'nav.pickup': 'Abholung',
   'ticket.forPickup': 'Zur Abholung',
   'ticket.pickupFor': 'Abholung · {name} · {stage}',
@@ -757,7 +757,7 @@ export const de: Translated<typeof enUS> = {
   'pickup.toastHanded': '#{n} übergeben',
   'pickup.toastNotified': '{name} benachrichtigt',
 
-  // ---- wave 2: customer display (55-T72) ----
+  // ---- wave 2: customer display ----
   'nav.display': 'Kundendisplay',
   'display.customTip': 'Eigenes Trinkgeld',
   'display.backspace': 'Löschen',
@@ -829,7 +829,7 @@ export const de: Translated<typeof enUS> = {
 
 
 
-  // ---- wave 2: barcode scanning (55-T74) ----
+  // ---- wave 2: barcode scanning ----
   'scan.toastUnknown': 'Kein Artikel hat den Barcode {code}',
   'scan.toastOff': '{name} ist ausverkauft',
 };

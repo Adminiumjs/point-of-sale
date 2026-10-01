@@ -137,7 +137,7 @@ function Confirmed() {
         tone="pos"
         icon="check"
         title={t('guest.booked')}
-        // Mail only when there is an address; there is no text message to promise (DP21).
+        // Mail only when there is an address; there is no text message to promise.
         note={b.email !== null ? t('guest.bookedEmail', { email: isolate(b.email) }) : t('guest.bookedNoEmail')}
       >
         <CodeBox code={b.code} />

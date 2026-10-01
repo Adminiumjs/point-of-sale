@@ -349,7 +349,7 @@ export const ar: Translated<typeof enUS> = {
   'toast.printSent': 'محاكاة الطباعة · عرض توضيحي فقط',
   'toast.receiptSentText': 'محاكاة إرسال الإيصال برسالة نصية · عرض توضيحي فقط',
 
-  // ---- wave 1 and the Guests side (55-T58–T62) ----
+  // ---- wave 1 and the Guests side ----
   'payment.cardTerminal': 'اسحب البطاقة على جهازك الخاص — هنا تُسجَّل الدفعة',
   'complete.servedByOnly': 'خدمكم {staff}',
   'complete.noSale': 'لا توجد عملية بيع لعرضها بعد.',
@@ -619,7 +619,7 @@ export const ar: Translated<typeof enUS> = {
   'email.cancel': 'الإلغاء مجاني حتى {count} ساعة قبل الموعد.|الإلغاء مجاني حتى {count} ساعة قبل الموعد.|الإلغاء مجاني حتى {count} ساعة قبل الموعد.|الإلغاء مجاني حتى {count} ساعات قبل الموعد.|الإلغاء مجاني حتى {count} ساعة قبل الموعد.|الإلغاء مجاني حتى {count} ساعة قبل الموعد.',
   'guest.tryAgain': 'حاول مرة أخرى',
 
-  // ---- wave 2: loyalty (55-T69) ----
+  // ---- wave 2: loyalty ----
   'nav.loyalty': 'الولاء',
   'dock.screen.loyalty': 'الولاء',
   'loyalty.title': 'الولاء والمكافآت',
@@ -681,7 +681,7 @@ export const ar: Translated<typeof enUS> = {
   'complete.pointsEarned': '+{n} نقطة',
   'complete.pointsEarnedBalance': '+{n} نقطة · الإجمالي {balance}',
 
-  // ---- wave 2: gift cards (55-T70) ----
+  // ---- wave 2: gift cards ----
   'nav.giftCards': 'بطاقات الهدايا',
   'dock.screen.giftCards': 'بطاقات الهدايا',
   'gift.lineName': 'بطاقة هدية {code}',
@@ -722,7 +722,7 @@ export const ar: Translated<typeof enUS> = {
   'gift.toastNothingDue': 'لا شيء متبقٍ للدفع',
   'gift.toastApplied': 'تم تطبيق {amount} على الفاتورة',
 
-  // ---- wave 2: pickup (55-T71) ----
+  // ---- wave 2: pickup ----
   'nav.pickup': 'الاستلام',
   'ticket.forPickup': 'للاستلام',
   'ticket.pickupFor': 'استلام · {name} · {stage}',
@@ -757,7 +757,7 @@ export const ar: Translated<typeof enUS> = {
   'pickup.toastHanded': 'تم تسليم #{n}',
   'pickup.toastNotified': 'تم إبلاغ {name}',
 
-  // ---- wave 2: customer display (55-T72) ----
+  // ---- wave 2: customer display ----
   'nav.display': 'شاشة العميل',
   'display.customTip': 'إكرامية مخصصة',
   'display.backspace': 'حذف',
@@ -829,7 +829,7 @@ export const ar: Translated<typeof enUS> = {
 
 
 
-  // ---- wave 2: barcode scanning (55-T74) ----
+  // ---- wave 2: barcode scanning ----
   'scan.toastUnknown': 'لا يوجد صنف بالرمز الشريطي {code}',
   'scan.toastOff': 'نفد {name}',
 };

@@ -130,7 +130,7 @@ export function App() {
 
   /*
    * No embedded variant of the chrome, deliberately. Blended into the Adminium
-   * dashboard (29-app-surfaces.md D6) an app drops the chrome the dashboard
+   * dashboard an app drops the chrome the dashboard
    * already draws — its sidebar, its theme and language controls, its account
    * chip. This terminal has none of those (the demo's controls are the
    * website's card, outside the app). The top bar stays because it is the ticket's working

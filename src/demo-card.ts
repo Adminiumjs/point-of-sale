@@ -1,6 +1,6 @@
 /**
  * What the website's demo card offers for Point of Sale — the app's own
- * declaration (plan §3.8), read by `vite.config.ts` to write `demo.json` and
+ * declaration, read by `vite.config.ts` to write `demo.json` and
  * by `demoBridge.ts` to answer the card.
  *
  * Screens are the comp's grid (COMP 1662-1669) as far as the app has built
@@ -82,14 +82,14 @@ export const DEMO_SCREENS: DemoCardScreen[] = [
     side: 'customer',
     shortcuts: [
       { id: 'prefill-code', icon: 'wand-2', labelKey: 'dock.prefillCode' },
-      // F16: the timing moves MR-4829 itself, rather than faking a clock.
+      // The timing moves MR-4829 itself, rather than faking a clock.
       { id: 'timing-real', icon: 'clock', labelKey: 'dock.timingReal' },
       { id: 'timing-soon', icon: 'clock', labelKey: 'dock.timingSoon' },
       { id: 'timing-later', icon: 'clock', labelKey: 'dock.timingLater' },
       { id: 'restart-manage', icon: 'rotate-ccw', labelKey: 'dock.restart' },
     ],
   },
-  // DP27: the email Adminium sends, previewed — a demo-only view.
+  // The email Adminium sends, previewed — a demo-only view.
   { id: 'email', view: 'email', icon: 'mail', labelKey: 'dock.screen.email', side: 'customer' },
 ];
 

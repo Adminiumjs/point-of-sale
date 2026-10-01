@@ -349,7 +349,7 @@ a:hover {
 }
 
 /*
- * PRINTING (D11): the receipt or the end-of-day report, and nothing around
+ * PRINTING: the receipt or the end-of-day report, and nothing around
  * them. `printOnly()` names the part on <body>; everything else is hidden, and
  * the receipt is laid out for an 80 mm roll (72 mm printable), black on white.
  */

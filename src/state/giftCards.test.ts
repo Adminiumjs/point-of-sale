@@ -1,5 +1,5 @@
 /**
- * GIFT CARDS (wave 2, 55-T70): money goes onto a card by selling it on a
+ * GIFT CARDS (wave 2): money goes onto a card by selling it on a
  * ticket — untaxed, undiscounted, never sent to the kitchen — and reaches the
  * card only when that ticket is paid; a card pays a ticket as a payment of its
  * own; a refund of a card-paid sale can go back onto it.

@@ -52,10 +52,10 @@ const tableOf = (floor: TableInfo[], id: string | null): TableInfo | undefined =
   id === null ? undefined : floor.find((x) => x.id === id || x.label === id);
 
 /**
- * Reservations (comp 818-888), with Appendix D's fixes: "Seat now" picks a
- * table the party fits, No-show and Cancel go once a party is seated, the staff
- * note is its own field, and a phone booking and a reinstated one take their
- * place through the same capacity check as a guest's.
+ * Reservations (comp 818-888), with the comp's faults fixed: "Seat now" picks
+ * a table the party fits, No-show and Cancel go once a party is seated, the
+ * staff note is its own field, and a phone booking and a reinstated one take
+ * their place through the same capacity check as a guest's.
  */
 export function Reservations() {
   const s = usePos();
@@ -189,7 +189,7 @@ export function Reservations() {
                     {t('resv.tableAction')}
                   </button>
                 )}
-                {/* The till sends no text: "Message" opens the device's own messaging (DP29). */}
+                {/* The till sends no text: "Message" opens the device's own messaging. */}
                 {current.mobile !== null && (
                   <a className="pos-press" href={'sms:' + current.mobile.replace(/[^\d+]/g, '')} style={css(act('plain'))}>
                     <Icon name="message-square" size={16} />
@@ -364,7 +364,7 @@ function NewReservation({ days, startDay, onClose }: { days: BookingDay[]; start
   );
 }
 
-/** Assign a table (comp 1240-1254): only free tables the party fits at (Appendix D 12). */
+/** Assign a table (comp 1240-1254): only free tables the party fits at. */
 function AssignTable({ r, onClose }: { r: Reservation; onClose: () => void }) {
   const t = useT();
   const s = usePos();

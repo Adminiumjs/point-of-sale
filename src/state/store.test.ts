@@ -827,7 +827,7 @@ describe('service mode', () => {
 
 describe('a theme the dashboard chose', () => {
   it('is applied and marked as the host’s, so App does not remember it', () => {
-    // Blended into Adminium, the dashboard owns the theme (29 D11). Writing it
+    // Blended into Adminium, the dashboard owns the theme. Writing it
     // to `pos-theme` would leave the till in the dashboard's theme the next
     // time it is opened on its own — `themeFromHost` is what App checks.
     const own = s().theme === 'dark' ? 'light' : 'dark';

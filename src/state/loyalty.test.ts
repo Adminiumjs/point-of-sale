@@ -1,5 +1,5 @@
 /**
- * LOYALTY (wave 2, 55-T69): a member on a ticket earns from it, spends points
+ * LOYALTY (wave 2): a member on a ticket earns from it, spends points
  * on a reward that joins it free, and what they earned and spent is written to
  * their history once the ticket is paid — never before, and never twice.
  *

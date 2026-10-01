@@ -203,7 +203,7 @@ export function Payment() {
 
           <div style={css('margin-top:24px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin-bottom:11px;')}>{t('common.tip')}</div>
           <div style={css('display:flex;gap:8px;')}>
-            {/* The buttons ARE the venue's presets (`settings.tip_presets`, DP18): the label and
+            {/* The buttons ARE the venue's presets (`settings.tip_presets`): the label and
                 the amount under it come from the same number, never a 10/15/20 written here. */}
             {source.tipPresets().map((p, i) => ({ l: p === 0 ? t('payment.noTip') : t('payment.tipPct', { pct: Math.round(p * 1000) / 10 }), i, p })).map((x) => (
               <button key={x.i} className="pos-press" onClick={() => s.setTip(x.i)} style={css(tipStyle(s.tip === x.i))}>
@@ -214,7 +214,7 @@ export function Payment() {
                 {x.p > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-top:2px;')}>{money(tipFor(s, x.i))}</span>}
               </button>
             ))}
-            {/* Custom: the customer display's pad (the plan's fix 7 — the same buttons on both). */}
+            {/* Custom: the customer display's pad (the same buttons on both). */}
             <button className="pos-press" onClick={s.openTipPad} style={css(tipStyle(s.tip === 'c'))}>
               <span style={css('font-size:15px;font-weight:800;')}>{t('display.custom')}</span>
               {s.tip === 'c' && tipAmt(s) > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-top:2px;')}>{money(tipAmt(s))}</span>}

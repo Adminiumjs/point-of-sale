@@ -41,7 +41,7 @@ const seg = (on: boolean) =>
   (on ? 'box-shadow:var(--shadow);' : '');
 
 /**
- * The till's own navigation (F1). The comp reaches its other screens only from
+ * The till's own navigation. The comp reaches its other screens only from
  * the demo card, so a real till — opened on its own, with no dashboard around
  * it — needs a way there: a compact switcher for the screens a shift moves
  * between, and a menu for the tools. Both are made from the top bar's own

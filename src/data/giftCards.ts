@@ -1,6 +1,6 @@
 /**
  * Gift cards and their history — read when the Gift cards screen asks, never
- * at boot (wave 2, 55-T70).
+ * at boot (wave 2).
  *
  * A card is found by its code (typed, or scanned into the field), and its
  * balance is Adminium's: a rollup of the card's history (`manifest.json`), so a

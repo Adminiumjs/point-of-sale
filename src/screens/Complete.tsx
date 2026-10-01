@@ -19,7 +19,7 @@ export function Complete() {
    * The receipt of the sale that just closed. Only the demo makes one up for a
    * receipt opened with no sale behind it (its dock can open this screen
    * directly); a real till shows nothing rather than a sale that never
-   * happened (§0.6).
+   * happened.
    */
   const sale = s.lastSale ?? (DEMO ? demoSale(s.ticket, curStaffOf(s).name) : null);
   if (sale === null) return <NoSale />;
@@ -70,7 +70,7 @@ export function Complete() {
                 <span>{t('complete.orderNo', { n: sale.number })}</span>
                 <span>{tableName(sale.table, s.mode)}</span>
               </div>
-              {/* A printed receipt says when (a fill, F4): the screen above already does. */}
+              {/* A printed receipt says when (the comp draws no print layout): the screen above already does. */}
               <div className="receipt-when" style={css('font-size:11px;color:var(--fg-muted);margin:-6px 0 11px;' + MONO)}>
                 {date(sale.at, { dateStyle: 'medium', timeStyle: 'short' })}
               </div>
@@ -105,7 +105,7 @@ export function Complete() {
                 <span style={css('color:var(--fg-muted);')}>{t('complete.paidWith', { methods: methods.join(' + ') })}</span>
                 <span style={css(MONO)}>{money(sale.total)}</span>
               </div>
-              {/* What the guest asked for on the customer display (W2-14: nothing sends it yet). */}
+              {/* What the guest asked for on the customer display (nothing sends it yet). */}
               {sale.receipt !== undefined && sale.receipt.via !== 'none' && (
                 <div className="no-print" role="note" style={css('margin-top:9px;font-size:11.5px;color:var(--fg-muted);')}>
                   {sale.receipt.via === 'print'

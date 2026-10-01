@@ -5,7 +5,7 @@
  * menu is whatever they typed, in whatever language they typed it. Sample data
  * is different — it is ours, and it is added by someone reading the dashboard
  * in their own language, so a German operator trying the app gets a
- * "Grüner Tee", not a "Green Tea" they then have to rename (D15). These are
+ * "Grüner Tee", not a "Green Tea" they then have to rename. These are
  * those names: content, not chrome, so they live beside the demo data rather
  * than in the bundles.
  *

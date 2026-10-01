@@ -17,7 +17,7 @@ const STATUS: Record<ReservationStatus, { label: MessageKey; bg: string; fg: str
   cancelled: { label: 'guest.statusCancelled', bg: 'var(--danger-soft)', fg: 'var(--danger)' },
 };
 
-/** "Manage my booking" (§5.8.1): find, the booking, a new time, changed, cancelled. */
+/** "Manage my booking": find, the booking, a new time, changed, cancelled. */
 export function ManageBooking() {
   const s = useGuests();
   // `find` whenever there is no booking to show (2164).
@@ -25,7 +25,7 @@ export function ManageBooking() {
   return step === 'find' ? <Find /> : step === 'booking' ? <Booking /> : step === 'when' ? <When /> : step === 'changed' ? <Changed /> : <Cancelled />;
 }
 
-/** Minutes until a lockout lifts, kept ticking so the form opens again by itself (DP25). */
+/** Minutes until a lockout lifts, kept ticking so the form opens again by itself. */
 function useLockMinutes(notice: GuestNotice | null): number | null {
   const [, tick] = useState(0);
   useEffect(() => {
@@ -156,7 +156,7 @@ function Booking() {
           {manageErrorText(t, s.manageError, s.venue?.name || t('guest.theVenue'), phone, hours)}
         </Notice>
       )}
-      {/* Change stays open inside the window, as the comp has it (§5.8.7); only Cancel is held back. */}
+      {/* Change stays open inside the window, as the comp has it; only Cancel is held back. */}
       {editable && (
         <button className="pos-press" onClick={s.startChange} style={css(primary(true))}>
           <Icon name="calendar-clock" size={18} />

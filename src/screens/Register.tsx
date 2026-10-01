@@ -17,7 +17,7 @@ export function Register() {
   const dark = s.theme === 'dark';
 
   /*
-   * THE SCANNER (T74, §9 O4): it types like a keyboard, only far faster, and
+   * THE SCANNER: it types like a keyboard, only far faster, and
    * ends with Enter. A burst like that anywhere on the register — the search
    * field included — is a scan; the item whose barcode it is joins the ticket.
    */
