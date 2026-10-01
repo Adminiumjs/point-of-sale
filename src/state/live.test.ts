@@ -135,6 +135,22 @@ describe('what another till changes, this one shows', () => {
     expect(s().reservations.find((r) => r.id === '99')).toBeUndefined();
   });
 
+
+  it('asks for the menu again when an item it has never read is announced, or one it has is gone', () => {
+    // A till opened while the sample menu was still being added stayed empty until it was reloaded.
+    let asked = 0;
+    const deps = { menuChanged: () => (asked += 1) };
+    applyFrame({ table: 'menu_items', kind: 'record.create', id: 'new-dish', row: { id: 'new-dish', name: 'Shakshuka' } }, deps);
+    expect(asked).toBe(1);
+    // One it already shows, announced again (its own echo, a reconnect): nothing to read.
+    applyFrame({ table: 'menu_items', kind: 'record.create', id: 'croissant', row: { id: 'croissant' } }, deps);
+    expect(asked).toBe(1);
+    applyFrame({ table: 'menu_items', kind: 'record.delete', id: 'croissant', row: null }, deps);
+    expect(asked).toBe(2);
+    // A change to an item it shows is applied in place, as before.
+    applyFrame({ table: 'menu_items', kind: 'record.update', id: 'croissant', row: { id: 'croissant', available: false } }, deps);
+    expect(asked).toBe(2);
+  });
   it('marks an item sold out, and back on sale', () => {
     applyFrame({ table: 'menu_items', kind: 'record.update', id: 'croissant', row: { id: 'croissant', available: false } });
     expect(s().unavail).toContain('croissant');

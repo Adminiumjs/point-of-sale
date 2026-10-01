@@ -24,6 +24,7 @@ import type { Snapshot } from '../data/adminiumSource';
 import type { HeldTicket, KdsOrder, KdsStatus, LineItem, PickupOrder, Reservation, Ticket } from '../data/types';
 import { groupsOf, lineName, modLabel } from './calc';
 import { instant } from '../data/venueTime';
+import { source } from '../data/source';
 import { outbox } from './writes';
 import { usePos } from './store';
 
@@ -75,6 +76,8 @@ const kitchenLine = (li: LineItem) => ({ n: lineName(li), q: li.qty, m: [modLabe
 export interface ApplyDeps {
   /** Read one booking again: its frame's personal fields arrive masked. */
   fetchReservation?: (id: string) => Promise<Reservation | null>;
+  /** The menu itself changed (an item added or taken away): read it again. */
+  menuChanged?: () => void;
 }
 
 /** Tables this till adds rows to: their frames can outrun the till's own answer. */
@@ -112,7 +115,7 @@ export function applyFrame(frame: LiveFrame, deps: ApplyDeps = {}): void {
       applyLineOption(frame, id);
       return;
     case 'menu_items':
-      applyMenuItem(frame, id);
+      applyMenuItem(frame, id, deps);
       return;
     default:
       return;
@@ -319,7 +322,18 @@ function applyReservation(frame: LiveFrame, id: string, deps: ApplyDeps): void {
   }
 }
 
-function applyMenuItem(frame: LiveFrame, id: string): void {
+function applyMenuItem(frame: LiveFrame, id: string, deps: ApplyDeps = {}): void {
+  /*
+   * An item this till has never read, or one that is gone. The menu is read
+   * once, when the till opens — so a till opened while the sample menu was
+   * still being added stayed empty until somebody reloaded it. The whole menu
+   * is read again (its sections and options come with it).
+   */
+  const known = source.menu().some((m) => m.id === id);
+  if (frame.kind === 'record.create' ? !known : frame.kind === 'record.delete' ? known : !known) {
+    deps.menuChanged?.();
+    return;
+  }
   if (frame.kind !== 'record.update' || frame.row === null || frame.row['available'] === undefined) return;
   const available = frame.row['available'] === true || frame.row['available'] === 1;
   usePos.setState((s) => ({

@@ -242,7 +242,7 @@ describe('the floor lives in the store', () => {
     expect(written[0]!.values).toMatchObject({ qty: 1 });
     // The unit taken off: one croissant, sent and voided, by whoever is on the till.
     expect(written[1]!.values).toMatchObject({ menu_item_id: 'croissant', qty: 1 });
-    expect(written[1]!.values['voided_at']).toEqual(expect.any(String));
-    expect(written[1]!.values['sent_at']).toEqual(expect.any(String));
+    expect(written[1]!.values!['voided_at']).toEqual(expect.any(String));
+    expect(written[1]!.values!['sent_at']).toEqual(expect.any(String));
   });
 });

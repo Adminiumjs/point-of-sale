@@ -6,7 +6,7 @@ import './styles/fonts.css';
 import './styles/app.css';
 
 import { I18nProvider, setHostLocale } from './i18n';
-import { setDataSource } from './data/source';
+import { refreshDataSource, setDataSource } from './data/source';
 import { clientFromEnv, loadSnapshot, readReservation, snapshotFailure, snapshotSource } from './data/adminiumSource';
 import { createSessionTransport } from './data/sessionSource';
 import { sessionSink } from './data/sink';
@@ -336,10 +336,26 @@ async function boot(): Promise<void> {
        * is imported only now, after `setDataSource`.
        */
       const [{ applyFrame, resync }, { startLive }] = await Promise.all([import('./state/live'), import('./data/live')]);
+      /*
+       * The menu, read again a moment after the last change to it: sample data
+       * adds its items one write each, and one read at the end serves them all.
+       */
+      let menuTimer: ReturnType<typeof setTimeout> | undefined;
+      const menuChanged = () => {
+        if (menuTimer !== undefined) clearTimeout(menuTimer);
+        menuTimer = setTimeout(() => {
+          menuTimer = undefined;
+          void loadSnapshot(client).then((fresh) => {
+            if (fresh === null) return;
+            refreshDataSource(snapshotSource(fresh, operator, signedIn?.email ?? null));
+            resync(fresh);
+          });
+        }, 600);
+      };
       void startLive({
         transport,
         tables,
-        onFrame: (frame) => applyFrame(frame, { fetchReservation: (id) => readReservation(client, id) }),
+        onFrame: (frame) => applyFrame(frame, { fetchReservation: (id) => readReservation(client, id), menuChanged }),
         // Whatever was announced while the connection was down is gone: read again.
         onReconnect: () => {
           void loadSnapshot(client).then((fresh) => {

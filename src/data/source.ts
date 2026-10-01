@@ -155,6 +155,16 @@ export function setDataSource(next: DataSource): void {
 }
 
 /**
+ * Put a newer reading of the SAME backend behind the seam, after the till has
+ * read: the menu changed while the till was open. Only once a real source is
+ * installed — the demo's is never replaced this way.
+ */
+export function refreshDataSource(next: DataSource): void {
+  if (!connected) throw new Error('refreshDataSource() needs a source installed by setDataSource() first.');
+  current = next;
+}
+
+/**
  * True once a real backend is behind the seam.
  *
  * NOT what gates the demo dock any more. That was a runtime comparison no
