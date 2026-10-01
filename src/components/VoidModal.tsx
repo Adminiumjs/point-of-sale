@@ -18,7 +18,7 @@ export function VoidModal() {
   const vm = vit ? itemById(vit.id) : null;
   const desc =
     vm && vit
-      ? vit.qty > 1
+      ? vit.qty > 1 && !s.voidOne
         ? t('void.confirmQty', { qty: vit.qty, name: vm.name })
         : t('void.confirmOne', { name: vm.name })
       : '';

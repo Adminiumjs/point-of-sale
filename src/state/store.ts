@@ -124,6 +124,8 @@ export interface PosState {
   voidOpen: boolean;
   voidText: string;
   voidKey: string | null;
+  /** The void is of ONE of the line's units ("remove one" on a sent line), not the whole line. */
+  voidOne: boolean;
   moveOpen: boolean;
   discountOpen: boolean;
   discount: Discount | null;
@@ -273,7 +275,7 @@ export interface PosState {
   setSheetSeat: (n: number) => void;
   sheetAdd: () => void;
 
-  openVoid: (k: string) => void;
+  openVoid: (k: string, one?: boolean) => void;
   setVoidText: (t: string) => void;
   closeVoid: () => void;
   confirmVoid: () => void;
@@ -972,6 +974,7 @@ export const usePos = create<PosState>()((set, get) => {
     voidOpen: false,
     voidText: '',
     voidKey: null,
+    voidOne: false,
     moveOpen: false,
     discountOpen: false,
     // The discount the open ticket's row holds: a reload must not charge full price.
@@ -1183,11 +1186,16 @@ export const usePos = create<PosState>()((set, get) => {
       const items = get().ticket.items.slice();
       const i = items.findIndex((x) => x.key === k);
       if (i < 0) return;
+      /*
+       * The kitchen has made what was sent. Taking one of two sent Lattes off
+       * is a void like taking the only one off: it is asked for, and kept on
+       * the record. It used to lower the quantity silently.
+       */
+      if (items[i].sent) {
+        get().openVoid(k, items[i].qty > 1);
+        return;
+      }
       if (items[i].qty <= 1) {
-        if (items[i].sent) {
-          get().openVoid(k);
-          return;
-        }
         removeLine(items[i]);
         items.splice(i, 1);
       } else {
@@ -1356,14 +1364,37 @@ export const usePos = create<PosState>()((set, get) => {
     },
 
     // ---- void ----
-    openVoid: (k) => set({ voidOpen: true, voidKey: k, voidText: '' }),
+    openVoid: (k, one = false) => set({ voidOpen: true, voidKey: k, voidOne: one, voidText: '' }),
     setVoidText: (text) => set({ voidText: text }),
-    closeVoid: () => set({ voidOpen: false, voidText: '' }),
+    closeVoid: () => set({ voidOpen: false, voidOne: false, voidText: '' }),
     confirmVoid: () => {
       const s = get();
       if (s.voidText.trim().toUpperCase() !== 'VOID') return;
       const k = s.voidKey;
       const li = s.ticket.items.find((x) => x.key === k);
+      // One unit of a sent line: the line keeps the rest, and the unit taken
+      // off is written as a voided line of its own — on the record, as a whole
+      // voided line is.
+      if (li !== undefined && s.voidOne && li.sent && li.qty > 1 && li.rid !== undefined) {
+        const ticketRid = ensureTicket();
+        const now = new Date().toISOString();
+        const rest = { ...li, qty: li.qty - 1 };
+        saveQty(rest);
+        const options = chosenOptions(li).map((o) => ({ modifier_id: itemKey(o.id), price_delta: o.delta }));
+        void outbox().insert(
+          ticketRid,
+          'ticket_items',
+          { ...lineValues(ticketRid, { ...li, qty: 1 }), sent_at: now, voided_at: now, voided_by: staffKey() },
+          {
+            ...(options.length === 0 ? {} : { children: [{ ref: 'ticket_item_modifiers', via: 'ticket_item_id', rows: options }] }),
+            onRefused: refused,
+          },
+        );
+        setItems(s.ticket.items.map((x) => (x.key === k ? rest : x)));
+        set({ voidOpen: false, voidKey: null, voidOne: false, voidText: '' });
+        get().showToast(t('toast.itemVoided'));
+        return;
+      }
       // A sent line is voided on the record, never deleted: the kitchen made it.
       if (li !== undefined && li.sent && li.rid !== undefined) {
         void outbox().update(ensureTicket(), 'ticket_items', li.rid, { voided_at: new Date().toISOString(), voided_by: staffKey() }, { onRefused: refused });
@@ -1371,7 +1402,7 @@ export const usePos = create<PosState>()((set, get) => {
         removeLine(li);
       }
       setItems(s.ticket.items.filter((x) => x.key !== k));
-      set({ voidOpen: false, voidKey: null, voidText: '' });
+      set({ voidOpen: false, voidKey: null, voidOne: false, voidText: '' });
       get().showToast(t('toast.itemVoided'));
     },
 

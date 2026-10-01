@@ -215,4 +215,34 @@ describe('the floor lives in the store', () => {
   it('starts from the bookings the till read', () => {
     expect(s().reservations.map((r) => r.code)).toContain('MR-4829');
   });
+  it('voids one of two sent drinks through the void step, and keeps the voided one on the record', async () => {
+    /*
+     * "Remove one" on a sent line of two used to lower it to one with nothing
+     * asked and nothing kept, while the kitchen had made both.
+     */
+    s().tapTile('croissant');
+    s().tapTile('croissant');
+    s().send();
+    await settled();
+    const line = s().ticket.items[0]!;
+    expect([line.qty, line.sent]).toEqual([2, true]);
+    const before = sink.calls.length;
+
+    s().dec(line.key);
+    // Asked first: nothing is written, and the line is as it was.
+    expect([s().voidOpen, s().voidOne, s().ticket.items[0]!.qty]).toEqual([true, true, 2]);
+    expect(sink.calls.length).toBe(before);
+
+    s().setVoidText('void');
+    s().confirmVoid();
+    await settled();
+    expect(s().ticket.items.map((x) => x.qty)).toEqual([1]);
+    const written = sink.calls.slice(before);
+    expect(written.map((c) => `${c.op} ${c.ref}`)).toEqual(['update ticket_items', 'insert ticket_items']);
+    expect(written[0]!.values).toMatchObject({ qty: 1 });
+    // The unit taken off: one croissant, sent and voided, by whoever is on the till.
+    expect(written[1]!.values).toMatchObject({ menu_item_id: 'croissant', qty: 1 });
+    expect(written[1]!.values['voided_at']).toEqual(expect.any(String));
+    expect(written[1]!.values['sent_at']).toEqual(expect.any(String));
+  });
 });
