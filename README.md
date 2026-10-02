@@ -148,3 +148,8 @@ This example runs on built-in demo data today (see [`src/data/demo.ts`](src/data
 ## License
 
 [AGPL-3.0](LICENSE) © 2026 Point of Sale. A demo shipped with Adminium.
+
+## Building on this app with a coding agent
+
+The Adminium skills teach Claude Code, Codex and other agents to build and change an app:
+`npx skills add Adminiumjs/skills` — https://github.com/Adminiumjs/skills
