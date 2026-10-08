@@ -24,13 +24,16 @@ import type { AttachedAddOn } from './staffConnection';
 export const FEATURES = {
   'emailed-receipts': ['invoices'],
   'shelf-labels': ['barcode-labels'],
+  stock: ['inventory'],
+  offers: ['offers'],
+  'gift-cards': ['offers'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type FeatureId = keyof typeof FEATURES;
 export type Features = Readonly<Record<FeatureId, boolean>>;
 
 /** Every feature off: a hosted till before its config says otherwise. */
-export const NO_FEATURES: Features = { 'emailed-receipts': false, 'shelf-labels': false };
+export const NO_FEATURES: Features = { 'emailed-receipts': false, 'shelf-labels': false, stock: false, offers: false, 'gift-cards': false };
 
 /**
  * The demo's: it stands for a shop that attached Invoices & Receipts, so the
@@ -38,11 +41,11 @@ export const NO_FEATURES: Features = { 'emailed-receipts': false, 'shelf-labels'
  * Adminium to draw a label sheet, so shelf labels stay off rather than offer a
  * button that could only pretend.
  */
-export const DEMO_FEATURES: Features = { 'emailed-receipts': true, 'shelf-labels': false };
+export const DEMO_FEATURES: Features = { 'emailed-receipts': true, 'shelf-labels': false, stock: false, offers: false, 'gift-cards': false };
 
 /** Which features the attached add-ons switch on. */
 export function featuresOf(addOns: Readonly<Record<string, AttachedAddOn>> | null | undefined): Features {
   const present = new Set(Object.keys(addOns ?? {}));
   const on = (id: FeatureId) => FEATURES[id].every((key) => present.has(key));
-  return { 'emailed-receipts': on('emailed-receipts'), 'shelf-labels': on('shelf-labels') };
+  return { 'emailed-receipts': on('emailed-receipts'), 'shelf-labels': on('shelf-labels'), stock: on('stock'), offers: on('offers'), 'gift-cards': on('gift-cards') };
 }

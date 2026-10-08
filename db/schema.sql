@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS pos_loyalty_ledger CASCADE;
 DROP TABLE IF EXISTS pos_refund_items CASCADE;
 DROP TABLE IF EXISTS pos_refunds CASCADE;
 DROP TABLE IF EXISTS pos_payments CASCADE;
+DROP TABLE IF EXISTS pos_ticket_codes CASCADE;
 DROP TABLE IF EXISTS pos_ticket_item_modifiers CASCADE;
 DROP TABLE IF EXISTS pos_ticket_items CASCADE;
 DROP TABLE IF EXISTS pos_gift_cards CASCADE;
@@ -158,10 +159,24 @@ CREATE TABLE pos_tickets (
   discount_value NUMERIC(12, 2),
   discount_reason VARCHAR(120),
   subtotal NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  tax_rate_bp INTEGER,
+  goods NUMERIC(12, 2),
+  taxable NUMERIC(12, 2),
+  own_discount NUMERIC(12, 2),
+  discount NUMERIC(12, 2),
+  discount_by VARCHAR(120),
+  discount_reason_id INTEGER,
+  net NUMERIC(12, 2),
   tax NUMERIC(12, 2) NOT NULL DEFAULT 0,
   tip NUMERIC(12, 2) NOT NULL DEFAULT 0,
   total NUMERIC(12, 2) NOT NULL DEFAULT 0,
   charged NUMERIC(12, 2),
+  paid NUMERIC(12, 2),
+  card_paid NUMERIC(12, 2),
+  due NUMERIC(12, 2),
+  refunded NUMERIC(12, 2),
+  refundable NUMERIC(12, 2),
+  customer_proved BOOLEAN,
   reservation_id INTEGER REFERENCES pos_reservations (id),
   customer_id INTEGER REFERENCES pos_customers (id),
   channel TEXT CHECK (channel IN ('till', 'phone', 'web', 'app')),
@@ -190,9 +205,12 @@ CREATE TABLE pos_rewards (
 CREATE TABLE pos_gift_cards (
   id SERIAL PRIMARY KEY,
   code VARCHAR(16) UNIQUE,
-  status TEXT NOT NULL DEFAULT 'inactive' CHECK (status IN ('inactive', 'active', 'void')),
+  status TEXT NOT NULL DEFAULT 'inactive' CHECK (status IN ('inactive', 'active', 'void', 'moved')),
   balance NUMERIC(12, 2) NOT NULL DEFAULT 0,
-  issued_at TIMESTAMPTZ
+  issued_at TIMESTAMPTZ,
+  opening NUMERIC(12, 2) DEFAULT 0,
+  taken NUMERIC(12, 2),
+  left NUMERIC(12, 2)
 );
 
 CREATE TABLE pos_ticket_items (
@@ -209,7 +227,13 @@ CREATE TABLE pos_ticket_items (
   void_reason VARCHAR(120),
   voided_by INTEGER REFERENCES pos_staff (id),
   reward_id INTEGER REFERENCES pos_rewards (id),
-  gift_card_id INTEGER REFERENCES pos_gift_cards (id)
+  gift_card_id INTEGER REFERENCES pos_gift_cards (id),
+  category_id INTEGER REFERENCES pos_menu_categories (id),
+  card_id INTEGER,
+  load_ref INTEGER,
+  goods_amount NUMERIC(12, 2),
+  discount NUMERIC(12, 2),
+  taxable NUMERIC(12, 2)
 );
 
 CREATE TABLE pos_ticket_item_modifiers (
@@ -217,6 +241,17 @@ CREATE TABLE pos_ticket_item_modifiers (
   ticket_item_id INTEGER NOT NULL REFERENCES pos_ticket_items (id),
   modifier_id INTEGER REFERENCES pos_modifiers (id),
   price_delta NUMERIC(12, 2) NOT NULL DEFAULT 0
+);
+
+CREATE TABLE pos_ticket_codes (
+  id SERIAL PRIMARY KEY,
+  ticket_id INTEGER NOT NULL REFERENCES pos_tickets (id),
+  typed VARCHAR(64),
+  code_id INTEGER,
+  voucher_id INTEGER,
+  removed_at TIMESTAMPTZ,
+  added_by VARCHAR(120),
+  added_at TIMESTAMPTZ
 );
 
 CREATE TABLE pos_payments (
@@ -229,7 +264,13 @@ CREATE TABLE pos_payments (
   change NUMERIC(12, 2),
   reference VARCHAR(64),
   paid_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  staff_id INTEGER REFERENCES pos_staff (id)
+  staff_id INTEGER REFERENCES pos_staff (id),
+  card_code VARCHAR(64),
+  card_id INTEGER,
+  card_last4 VARCHAR(4),
+  card_amount NUMERIC(12, 2),
+  card_balance_after NUMERIC(12, 2),
+  held_until TIMESTAMPTZ
 );
 
 CREATE TABLE pos_refunds (
@@ -240,14 +281,31 @@ CREATE TABLE pos_refunds (
   tax NUMERIC(12, 2) NOT NULL DEFAULT 0,
   reason VARCHAR(120),
   staff_id INTEGER REFERENCES pos_staff (id),
-  refunded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  refunded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  gross NUMERIC(12, 2),
+  t_goods NUMERIC(12, 2),
+  t_net NUMERIC(12, 2),
+  t_subtotal NUMERIC(12, 2),
+  t_total NUMERIC(12, 2),
+  t_tax NUMERIC(12, 2),
+  own_sub NUMERIC(12, 2),
+  own_tax NUMERIC(12, 2),
+  repriced NUMERIC(12, 2),
+  repriced_tax NUMERIC(12, 2),
+  payment_id UUID REFERENCES pos_payments (id),
+  reason_id INTEGER
 );
 
 CREATE TABLE pos_refund_items (
   id UUID PRIMARY KEY,
   refund_id UUID NOT NULL REFERENCES pos_refunds (id),
   ticket_item_id INTEGER NOT NULL REFERENCES pos_ticket_items (id),
-  qty INTEGER NOT NULL DEFAULT 1
+  qty INTEGER NOT NULL DEFAULT 1,
+  line_unit NUMERIC(12, 2),
+  amount NUMERIC(12, 2),
+  menu_item_id INTEGER REFERENCES pos_menu_items (id),
+  back_to TEXT DEFAULT 'shelf' CHECK (back_to IN ('shelf', 'damaged')),
+  not_back_at TIMESTAMPTZ
 );
 
 CREATE TABLE pos_loyalty_ledger (
@@ -270,7 +328,10 @@ CREATE TABLE pos_gift_card_ledger (
   amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
   ticket_id INTEGER REFERENCES pos_tickets (id),
   staff_id INTEGER REFERENCES pos_staff (id),
-  at TIMESTAMPTZ NOT NULL DEFAULT now()
+  at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  sign INTEGER DEFAULT -1,
+  card_code VARCHAR(16),
+  moved_at TIMESTAMPTZ
 );
 
 CREATE TABLE pos_booking_rules (
@@ -294,7 +355,8 @@ CREATE TABLE pos_settings (
   phone VARCHAR(32),
   tax_rate_bp INTEGER NOT NULL DEFAULT 825,
   tip_presets JSONB,
-  receipt_footer VARCHAR(200)
+  receipt_footer VARCHAR(200),
+  cards_moved BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE pos_messages (
@@ -329,14 +391,18 @@ CREATE INDEX idx_ticket_items_menu_item_id ON pos_ticket_items (menu_item_id);
 CREATE INDEX idx_ticket_items_voided_by ON pos_ticket_items (voided_by);
 CREATE INDEX idx_ticket_items_reward_id ON pos_ticket_items (reward_id);
 CREATE INDEX idx_ticket_items_gift_card_id ON pos_ticket_items (gift_card_id);
+CREATE INDEX idx_ticket_items_category_id ON pos_ticket_items (category_id);
 CREATE INDEX idx_ticket_item_modifiers_ticket_item_id ON pos_ticket_item_modifiers (ticket_item_id);
 CREATE INDEX idx_ticket_item_modifiers_modifier_id ON pos_ticket_item_modifiers (modifier_id);
+CREATE INDEX idx_ticket_codes_ticket_id ON pos_ticket_codes (ticket_id);
 CREATE INDEX idx_payments_ticket_id ON pos_payments (ticket_id);
 CREATE INDEX idx_payments_staff_id ON pos_payments (staff_id);
 CREATE INDEX idx_refunds_ticket_id ON pos_refunds (ticket_id);
 CREATE INDEX idx_refunds_staff_id ON pos_refunds (staff_id);
+CREATE INDEX idx_refunds_payment_id ON pos_refunds (payment_id);
 CREATE INDEX idx_refund_items_refund_id ON pos_refund_items (refund_id);
 CREATE INDEX idx_refund_items_ticket_item_id ON pos_refund_items (ticket_item_id);
+CREATE INDEX idx_refund_items_menu_item_id ON pos_refund_items (menu_item_id);
 CREATE INDEX idx_loyalty_ledger_customer_id ON pos_loyalty_ledger (customer_id);
 CREATE INDEX idx_loyalty_ledger_reward_id ON pos_loyalty_ledger (reward_id);
 CREATE INDEX idx_loyalty_ledger_ticket_id ON pos_loyalty_ledger (ticket_id);

@@ -41,11 +41,11 @@ import { createPublicClient, fromTenantLocal, PUBLIC_ERROR_CODES, toTenantDay } 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { labelOutcomeOf } from '../data/documents';
-import { featuresOf } from '../features';
+import { NO_FEATURES, featuresOf } from '../features';
 import { GuestError, publicGuestsPort, type GuestBooking, type GuestsPort, type Slot } from '../guests/api';
 import { resolveSurfaceConfig } from '../publicConfig';
 import type { AttachedAddOn } from '../staffConnection';
-import { ADD_ON_DIRS, addOnBundle, appBundle, attachedFiles, packedFloor, boot, Caller, ENGINES, mailbox, missing, ok, packedVersion, until, type Engine, type Server } from './harness';
+import { addOnBundle, appBundle, attachedFiles, packedFloor, boot, Caller, ENGINES, mailbox, missing, ok, packedVersion, until, type Engine, type Server } from './harness';
 
 type Row = Record<string, unknown>;
 
@@ -54,11 +54,13 @@ if (why !== null && process.env['ADMINIUM_REQUIRE_CONTRACT'] === '1') throw new 
 const PORT = Number(process.env['CONTRACT_PORT'] ?? 4931);
 const ADMIN = { email: process.env['E2E_ADMIN_EMAIL'] ?? 'e2e@adminium.local', password: process.env['E2E_ADMIN_PASSWORD'] ?? 'adminium-e2e-password' };
 const VENUE = 'Harbour Kiosk';
+/** The two add-ons this file ticks: with Offers and Inventory left out, the till is its 0.2.x self. */
+const TICKED = ['invoices', 'barcode-labels'];
 
 /** Said in the name: a checkout packed as the release it will be. */
 const REHEARSAL =
   why === null
-    ? Object.keys(ADD_ON_DIRS)
+    ? TICKED
         .map((key) => ({ key, ...packedVersion(key) }))
         .filter((p) => p.rehearsed)
         .map((p) => `${p.key} ${p.checkout} packed as ${p.version}`)
@@ -114,7 +116,7 @@ describe.skipIf(why !== null)(`the contract with a built Adminium${why === null 
         staff.post<{ contentUrl: string; reused: boolean }>('/api/v1/apps/pos/documents/render', { kind: 'label-sheet', ref: 'menu_items', pk: { id }, values: { count } });
 
       it('offers both add-ons at the install check, each with its feature, ticking neither', async () => {
-        for (const key of Object.keys(ADD_ON_DIRS)) {
+        for (const key of TICKED) {
           const addOn = addOnBundle(key);
           const stored = ok(await staff.post<{ key: string; version: string }>(`/api/v1/add-ons/upload?expectedSha512=${encodeURIComponent(addOn.integrity)}`, addOn.buffer));
           expect([stored.key, stored.version]).toEqual([addOn.key, addOn.version]);
@@ -130,7 +132,11 @@ describe.skipIf(why !== null)(`the contract with a built Adminium${why === null 
         ).plan;
         expect(plan.installable).toBe(true);
         const offered = Object.fromEntries(plan.addOns.map((a) => [a.key, a]));
-        expect(Object.keys(offered).sort()).toEqual(['barcode-labels', 'invoices']);
+        expect(Object.keys(offered).sort()).toEqual(['barcode-labels', 'inventory', 'invoices', 'offers']);
+        // Offers and Inventory are offered too, each with what it switches on, and are not ticked either.
+        expect(offered['offers']).toMatchObject({ checked: false, features: [{ id: 'offers' }, { id: 'gift-cards' }] });
+        expect(offered['inventory']).toMatchObject({ checked: false, features: [{ id: 'stock' }] });
+        expect(offered['offers']!.need).not.toBe('requires');
         expect(offered['invoices']).toMatchObject({ checked: false, action: 'install', features: [{ id: 'emailed-receipts' }] });
         expect(offered['barcode-labels']).toMatchObject({ checked: false, action: 'install', features: [{ id: 'shelf-labels' }] });
         // Suggested, never required: the till installs without either.
@@ -142,7 +148,7 @@ describe.skipIf(why !== null)(`the contract with a built Adminium${why === null 
         const app = appBundle();
         const body = { key: app.key, version: app.version, connectionId };
         const plan = ok(await staff.post<{ plan: { checksum: string } }>('/api/v1/apps/plan', body)).plan;
-        const addOns = Object.keys(ADD_ON_DIRS).map((key) => ({ key, version: packedVersion(key).version }));
+        const addOns = TICKED.map((key) => ({ key, version: packedVersion(key).version }));
         const installed = ok(
           await staff.post<{ schema: { created: string[] }; rules: { skipped: unknown[] }; outbox?: { defined: boolean }; addOns?: { installed: { key: string }[] } }>('/api/v1/apps/install', {
             ...body,
@@ -160,7 +166,7 @@ describe.skipIf(why !== null)(`the contract with a built Adminium${why === null 
         // The staff config names both add-ons, so the till shows both features.
         const staffConfig = await config();
         expect(Object.keys(staffConfig.addOns ?? {}).sort()).toEqual(['barcode-labels', 'invoices']);
-        expect(featuresOf(staffConfig.addOns)).toEqual({ 'emailed-receipts': true, 'shelf-labels': true });
+        expect(featuresOf(staffConfig.addOns)).toEqual({ ...NO_FEATURES, 'emailed-receipts': true, 'shelf-labels': true });
         // The venue's name, which the email is signed with.
         await insert('settings', { venue_name: VENUE, tax_rate_bp: 825 });
       }, 240_000);
@@ -190,8 +196,13 @@ describe.skipIf(why !== null)(`the contract with a built Adminium${why === null 
         await insert('ticket_items', { ticket_id: ticketId, name: 'Flat White', qty: 2, unit_price: 4.5, seat: 1 });
         await insert('ticket_items', { ticket_id: ticketId, name: 'Croissant', qty: 1, unit_price: 3.8, seat: 1 });
         await insert('ticket_items', { ticket_id: ticketId, name: 'Blueberry Muffin', qty: 1, unit_price: 3.9, seat: 1, voided_at: new Date().toISOString(), void_reason: 'Dropped' });
-        // Subtotal 12.80 (the rollup leaves the voided line out), 1.00 off the ticket, tax 0.97, tip 1.50.
-        const paid = await update('tickets', ticketId, { status: 'paid', closed_at: new Date().toISOString(), discount_kind: 'amount', discount_value: 1, tax: 0.97, tip: 1.5, total: 12.77 });
+        // Subtotal 12.80 (the rollup leaves the voided line out), 1.00 off the ticket, tax 0.97, tip 1.50:
+        // Adminium works the tax and the total out, and the ticket closes once nothing is owing.
+        const priced = await update('tickets', ticketId, { discount_kind: 'amount', discount_value: 1 });
+        expect([money(priced['tax']), money(priced['total']), money(priced['due'])]).toEqual([0.97, 12.77, 12.77]);
+        await insert('payments', { id: randomUUID(), ticket_id: ticketId, method: 'card', amount: 12.77, tip: 1.5, staff_id: server['id'] });
+        const paid = await update('tickets', ticketId, { status: 'paid', closed_at: new Date().toISOString(), tip: 1.5 });
+        expect([money(paid['tax']), money(paid['total'])]).toEqual([0.97, 12.77]);
         expect(money(paid['subtotal'])).toBe(12.8);
         expect(money(paid['charged'])).toBe(14.27);
         expect(money((await one('tickets', ticketId))['charged'])).toBe(14.27);
@@ -300,7 +311,7 @@ describe.skipIf(why !== null)(`the contract with a built Adminium${why === null 
         const off = ok(await staff.patch<{ features?: unknown[] }>('/api/v1/add-ons/barcode-labels', { attachedTo: 'pos', enabled: false }));
         // Switching it off warns that a feature stops.
         expect(JSON.stringify(off.features ?? [])).toContain('shelf-labels');
-        expect(featuresOf((await config()).addOns)).toEqual({ 'emailed-receipts': true, 'shelf-labels': false });
+        expect(featuresOf((await config()).addOns)).toEqual({ ...NO_FEATURES, 'emailed-receipts': true });
         const refused = await label(itemId);
         expect([refused.status, refused.code]).toEqual([409, 'FEATURE_OFF']);
         expect(labelOutcomeOf(refused)).toEqual({ ok: false, reason: 'off' });

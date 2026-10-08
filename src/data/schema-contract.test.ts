@@ -178,7 +178,8 @@ describe('manifest.json installs the tables db/schema.sql creates', () => {
     for (const column of want) {
       const entry = have.find((candidate) => candidate.ref === column.name)!;
       const at = `${table}.${column.name}`;
-      expect(entry.type, `${at} type`).toBe(manifestTypeOf(column));
+      // A reduction an add-on decides is a decimal at the currency's places: the same column in SQL as money.
+      expect(entry.type === 'decimal' ? 'money' : entry.type, `${at} type`).toBe(manifestTypeOf(column));
       // The installer makes a column NOT NULL unless the manifest says
       // `nullable: true`, and a primary key is never nullable.
       const nullable = !column.notNull && !column.primaryKey;

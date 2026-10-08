@@ -153,33 +153,72 @@ export const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 1
 
 // ---- Ticket-level money (depends on discount / tip / splits) ----
 
-// Raw (unrounded) goods figures. Internal: they are the base the percentages
-// are assessed on, not something a screen ever prints.
-const rawSub = (s: PricingState): number => itemsSub(s.ticket.items);
-/** The goods alone: what a discount, the tax and a tip are worked out on. */
-const rawGoods = (s: PricingState): number => itemsSub(goodsOf(s.ticket.items));
-const rawDisc = (s: PricingState): number => {
-  const d = s.discount;
-  if (!d) return 0;
-  const sub = rawGoods(s);
-  const off = d.kind === 'pct' ? (sub * d.value) / 100 : d.kind === 'comp' ? sub : d.value || 0;
-  /*
-   * Clamp every kind, not just the fixed amount.
-   *
-   * `amt` was already capped at the subtotal but `pct` was not, so a rate over
-   * 100 produced a discount larger than the goods: `netSub` still floored the
-   * bill at zero, but the register printed "Subtotal $33.90 / −$50.85" above a
-   * Total of $0.00 — rows that contradicted their own total. No preset in
-   * DiscountModal exceeds 100%, but this is a template people fork.
-   */
-  return Math.min(Math.max(0, off), sub);
-};
+/** A line as the estimate counts it: its unit price, how many, and whether it loads a gift card. */
+export interface EstimateLine {
+  unit: number;
+  qty: number;
+  /** A gift card load: taxed, discounted and tipped on nothing. */
+  load?: boolean;
+}
 
-export const subtotal = (s: PricingState): number => round2(rawSub(s));
-export const discountAmt = (s: PricingState): number => round2(rawDisc(s));
-/** The taxable/tippable base — deliberately unrounded. Goods only: a gift card load is none of it. */
-export const netSub = (s: PricingState): number => Math.max(0, rawGoods(s) - rawDisc(s));
-export const tax = (s: PricingState): number => round2(netSub(s) * source.taxRate());
+/** A ticket's figures, each in whole cents made back into money. */
+export interface Estimate {
+  subtotal: number;
+  goods: number;
+  discount: number;
+  net: number;
+  tax: number;
+  total: number;
+}
+
+const toCents = (n: number): number => Math.round((n + Number.EPSILON) * 100);
+/** `a ÷ b` rounded half up, on whole numbers: no float decides a half-cent. */
+const divRound = (a: number, b: number): number => Math.floor((2 * a + b) / (2 * b));
+
+/**
+ * THE TILL'S ESTIMATE of a ticket, worked out exactly as Adminium works the
+ * real figures out: in whole cents, the reduction rounded once (half up)
+ * before the tax is taken on what is left, the tax rounded once.
+ *
+ * It is an estimate: the server decides the figures of a ticket, and the
+ * screens show its answer as soon as they have it. This is what they show
+ * until then (and what the demo, which has no server, shows always).
+ */
+export function estimate(lines: readonly EstimateLine[], discount: Pick<Discount, 'kind' | 'value'> | null, rate: number): Estimate {
+  let all = 0;
+  let goods = 0;
+  for (const line of lines) {
+    const amount = toCents(line.unit) * line.qty;
+    all += amount;
+    if (line.load !== true) goods += amount;
+  }
+  let off = 0;
+  if (discount !== null) {
+    // A percent keeps three decimals (12.5 %); an amount is money.
+    if (discount.kind === 'pct') off = divRound(goods * Math.round((discount.value || 0) * 1000), 100_000);
+    else if (discount.kind === 'comp') off = goods;
+    else off = toCents(discount.value || 0);
+    // Every kind is held to the goods: a reduction never exceeds what it reduces.
+    off = Math.min(Math.max(0, off), goods);
+  }
+  const net = Math.max(0, goods - off);
+  const taxCents = divRound(net * Math.round(rate * 10_000), 10_000);
+  const total = Math.max(0, all - off) + taxCents;
+  return { subtotal: all / 100, goods: goods / 100, discount: off / 100, net: net / 100, tax: taxCents / 100, total: total / 100 };
+}
+
+const estimateOf = (s: PricingState): Estimate =>
+  estimate(
+    s.ticket.items.map((li) => ({ unit: lineUnit(li), qty: li.qty, load: li.giftCard !== undefined })),
+    s.discount,
+    source.taxRate(),
+  );
+
+export const subtotal = (s: PricingState): number => estimateOf(s).subtotal;
+export const discountAmt = (s: PricingState): number => estimateOf(s).discount;
+/** The taxable/tippable base: the goods less the rounded reduction. A gift card load is none of it. */
+export const netSub = (s: PricingState): number => estimateOf(s).net;
+export const tax = (s: PricingState): number => estimateOf(s).tax;
 
 /** What tip preset `i` is worth on this ticket — the one authority for the
  * amount, so the preset buttons cannot quote a figure the total disagrees with. */
@@ -191,8 +230,7 @@ export const tipAmt = (s: PricingState): number => {
 };
 
 /** Goods + tax, no tip — what the register shows before the payment screen. */
-export const regTotal = (s: PricingState): number =>
-  round2(Math.max(0, subtotal(s) - discountAmt(s)) + tax(s));
+export const regTotal = (s: PricingState): number => estimateOf(s).total;
 
 /**
  * Goods + tax for a bare list of lines — the held tray and the move sheet,
@@ -204,10 +242,12 @@ export const regTotal = (s: PricingState): number =>
  * Equal to `regTotal` for an undiscounted ticket, which is asserted in the
  * tests.
  */
-export const linesTotal = (items: LineItem[]): number => {
-  const raw = itemsSub(items);
-  return round2(round2(raw) + round2(itemsSub(goodsOf(items)) * source.taxRate()));
-};
+export const linesTotal = (items: LineItem[]): number =>
+  estimate(
+    (items || []).map((li) => ({ unit: lineUnit(li), qty: li.qty, load: li.giftCard !== undefined })),
+    null,
+    source.taxRate(),
+  ).total;
 export const total = (s: PricingState): number => round2(regTotal(s) + tipAmt(s));
 export const paid = (s: PricingState): number => s.splits.reduce((a, x) => a + x.amount, 0);
 export const remaining = (s: PricingState): number => Math.max(0, total(s) - paid(s));

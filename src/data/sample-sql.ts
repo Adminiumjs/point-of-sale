@@ -74,6 +74,7 @@ function columnSql(tables: Table[], column: Column): string {
       type = 'BIGINT';
       break;
     case 'money':
+    case 'decimal':
       type = 'NUMERIC(12, 2)';
       break;
     case 'bool':

@@ -141,7 +141,8 @@ describe('discounts', () => {
     const s = state({ items, discount: { kind: 'pct', value: 15, label: '15% off' } });
     expect(subtotal(s)).toBe(33.9);
     expect(discountAmt(s)).toBe(5.09); // 5.085, rounded to the cent
-    expect(netSub(s)).toBeCloseTo(28.815, 10);
+    // The tax is taken on the goods less the ROUNDED reduction, as Adminium takes it: 33.90 − 5.09.
+    expect(netSub(s)).toBe(28.81);
   });
 
   it('a fixed amount comes off the goods', () => {

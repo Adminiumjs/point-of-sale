@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "key": "pos",
   "name": "Point of Sale",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "publisher": {
     "id": "adminium",
     "name": "Adminium",
@@ -17,7 +17,7 @@
     "hospitality"
   ],
   "compatibility": {
-    "minAdminiumVersion": "0.3.2",
+    "minAdminiumVersion": "0.3.20",
     "engines": [
       "sqlite",
       "postgres",
@@ -25,7 +25,8 @@
     ],
     "requires": [
       "realtime"
-    ]
+    ],
+    "updatesFrom": ">=0.2.0"
   },
   "requiredSchema": {
     "prefixed": true,
@@ -1499,6 +1500,278 @@
             }
           },
           {
+            "ref": "tax_rate_bp",
+            "type": "int",
+            "nullable": true,
+            "rules": {
+              "default": {
+                "from": {
+                  "table": "settings",
+                  "column": "tax_rate_bp"
+                }
+              }
+            },
+            "label": {
+              "en-US": "Tax rate (basis points)",
+              "de-DE": "Steuersatz (Basispunkte)",
+              "fr-FR": "Taux de taxe (points de base)",
+              "da-DK": "Momssats (basispoint)",
+              "cs-CZ": "Sazba daně (bazické body)",
+              "ar-EG": "نسبة الضريبة (نقاط أساس)",
+              "zh-CN": "税率（基点）",
+              "zh-TW": "稅率（基點）"
+            }
+          },
+          {
+            "ref": "goods",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "rollup": {
+                "from": "ticket_items",
+                "via": "ticket_id",
+                "sum": "goods_amount"
+              }
+            },
+            "label": {
+              "en-US": "Goods",
+              "de-DE": "Waren",
+              "fr-FR": "Articles",
+              "da-DK": "Varer",
+              "cs-CZ": "Zboží",
+              "ar-EG": "البضائع",
+              "zh-CN": "商品金额",
+              "zh-TW": "商品金額"
+            }
+          },
+          {
+            "ref": "taxable",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "rollup": {
+                "from": "ticket_items",
+                "via": "ticket_id",
+                "sum": "taxable"
+              }
+            },
+            "label": {
+              "en-US": "Goods after line reductions",
+              "de-DE": "Waren nach Positionsrabatten",
+              "fr-FR": "Articles après remises par ligne",
+              "da-DK": "Varer efter linjerabatter",
+              "cs-CZ": "Zboží po slevách na položkách",
+              "ar-EG": "البضائع بعد خصومات البنود",
+              "zh-CN": "行折扣后的商品金额",
+              "zh-TW": "行折扣後的商品金額"
+            }
+          },
+          {
+            "ref": "own_discount",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "formula": {
+                "if": [
+                  {
+                    "eq": [
+                      "discount_kind",
+                      "percent"
+                    ]
+                  },
+                  {
+                    "min": [
+                      {
+                        "coalesce": [
+                          "goods",
+                          0
+                        ]
+                      },
+                      {
+                        "round": [
+                          {
+                            "div": [
+                              {
+                                "mul": [
+                                  {
+                                    "coalesce": [
+                                      "goods",
+                                      0
+                                    ]
+                                  },
+                                  {
+                                    "coalesce": [
+                                      "discount_value",
+                                      0
+                                    ]
+                                  }
+                                ]
+                              },
+                              100
+                            ]
+                          },
+                          2
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "if": [
+                      {
+                        "eq": [
+                          "discount_kind",
+                          "amount"
+                        ]
+                      },
+                      {
+                        "min": [
+                          {
+                            "coalesce": [
+                              "goods",
+                              0
+                            ]
+                          },
+                          {
+                            "coalesce": [
+                              "discount_value",
+                              0
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "if": [
+                          {
+                            "eq": [
+                              "discount_kind",
+                              "comp"
+                            ]
+                          },
+                          {
+                            "coalesce": [
+                              "goods",
+                              0
+                            ]
+                          },
+                          0
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "label": {
+              "en-US": "Ticket discount",
+              "de-DE": "Bonrabatt",
+              "fr-FR": "Remise sur le ticket",
+              "da-DK": "Rabat på bonen",
+              "cs-CZ": "Sleva na účet",
+              "ar-EG": "خصم الفاتورة",
+              "zh-CN": "整单折扣",
+              "zh-TW": "整單折扣"
+            }
+          },
+          {
+            "ref": "discount",
+            "type": "decimal",
+            "scale": "currency",
+            "nullable": true,
+            "label": {
+              "en-US": "Reductions",
+              "de-DE": "Nachlässe",
+              "fr-FR": "Réductions",
+              "da-DK": "Reduktioner",
+              "cs-CZ": "Slevy",
+              "ar-EG": "التخفيضات",
+              "zh-CN": "减免",
+              "zh-TW": "減免"
+            }
+          },
+          {
+            "ref": "discount_by",
+            "type": "text",
+            "maxLength": 120,
+            "nullable": true,
+            "label": {
+              "en-US": "Discount given by",
+              "de-DE": "Rabatt gegeben von",
+              "fr-FR": "Remise accordée par",
+              "da-DK": "Rabat givet af",
+              "cs-CZ": "Slevu dal(a)",
+              "ar-EG": "الخصم منحه",
+              "zh-CN": "折扣给出人",
+              "zh-TW": "折扣給予人"
+            }
+          },
+          {
+            "ref": "discount_reason_id",
+            "type": "int",
+            "nullable": true,
+            "rules": {
+              "addOnLink": {
+                "addOn": "offers",
+                "table": "reasons"
+              }
+            },
+            "label": {
+              "en-US": "Discount reason (Offers)",
+              "de-DE": "Rabattgrund (Offers)",
+              "fr-FR": "Motif de remise (Offers)",
+              "da-DK": "Rabatårsag (Offers)",
+              "cs-CZ": "Důvod slevy (Offers)",
+              "ar-EG": "سبب الخصم (Offers)",
+              "zh-CN": "折扣原因（Offers）",
+              "zh-TW": "折扣原因（Offers）"
+            }
+          },
+          {
+            "ref": "net",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "formula": {
+                "max": [
+                  0,
+                  {
+                    "sub": [
+                      {
+                        "coalesce": [
+                          "taxable",
+                          0
+                        ]
+                      },
+                      {
+                        "if": [
+                          {
+                            "isNull": "discount"
+                          },
+                          {
+                            "coalesce": [
+                              "own_discount",
+                              0
+                            ]
+                          },
+                          0
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "label": {
+              "en-US": "After reductions",
+              "de-DE": "Nach Nachlässen",
+              "fr-FR": "Après réductions",
+              "da-DK": "Efter reduktioner",
+              "cs-CZ": "Po slevách",
+              "ar-EG": "بعد التخفيضات",
+              "zh-CN": "减免后",
+              "zh-TW": "減免後"
+            }
+          },
+          {
             "ref": "tax",
             "type": "money",
             "default": 0,
@@ -1511,6 +1784,29 @@
               "ar-EG": "الضريبة",
               "zh-CN": "税额",
               "zh-TW": "稅額"
+            },
+            "rules": {
+              "formula": {
+                "round": [
+                  {
+                    "div": [
+                      {
+                        "mul": [
+                          "net",
+                          {
+                            "coalesce": [
+                              "tax_rate_bp",
+                              0
+                            ]
+                          }
+                        ]
+                      },
+                      10000
+                    ]
+                  },
+                  2
+                ]
+              }
             }
           },
           {
@@ -1541,6 +1837,52 @@
               "ar-EG": "الإجمالي",
               "zh-CN": "合计",
               "zh-TW": "合計"
+            },
+            "rules": {
+              "formula": {
+                "round": [
+                  {
+                    "add": [
+                      {
+                        "max": [
+                          0,
+                          {
+                            "sub": [
+                              {
+                                "coalesce": [
+                                  "subtotal",
+                                  0
+                                ]
+                              },
+                              {
+                                "if": [
+                                  {
+                                    "isNull": "discount"
+                                  },
+                                  {
+                                    "coalesce": [
+                                      "own_discount",
+                                      0
+                                    ]
+                                  },
+                                  "discount"
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "coalesce": [
+                          "tax",
+                          0
+                        ]
+                      }
+                    ]
+                  },
+                  2
+                ]
+              }
             }
           },
           {
@@ -1564,6 +1906,131 @@
                   "tip"
                 ]
               }
+            }
+          },
+          {
+            "ref": "paid",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "rollup": {
+                "from": "payments",
+                "via": "ticket_id",
+                "sum": "amount",
+                "balance": {
+                  "column": "due",
+                  "of": "total",
+                  "minus": [
+                    "card_paid"
+                  ]
+                },
+                "cap": true
+              }
+            },
+            "label": {
+              "en-US": "Paid",
+              "de-DE": "Bezahlt",
+              "fr-FR": "Payé",
+              "da-DK": "Betalt",
+              "cs-CZ": "Zaplaceno",
+              "ar-EG": "المدفوع",
+              "zh-CN": "已付",
+              "zh-TW": "已付"
+            }
+          },
+          {
+            "ref": "card_paid",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "rollup": {
+                "from": "payments",
+                "via": "ticket_id",
+                "sum": "card_amount",
+                "cap": true
+              }
+            },
+            "label": {
+              "en-US": "Paid by gift card",
+              "de-DE": "Mit Gutscheinkarte bezahlt",
+              "fr-FR": "Payé par carte cadeau",
+              "da-DK": "Betalt med gavekort",
+              "cs-CZ": "Zaplaceno dárkovou kartou",
+              "ar-EG": "المدفوع ببطاقة هدية",
+              "zh-CN": "礼品卡已付",
+              "zh-TW": "禮品卡已付"
+            }
+          },
+          {
+            "ref": "due",
+            "type": "money",
+            "nullable": true,
+            "label": {
+              "en-US": "Left to pay",
+              "de-DE": "Noch zu zahlen",
+              "fr-FR": "Reste à payer",
+              "da-DK": "Mangler at blive betalt",
+              "cs-CZ": "Zbývá zaplatit",
+              "ar-EG": "المتبقي للدفع",
+              "zh-CN": "待付",
+              "zh-TW": "待付"
+            }
+          },
+          {
+            "ref": "refunded",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "rollup": {
+                "from": "refunds",
+                "via": "ticket_id",
+                "sum": "amount",
+                "balance": {
+                  "column": "refundable",
+                  "of": "total"
+                },
+                "cap": true
+              }
+            },
+            "label": {
+              "en-US": "Refunded",
+              "de-DE": "Erstattet",
+              "fr-FR": "Remboursé",
+              "da-DK": "Refunderet",
+              "cs-CZ": "Vráceno",
+              "ar-EG": "المبلغ المسترد",
+              "zh-CN": "已退款",
+              "zh-TW": "已退款"
+            }
+          },
+          {
+            "ref": "refundable",
+            "type": "money",
+            "nullable": true,
+            "label": {
+              "en-US": "Can still be refunded",
+              "de-DE": "Noch erstattbar",
+              "fr-FR": "Encore remboursable",
+              "da-DK": "Kan stadig refunderes",
+              "cs-CZ": "Lze ještě vrátit",
+              "ar-EG": "يمكن استرداده بعد",
+              "zh-CN": "仍可退款",
+              "zh-TW": "仍可退款"
+            }
+          },
+          {
+            "ref": "customer_proved",
+            "type": "bool",
+            "nullable": true,
+            "label": {
+              "en-US": "Customer named by staff",
+              "de-DE": "Kunde vom Personal benannt",
+              "fr-FR": "Client désigné par le personnel",
+              "da-DK": "Kunde angivet af personalet",
+              "cs-CZ": "Zákazníka určila obsluha",
+              "ar-EG": "العميل حدده الموظف",
+              "zh-CN": "员工已确认顾客",
+              "zh-TW": "員工已確認顧客"
             }
           },
           {
@@ -1945,7 +2412,206 @@
           "zh-CN": "账单",
           "zh-TW": "訂單"
         },
-        "keyField": "number"
+        "keyField": "number",
+        "states": {
+          "column": "status",
+          "initial": "open",
+          "moves": {
+            "open": [
+              "sent",
+              {
+                "to": "paid",
+                "requires": {
+                  "where": [
+                    {
+                      "column": "tax_rate_bp",
+                      "isNull": false
+                    },
+                    {
+                      "column": "due",
+                      "lte": 0
+                    }
+                  ]
+                }
+              },
+              "void"
+            ],
+            "sent": [
+              {
+                "to": "paid",
+                "requires": {
+                  "where": [
+                    {
+                      "column": "tax_rate_bp",
+                      "isNull": false
+                    },
+                    {
+                      "column": "due",
+                      "lte": 0
+                    }
+                  ]
+                }
+              },
+              "void"
+            ]
+          },
+          "lock": {
+            "when": [
+              "paid",
+              "void"
+            ],
+            "except": [
+              "tip",
+              "kitchen_status",
+              "held",
+              "pickup_code",
+              "pickup_stage",
+              "ready_at",
+              "notified_at",
+              "signed_at",
+              "receipt_via",
+              "receipt_to"
+            ]
+          },
+          "children": {
+            "ticket_items": {
+              "via": "ticket_id",
+              "lock": true
+            },
+            "ticket_codes": {
+              "via": "ticket_id",
+              "lock": true
+            },
+            "payments": {
+              "via": "ticket_id",
+              "parentIn": [
+                "open",
+                "sent"
+              ]
+            },
+            "refunds": {
+              "via": "ticket_id",
+              "createIn": [
+                "paid"
+              ]
+            }
+          }
+        },
+        "adjust": {
+          "by": {
+            "addOn": "offers"
+          },
+          "needs": "offers",
+          "lines": [
+            {
+              "table": "ticket_items",
+              "via": "ticket_id",
+              "price": "unit_price",
+              "quantity": "qty",
+              "discount": "discount",
+              "what": [
+                {
+                  "column": "menu_item_id",
+                  "as": "item"
+                },
+                {
+                  "column": "category_id",
+                  "as": "category"
+                }
+              ],
+              "excludes": {
+                "column": "load_ref",
+                "set": true
+              },
+              "unlessSet": "voided_at"
+            }
+          ],
+          "order": {
+            "discount": "discount",
+            "customer": {
+              "link": "customer_id",
+              "address": "email",
+              "proved": "customer_proved",
+              "counts": {
+                "column": "status",
+                "in": [
+                  "paid"
+                ]
+              }
+            },
+            "staff": {
+              "kind": "discount_kind",
+              "value": "discount_value",
+              "reason": "discount_reason_id",
+              "by": "discount_by"
+            }
+          },
+          "codes": {
+            "table": "ticket_codes",
+            "via": "ticket_id",
+            "typed": "typed",
+            "code": "code_id",
+            "voucher": "voucher_id",
+            "removed": "removed_at"
+          },
+          "uses": "uses",
+          "refunds": {
+            "table": "refunds",
+            "via": "ticket_id",
+            "amount": "repriced",
+            "tax": "repriced_tax",
+            "of": "total",
+            "taxOf": "tax",
+            "against": "payment_id",
+            "lines": {
+              "table": "refund_items",
+              "via": "refund_id",
+              "line": "ticket_item_id",
+              "quantity": "qty"
+            }
+          },
+          "frozen": {
+            "column": "status",
+            "in": [
+              "paid",
+              "void"
+            ]
+          },
+          "expect": "total"
+        },
+        "postings": [
+          {
+            "id": "uses",
+            "into": {
+              "addOn": "offers",
+              "ledger": "value",
+              "action": "redeem"
+            },
+            "needs": "offers",
+            "post": {
+              "on": {
+                "column": "status",
+                "in": [
+                  "paid"
+                ]
+              }
+            },
+            "reverse": {
+              "on": {
+                "column": "status",
+                "in": [
+                  "void"
+                ],
+                "from": [
+                  "paid"
+                ]
+              }
+            },
+            "map": {
+              "reason": "discount_reason_id"
+            }
+          }
+        ]
       },
       {
         "ref": "ticket_items",
@@ -2162,6 +2828,172 @@
               "zh-CN": "礼品卡",
               "zh-TW": "禮物卡"
             }
+          },
+          {
+            "ref": "category_id",
+            "type": "fk",
+            "references": "menu_categories",
+            "nullable": true,
+            "rules": {
+              "copy": {
+                "via": "menu_item_id",
+                "from": "category_id",
+                "mode": "always"
+              }
+            },
+            "label": {
+              "en-US": "Category",
+              "de-DE": "Kategorie",
+              "fr-FR": "Catégorie",
+              "da-DK": "Kategori",
+              "cs-CZ": "Kategorie",
+              "ar-EG": "الفئة",
+              "zh-CN": "分类",
+              "zh-TW": "分類"
+            }
+          },
+          {
+            "ref": "card_id",
+            "type": "int",
+            "nullable": true,
+            "rules": {
+              "addOnLink": {
+                "addOn": "offers",
+                "table": "gift_cards"
+              }
+            },
+            "label": {
+              "en-US": "Gift card (Offers)",
+              "de-DE": "Gutscheinkarte (Offers)",
+              "fr-FR": "Carte cadeau (Offers)",
+              "da-DK": "Gavekort (Offers)",
+              "cs-CZ": "Dárková karta (Offers)",
+              "ar-EG": "بطاقة الهدية (Offers)",
+              "zh-CN": "礼品卡（Offers）",
+              "zh-TW": "禮品卡（Offers）"
+            }
+          },
+          {
+            "ref": "load_ref",
+            "type": "int",
+            "nullable": true,
+            "rules": {
+              "formula": {
+                "if": [
+                  {
+                    "isNull": "card_id"
+                  },
+                  {
+                    "if": [
+                      {
+                        "isNull": "gift_card_id"
+                      },
+                      "card_id",
+                      1
+                    ]
+                  },
+                  1
+                ]
+              }
+            },
+            "label": {
+              "en-US": "Gift card line",
+              "de-DE": "Gutscheinkarten-Position",
+              "fr-FR": "Ligne de carte cadeau",
+              "da-DK": "Gavekortlinje",
+              "cs-CZ": "Položka dárkové karty",
+              "ar-EG": "بند بطاقة هدية",
+              "zh-CN": "礼品卡行",
+              "zh-TW": "禮品卡行"
+            }
+          },
+          {
+            "ref": "goods_amount",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "formula": {
+                "if": [
+                  {
+                    "isNull": "voided_at"
+                  },
+                  {
+                    "if": [
+                      {
+                        "isNull": "load_ref"
+                      },
+                      {
+                        "mul": [
+                          "unit_price",
+                          "qty"
+                        ]
+                      },
+                      0
+                    ]
+                  },
+                  0
+                ]
+              }
+            },
+            "label": {
+              "en-US": "Goods amount",
+              "de-DE": "Warenbetrag",
+              "fr-FR": "Montant des articles",
+              "da-DK": "Varebeløb",
+              "cs-CZ": "Částka za zboží",
+              "ar-EG": "قيمة البضائع",
+              "zh-CN": "商品金额",
+              "zh-TW": "商品金額"
+            }
+          },
+          {
+            "ref": "discount",
+            "type": "decimal",
+            "scale": "currency",
+            "nullable": true,
+            "label": {
+              "en-US": "Reduction",
+              "de-DE": "Nachlass",
+              "fr-FR": "Réduction",
+              "da-DK": "Reduktion",
+              "cs-CZ": "Sleva",
+              "ar-EG": "التخفيض",
+              "zh-CN": "减免",
+              "zh-TW": "減免"
+            }
+          },
+          {
+            "ref": "taxable",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "formula": {
+                "max": [
+                  0,
+                  {
+                    "sub": [
+                      "goods_amount",
+                      {
+                        "coalesce": [
+                          "discount",
+                          0
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "label": {
+              "en-US": "After reduction",
+              "de-DE": "Nach Nachlass",
+              "fr-FR": "Après réduction",
+              "da-DK": "Efter reduktion",
+              "cs-CZ": "Po slevě",
+              "ar-EG": "بعد التخفيض",
+              "zh-CN": "减免后",
+              "zh-TW": "減免後"
+            }
           }
         ],
         "label": {
@@ -2184,7 +3016,62 @@
           "zh-CN": "账单明细",
           "zh-TW": "訂單明細"
         },
-        "keyField": "name"
+        "keyField": "name",
+        "postings": [
+          {
+            "id": "sale",
+            "into": {
+              "addOn": "inventory",
+              "ledger": "stock",
+              "action": "use"
+            },
+            "needs": "stock",
+            "via": "ticket_id",
+            "post": {
+              "on": {
+                "column": "status",
+                "in": [
+                  "paid"
+                ]
+              }
+            },
+            "map": {
+              "what": "menu_item_id",
+              "quantity": "qty",
+              "kind": {
+                "value": "sold"
+              }
+            },
+            "unlessSet": "voided_at",
+            "only": {
+              "column": "menu_item_id",
+              "set": true
+            }
+          },
+          {
+            "id": "card-load",
+            "into": {
+              "addOn": "offers",
+              "ledger": "value",
+              "action": "issue"
+            },
+            "needs": "gift-cards",
+            "via": "ticket_id",
+            "post": {
+              "on": {
+                "column": "status",
+                "in": [
+                  "paid"
+                ]
+              }
+            },
+            "map": {
+              "card": "card_id",
+              "amount": "unit_price"
+            },
+            "unlessSet": "voided_at"
+          }
+        ]
       },
       {
         "ref": "ticket_item_modifiers",
@@ -2267,6 +3154,168 @@
           "zh-CN": "明细选项",
           "zh-TW": "明細選項"
         }
+      },
+      {
+        "ref": "ticket_codes",
+        "label": {
+          "en-US": "Code on a ticket",
+          "de-DE": "Code auf einem Bon",
+          "fr-FR": "Code sur un ticket",
+          "da-DK": "Kode på en bon",
+          "cs-CZ": "Kód na účtu",
+          "ar-EG": "كود على فاتورة",
+          "zh-CN": "账单上的折扣码",
+          "zh-TW": "訂單上的折扣碼"
+        },
+        "labelPlural": {
+          "en-US": "Codes on tickets",
+          "de-DE": "Codes auf Bons",
+          "fr-FR": "Codes sur les tickets",
+          "da-DK": "Koder på bonner",
+          "cs-CZ": "Kódy na účtech",
+          "ar-EG": "أكواد على الفواتير",
+          "zh-CN": "账单上的折扣码",
+          "zh-TW": "訂單上的折扣碼"
+        },
+        "keyField": "typed",
+        "columns": [
+          {
+            "ref": "id",
+            "type": "int",
+            "role": "pk"
+          },
+          {
+            "ref": "ticket_id",
+            "type": "fk",
+            "references": "tickets",
+            "label": {
+              "en-US": "Ticket",
+              "de-DE": "Bon",
+              "fr-FR": "Ticket",
+              "da-DK": "Bon",
+              "cs-CZ": "Účet",
+              "ar-EG": "فاتورة",
+              "zh-CN": "账单",
+              "zh-TW": "訂單"
+            }
+          },
+          {
+            "ref": "typed",
+            "type": "text",
+            "maxLength": 64,
+            "nullable": true,
+            "label": {
+              "en-US": "Code as typed",
+              "de-DE": "Code wie eingegeben",
+              "fr-FR": "Code tel que saisi",
+              "da-DK": "Kode som indtastet",
+              "cs-CZ": "Kód, jak byl zadán",
+              "ar-EG": "الكود كما كُتب",
+              "zh-CN": "输入的折扣码",
+              "zh-TW": "輸入的折扣碼"
+            }
+          },
+          {
+            "ref": "code_id",
+            "type": "int",
+            "nullable": true,
+            "rules": {
+              "addOnLink": {
+                "addOn": "offers",
+                "table": "codes"
+              }
+            },
+            "label": {
+              "en-US": "Discount code",
+              "de-DE": "Rabattcode",
+              "fr-FR": "Code de réduction",
+              "da-DK": "Rabatkode",
+              "cs-CZ": "Slevový kód",
+              "ar-EG": "كود الخصم",
+              "zh-CN": "折扣码",
+              "zh-TW": "折扣碼"
+            }
+          },
+          {
+            "ref": "voucher_id",
+            "type": "int",
+            "nullable": true,
+            "rules": {
+              "addOnLink": {
+                "addOn": "offers",
+                "table": "vouchers"
+              }
+            },
+            "label": {
+              "en-US": "Voucher",
+              "de-DE": "Gutschein",
+              "fr-FR": "Bon",
+              "da-DK": "Værdibevis",
+              "cs-CZ": "Poukaz",
+              "ar-EG": "القسيمة",
+              "zh-CN": "代金券",
+              "zh-TW": "兌換券"
+            }
+          },
+          {
+            "ref": "removed_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "label": {
+              "en-US": "Removed",
+              "de-DE": "Entfernt",
+              "fr-FR": "Retiré",
+              "da-DK": "Fjernet",
+              "cs-CZ": "Odebráno",
+              "ar-EG": "أُزيل",
+              "zh-CN": "移除时间",
+              "zh-TW": "移除時間"
+            }
+          },
+          {
+            "ref": "added_by",
+            "type": "text",
+            "maxLength": 120,
+            "nullable": true,
+            "rules": {
+              "stamp": {
+                "set": "user-name",
+                "on": "create"
+              }
+            },
+            "label": {
+              "en-US": "Added by",
+              "de-DE": "Hinzugefügt von",
+              "fr-FR": "Ajouté par",
+              "da-DK": "Tilføjet af",
+              "cs-CZ": "Přidal(a)",
+              "ar-EG": "أضافه",
+              "zh-CN": "添加人",
+              "zh-TW": "新增者"
+            }
+          },
+          {
+            "ref": "added_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "rules": {
+              "stamp": {
+                "set": "now",
+                "on": "create"
+              }
+            },
+            "label": {
+              "en-US": "Added",
+              "de-DE": "Hinzugefügt",
+              "fr-FR": "Ajouté le",
+              "da-DK": "Tilføjet",
+              "cs-CZ": "Přidáno",
+              "ar-EG": "أُضيف",
+              "zh-CN": "添加时间",
+              "zh-TW": "新增時間"
+            }
+          }
+        ]
       },
       {
         "ref": "payments",
@@ -2463,6 +3512,136 @@
               "zh-CN": "员工",
               "zh-TW": "員工"
             }
+          },
+          {
+            "ref": "card_code",
+            "type": "text",
+            "maxLength": 64,
+            "nullable": true,
+            "label": {
+              "en-US": "Gift card code",
+              "de-DE": "Gutscheinkarten-Code",
+              "fr-FR": "Code de carte cadeau",
+              "da-DK": "Gavekortkode",
+              "cs-CZ": "Kód dárkové karty",
+              "ar-EG": "كود بطاقة الهدية",
+              "zh-CN": "礼品卡卡号",
+              "zh-TW": "禮品卡卡號"
+            }
+          },
+          {
+            "ref": "card_id",
+            "type": "int",
+            "nullable": true,
+            "rules": {
+              "addOnLink": {
+                "addOn": "offers",
+                "table": "gift_cards"
+              },
+              "lookup": {
+                "from": "card_code",
+                "table": {
+                  "addOn": "offers",
+                  "table": "gift_cards"
+                },
+                "column": "code",
+                "where": [
+                  {
+                    "column": "status",
+                    "eq": "active"
+                  }
+                ]
+              }
+            },
+            "label": {
+              "en-US": "Gift card",
+              "de-DE": "Gutscheinkarte",
+              "fr-FR": "Carte cadeau",
+              "da-DK": "Gavekort",
+              "cs-CZ": "Dárková karta",
+              "ar-EG": "بطاقة الهدية",
+              "zh-CN": "礼品卡",
+              "zh-TW": "禮品卡"
+            }
+          },
+          {
+            "ref": "card_last4",
+            "type": "text",
+            "maxLength": 4,
+            "nullable": true,
+            "rules": {
+              "codeLast4": {
+                "of": "card_code"
+              }
+            },
+            "label": {
+              "en-US": "Card ending",
+              "de-DE": "Karte endet auf",
+              "fr-FR": "Carte se terminant par",
+              "da-DK": "Kort ender på",
+              "cs-CZ": "Karta končí na",
+              "ar-EG": "البطاقة تنتهي بـ",
+              "zh-CN": "卡号尾数",
+              "zh-TW": "卡號末四碼"
+            }
+          },
+          {
+            "ref": "card_amount",
+            "type": "money",
+            "nullable": true,
+            "label": {
+              "en-US": "Paid by the card",
+              "de-DE": "Von der Karte bezahlt",
+              "fr-FR": "Payé par la carte",
+              "da-DK": "Betalt med kortet",
+              "cs-CZ": "Zaplaceno kartou",
+              "ar-EG": "المدفوع بالبطاقة",
+              "zh-CN": "卡内支付",
+              "zh-TW": "卡內支付"
+            }
+          },
+          {
+            "ref": "card_balance_after",
+            "type": "money",
+            "nullable": true,
+            "label": {
+              "en-US": "Left on the card",
+              "de-DE": "Restguthaben der Karte",
+              "fr-FR": "Reste sur la carte",
+              "da-DK": "Tilbage på kortet",
+              "cs-CZ": "Zůstatek na kartě",
+              "ar-EG": "المتبقي في البطاقة",
+              "zh-CN": "卡内余额",
+              "zh-TW": "卡內餘額"
+            }
+          },
+          {
+            "ref": "held_until",
+            "type": "timestamptz",
+            "nullable": true,
+            "rules": {
+              "stamp": {
+                "set": {
+                  "moment": {
+                    "column": "paid_at",
+                    "plus": {
+                      "hours": 12
+                    }
+                  }
+                },
+                "on": "create"
+              }
+            },
+            "label": {
+              "en-US": "Card money held until",
+              "de-DE": "Kartenbetrag gehalten bis",
+              "fr-FR": "Montant de la carte retenu jusqu’au",
+              "da-DK": "Kortbeløb holdes til",
+              "cs-CZ": "Částka z karty držena do",
+              "ar-EG": "مبلغ البطاقة محجوز حتى",
+              "zh-CN": "卡款保留至",
+              "zh-TW": "卡款保留至"
+            }
           }
         ],
         "label": {
@@ -2484,7 +3663,53 @@
           "ar-EG": "المدفوعات",
           "zh-CN": "付款",
           "zh-TW": "付款"
-        }
+        },
+        "postings": [
+          {
+            "id": "card",
+            "into": {
+              "addOn": "offers",
+              "ledger": "value",
+              "action": "spend"
+            },
+            "needs": "gift-cards",
+            "via": "ticket_id",
+            "post": {
+              "on": {
+                "create": true
+              }
+            },
+            "reverse": {
+              "on": {
+                "column": "status",
+                "in": [
+                  "void"
+                ]
+              }
+            },
+            "map": {
+              "card": "card_id",
+              "amount": "card_amount",
+              "due": {
+                "parent": "due"
+              },
+              "balance_after": "card_balance_after"
+            },
+            "heldUntil": "held_until",
+            "only": {
+              "column": "method",
+              "eq": "gift_card"
+            },
+            "refuses": [
+              {
+                "table": "ticket_items",
+                "via": "ticket_id",
+                "column": "load_ref",
+                "set": true
+              }
+            ]
+          }
+        ]
       },
       {
         "ref": "refunds",
@@ -2588,6 +3813,29 @@
               "ar-EG": "المبلغ",
               "zh-CN": "金额",
               "zh-TW": "金額"
+            },
+            "rules": {
+              "formula": {
+                "coalesce": [
+                  "repriced",
+                  {
+                    "add": [
+                      {
+                        "coalesce": [
+                          "own_sub",
+                          0
+                        ]
+                      },
+                      {
+                        "coalesce": [
+                          "own_tax",
+                          0
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
             }
           },
           {
@@ -2603,6 +3851,14 @@
               "ar-EG": "الضريبة",
               "zh-CN": "税额",
               "zh-TW": "稅額"
+            },
+            "rules": {
+              "formula": {
+                "coalesce": [
+                  "repriced_tax",
+                  "own_tax"
+                ]
+              }
             }
           },
           {
@@ -2651,6 +3907,336 @@
               "zh-CN": "退款时间",
               "zh-TW": "退款時間"
             }
+          },
+          {
+            "ref": "gross",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "rollup": {
+                "from": "refund_items",
+                "via": "refund_id",
+                "sum": "amount"
+              }
+            },
+            "label": {
+              "en-US": "Returned goods",
+              "de-DE": "Zurückgegebene Waren",
+              "fr-FR": "Articles rendus",
+              "da-DK": "Returnerede varer",
+              "cs-CZ": "Vrácené zboží",
+              "ar-EG": "البضائع المرتجعة",
+              "zh-CN": "退回商品金额",
+              "zh-TW": "退回商品金額"
+            }
+          },
+          {
+            "ref": "t_goods",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "copy": {
+                "via": "ticket_id",
+                "from": "goods",
+                "mode": "always"
+              }
+            },
+            "label": {
+              "en-US": "Ticket goods",
+              "de-DE": "Waren des Bons",
+              "fr-FR": "Articles du ticket",
+              "da-DK": "Bonens varer",
+              "cs-CZ": "Zboží na účtu",
+              "ar-EG": "بضائع الفاتورة",
+              "zh-CN": "账单商品金额",
+              "zh-TW": "訂單商品金額"
+            }
+          },
+          {
+            "ref": "t_net",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "copy": {
+                "via": "ticket_id",
+                "from": "net",
+                "mode": "always"
+              }
+            },
+            "label": {
+              "en-US": "Ticket after reductions",
+              "de-DE": "Bon nach Nachlässen",
+              "fr-FR": "Ticket après réductions",
+              "da-DK": "Bon efter reduktioner",
+              "cs-CZ": "Účet po slevách",
+              "ar-EG": "الفاتورة بعد التخفيضات",
+              "zh-CN": "账单减免后",
+              "zh-TW": "訂單減免後"
+            }
+          },
+          {
+            "ref": "t_subtotal",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "copy": {
+                "via": "ticket_id",
+                "from": "subtotal",
+                "mode": "always"
+              }
+            },
+            "label": {
+              "en-US": "Ticket subtotal",
+              "de-DE": "Zwischensumme des Bons",
+              "fr-FR": "Sous-total du ticket",
+              "da-DK": "Bonens subtotal",
+              "cs-CZ": "Mezisoučet účtu",
+              "ar-EG": "المجموع الفرعي للفاتورة",
+              "zh-CN": "账单小计",
+              "zh-TW": "訂單小計"
+            }
+          },
+          {
+            "ref": "t_total",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "copy": {
+                "via": "ticket_id",
+                "from": "total",
+                "mode": "always"
+              }
+            },
+            "label": {
+              "en-US": "Ticket total",
+              "de-DE": "Gesamt des Bons",
+              "fr-FR": "Total du ticket",
+              "da-DK": "Bonens total",
+              "cs-CZ": "Celkem za účet",
+              "ar-EG": "إجمالي الفاتورة",
+              "zh-CN": "账单合计",
+              "zh-TW": "訂單合計"
+            }
+          },
+          {
+            "ref": "t_tax",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "copy": {
+                "via": "ticket_id",
+                "from": "tax",
+                "mode": "always"
+              }
+            },
+            "label": {
+              "en-US": "Ticket tax",
+              "de-DE": "Steuer des Bons",
+              "fr-FR": "Taxe du ticket",
+              "da-DK": "Bonens moms",
+              "cs-CZ": "Daň z účtu",
+              "ar-EG": "ضريبة الفاتورة",
+              "zh-CN": "账单税额",
+              "zh-TW": "訂單稅額"
+            }
+          },
+          {
+            "ref": "own_sub",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "formula": {
+                "coalesce": [
+                  {
+                    "round": [
+                      {
+                        "div": [
+                          {
+                            "mul": [
+                              {
+                                "coalesce": [
+                                  "gross",
+                                  0
+                                ]
+                              },
+                              {
+                                "coalesce": [
+                                  "t_net",
+                                  {
+                                    "sub": [
+                                      {
+                                        "coalesce": [
+                                          "t_total",
+                                          0
+                                        ]
+                                      },
+                                      {
+                                        "coalesce": [
+                                          "t_tax",
+                                          0
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "coalesce": [
+                              "t_goods",
+                              "t_subtotal"
+                            ]
+                          }
+                        ]
+                      },
+                      2
+                    ]
+                  },
+                  0
+                ]
+              }
+            },
+            "label": {
+              "en-US": "Goods given back",
+              "de-DE": "Erstattete Waren",
+              "fr-FR": "Articles remboursés",
+              "da-DK": "Refunderede varer",
+              "cs-CZ": "Vrácené zboží po slevě",
+              "ar-EG": "قيمة البضائع المستردة",
+              "zh-CN": "退还的商品金额",
+              "zh-TW": "退還的商品金額"
+            }
+          },
+          {
+            "ref": "own_tax",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "formula": {
+                "coalesce": [
+                  {
+                    "round": [
+                      {
+                        "div": [
+                          {
+                            "mul": [
+                              "own_sub",
+                              {
+                                "coalesce": [
+                                  "t_tax",
+                                  0
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "coalesce": [
+                              "t_net",
+                              {
+                                "sub": [
+                                  {
+                                    "coalesce": [
+                                      "t_total",
+                                      0
+                                    ]
+                                  },
+                                  {
+                                    "coalesce": [
+                                      "t_tax",
+                                      0
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      2
+                    ]
+                  },
+                  0
+                ]
+              }
+            },
+            "label": {
+              "en-US": "Tax given back",
+              "de-DE": "Erstattete Steuer",
+              "fr-FR": "Taxe remboursée",
+              "da-DK": "Refunderet moms",
+              "cs-CZ": "Vrácená daň",
+              "ar-EG": "الضريبة المستردة",
+              "zh-CN": "退还的税额",
+              "zh-TW": "退還的稅額"
+            }
+          },
+          {
+            "ref": "repriced",
+            "type": "money",
+            "nullable": true,
+            "label": {
+              "en-US": "Refund after re-pricing",
+              "de-DE": "Erstattung nach Neuberechnung",
+              "fr-FR": "Remboursement après recalcul",
+              "da-DK": "Refusion efter genberegning",
+              "cs-CZ": "Vrácení po přepočtu",
+              "ar-EG": "الاسترداد بعد إعادة التسعير",
+              "zh-CN": "重新计价后的退款",
+              "zh-TW": "重新計價後的退款"
+            }
+          },
+          {
+            "ref": "repriced_tax",
+            "type": "money",
+            "nullable": true,
+            "label": {
+              "en-US": "Tax after re-pricing",
+              "de-DE": "Steuer nach Neuberechnung",
+              "fr-FR": "Taxe après recalcul",
+              "da-DK": "Moms efter genberegning",
+              "cs-CZ": "Daň po přepočtu",
+              "ar-EG": "الضريبة بعد إعادة التسعير",
+              "zh-CN": "重新计价后的税额",
+              "zh-TW": "重新計價後的稅額"
+            }
+          },
+          {
+            "ref": "payment_id",
+            "type": "fk",
+            "references": "payments",
+            "nullable": true,
+            "label": {
+              "en-US": "Refund to payment",
+              "de-DE": "Erstattung auf Zahlung",
+              "fr-FR": "Remboursement sur le paiement",
+              "da-DK": "Refusion til betaling",
+              "cs-CZ": "Vrácení na platbu",
+              "ar-EG": "الاسترداد إلى الدفعة",
+              "zh-CN": "退回到的付款",
+              "zh-TW": "退回到的付款"
+            }
+          },
+          {
+            "ref": "reason_id",
+            "type": "int",
+            "nullable": true,
+            "rules": {
+              "addOnLink": {
+                "addOn": "offers",
+                "table": "reasons"
+              }
+            },
+            "label": {
+              "en-US": "Refund reason (Offers)",
+              "de-DE": "Erstattungsgrund (Offers)",
+              "fr-FR": "Motif du remboursement (Offers)",
+              "da-DK": "Refusionsårsag (Offers)",
+              "cs-CZ": "Důvod vrácení (Offers)",
+              "ar-EG": "سبب الاسترداد (Offers)",
+              "zh-CN": "退款原因（Offers）",
+              "zh-TW": "退款原因（Offers）"
+            }
           }
         ],
         "label": {
@@ -2672,7 +4258,34 @@
           "ar-EG": "المستردات",
           "zh-CN": "退款",
           "zh-TW": "退款"
-        }
+        },
+        "postings": [
+          {
+            "id": "card-refund",
+            "into": {
+              "addOn": "offers",
+              "ledger": "value",
+              "action": "refund"
+            },
+            "needs": "gift-cards",
+            "post": {
+              "on": {
+                "create": true
+              }
+            },
+            "only": {
+              "column": "method",
+              "eq": "gift_card"
+            },
+            "map": {
+              "amount": "amount",
+              "against_table": {
+                "value": "pos:payments"
+              },
+              "against_row": "payment_id"
+            }
+          }
+        ]
       },
       {
         "ref": "refund_items",
@@ -2726,6 +4339,135 @@
               "zh-CN": "数量",
               "zh-TW": "數量"
             }
+          },
+          {
+            "ref": "line_unit",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "copy": {
+                "via": "ticket_item_id",
+                "from": "unit_price",
+                "mode": "always"
+              }
+            },
+            "label": {
+              "en-US": "Unit price sold at",
+              "de-DE": "Verkaufter Stückpreis",
+              "fr-FR": "Prix unitaire vendu",
+              "da-DK": "Solgt enhedspris",
+              "cs-CZ": "Prodejní jednotková cena",
+              "ar-EG": "سعر الوحدة عند البيع",
+              "zh-CN": "售出单价",
+              "zh-TW": "售出單價"
+            }
+          },
+          {
+            "ref": "amount",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "formula": {
+                "mul": [
+                  "line_unit",
+                  "qty"
+                ]
+              }
+            },
+            "label": {
+              "en-US": "Amount",
+              "de-DE": "Betrag",
+              "fr-FR": "Montant",
+              "da-DK": "Beløb",
+              "cs-CZ": "Částka",
+              "ar-EG": "المبلغ",
+              "zh-CN": "金额",
+              "zh-TW": "金額"
+            }
+          },
+          {
+            "ref": "menu_item_id",
+            "type": "fk",
+            "references": "menu_items",
+            "nullable": true,
+            "rules": {
+              "copy": {
+                "via": "ticket_item_id",
+                "from": "menu_item_id",
+                "mode": "always"
+              }
+            },
+            "label": {
+              "en-US": "Menu item",
+              "de-DE": "Artikel",
+              "fr-FR": "Article",
+              "da-DK": "Menupunkt",
+              "cs-CZ": "Položka menu",
+              "ar-EG": "صنف",
+              "zh-CN": "菜品",
+              "zh-TW": "菜品"
+            }
+          },
+          {
+            "ref": "back_to",
+            "type": "enum",
+            "enum": [
+              "shelf",
+              "damaged"
+            ],
+            "default": "shelf",
+            "nullable": true,
+            "rules": {
+              "enumLabels": {
+                "labels": {
+                  "shelf": {
+                    "en-US": "Back on the shelf",
+                    "de-DE": "Zurück ins Regal",
+                    "fr-FR": "Remis en rayon",
+                    "da-DK": "Tilbage på hylden",
+                    "cs-CZ": "Zpět do regálu",
+                    "ar-EG": "أُعيد إلى الرف",
+                    "zh-CN": "放回货架",
+                    "zh-TW": "放回貨架"
+                  },
+                  "damaged": {
+                    "en-US": "Damaged",
+                    "de-DE": "Beschädigt",
+                    "fr-FR": "Abîmé",
+                    "da-DK": "Beskadiget",
+                    "cs-CZ": "Poškozeno",
+                    "ar-EG": "تالف",
+                    "zh-CN": "已损坏",
+                    "zh-TW": "已損壞"
+                  }
+                }
+              }
+            },
+            "label": {
+              "en-US": "Goes back to",
+              "de-DE": "Geht zurück an",
+              "fr-FR": "Retourne",
+              "da-DK": "Går tilbage til",
+              "cs-CZ": "Vrací se",
+              "ar-EG": "يعود إلى",
+              "zh-CN": "退回去向",
+              "zh-TW": "退回去向"
+            }
+          },
+          {
+            "ref": "not_back_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "label": {
+              "en-US": "Not returned",
+              "de-DE": "Nicht zurückgegeben",
+              "fr-FR": "Non rendu",
+              "da-DK": "Ikke returneret",
+              "cs-CZ": "Nevráceno",
+              "ar-EG": "لم يُرجع",
+              "zh-CN": "未退回",
+              "zh-TW": "未退回"
+            }
           }
         ],
         "label": {
@@ -2747,7 +4489,33 @@
           "ar-EG": "بنود الاسترداد",
           "zh-CN": "退款明细",
           "zh-TW": "退款明細"
-        }
+        },
+        "postings": [
+          {
+            "id": "return",
+            "into": {
+              "addOn": "inventory",
+              "ledger": "stock",
+              "action": "return"
+            },
+            "needs": "stock",
+            "post": {
+              "on": {
+                "create": true
+              }
+            },
+            "unlessSet": "not_back_at",
+            "only": {
+              "column": "menu_item_id",
+              "set": true
+            },
+            "map": {
+              "what": "menu_item_id",
+              "quantity": "qty",
+              "to": "back_to"
+            }
+          }
+        ]
       },
       {
         "ref": "reservations",
@@ -3713,7 +5481,8 @@
             "enum": [
               "inactive",
               "active",
-              "void"
+              "void",
+              "moved"
             ],
             "default": "inactive",
             "rules": {
@@ -3748,6 +5517,16 @@
                     "ar-EG": "ملغاة",
                     "zh-CN": "已作废",
                     "zh-TW": "已作廢"
+                  },
+                  "moved": {
+                    "en-US": "Moved to Offers",
+                    "de-DE": "Nach Offers übertragen",
+                    "fr-FR": "Transférée vers Offers",
+                    "da-DK": "Flyttet til Offers",
+                    "cs-CZ": "Přesunuta do Offers",
+                    "ar-EG": "نُقلت إلى Offers",
+                    "zh-CN": "已移至 Offers",
+                    "zh-TW": "已移至 Offers"
                   }
                 }
               }
@@ -3799,6 +5578,65 @@
               "zh-CN": "售出时间",
               "zh-TW": "售出時間"
             }
+          },
+          {
+            "ref": "opening",
+            "type": "money",
+            "default": 0,
+            "nullable": true,
+            "label": {
+              "en-US": "Opening figure",
+              "de-DE": "Anfangswert",
+              "fr-FR": "Valeur de départ",
+              "da-DK": "Startbeløb",
+              "cs-CZ": "Počáteční hodnota",
+              "ar-EG": "القيمة الافتتاحية",
+              "zh-CN": "初始金额",
+              "zh-TW": "初始金額"
+            }
+          },
+          {
+            "ref": "taken",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "rollup": {
+                "from": "gift_card_ledger",
+                "via": "card_id",
+                "sum": "amount",
+                "times": "sign",
+                "balance": {
+                  "column": "left",
+                  "of": "opening"
+                },
+                "cap": true
+              }
+            },
+            "label": {
+              "en-US": "Taken",
+              "de-DE": "Entnommen",
+              "fr-FR": "Prélevé",
+              "da-DK": "Brugt",
+              "cs-CZ": "Čerpáno",
+              "ar-EG": "المسحوب",
+              "zh-CN": "已用",
+              "zh-TW": "已用"
+            }
+          },
+          {
+            "ref": "left",
+            "type": "money",
+            "nullable": true,
+            "label": {
+              "en-US": "Left",
+              "de-DE": "Übrig",
+              "fr-FR": "Reste",
+              "da-DK": "Tilbage",
+              "cs-CZ": "Zbývá",
+              "ar-EG": "المتبقي",
+              "zh-CN": "剩余",
+              "zh-TW": "剩餘"
+            }
           }
         ],
         "label": {
@@ -3821,7 +5659,51 @@
           "zh-CN": "礼品卡",
           "zh-TW": "禮物卡"
         },
-        "keyField": "code"
+        "keyField": "code",
+        "states": {
+          "column": "status",
+          "initial": "inactive",
+          "moves": {
+            "inactive": [
+              "active",
+              "void",
+              "moved"
+            ],
+            "active": [
+              "void",
+              "moved"
+            ],
+            "void": [
+              "moved"
+            ]
+          },
+          "lock": {
+            "when": [
+              "moved"
+            ]
+          },
+          "children": {
+            "gift_card_ledger": {
+              "via": "card_id",
+              "parentIn": [
+                "inactive",
+                "active",
+                "void"
+              ]
+            }
+          },
+          "create": {
+            "requires": {
+              "setting": [
+                {
+                  "table": "settings",
+                  "column": "cards_moved",
+                  "eq": false
+                }
+              ]
+            }
+          }
+        }
       },
       {
         "ref": "gift_card_ledger",
@@ -3985,6 +5867,66 @@
               "zh-CN": "时间",
               "zh-TW": "時間"
             }
+          },
+          {
+            "ref": "sign",
+            "type": "int",
+            "default": -1,
+            "nullable": true,
+            "rules": {
+              "validation": {
+                "min": -1,
+                "max": -1
+              }
+            },
+            "label": {
+              "en-US": "Sign",
+              "de-DE": "Vorzeichen",
+              "fr-FR": "Signe",
+              "da-DK": "Fortegn",
+              "cs-CZ": "Znaménko",
+              "ar-EG": "الإشارة",
+              "zh-CN": "符号",
+              "zh-TW": "符號"
+            }
+          },
+          {
+            "ref": "card_code",
+            "type": "text",
+            "maxLength": 16,
+            "nullable": true,
+            "rules": {
+              "copy": {
+                "via": "card_id",
+                "from": "code",
+                "mode": "always"
+              }
+            },
+            "label": {
+              "en-US": "Card code",
+              "de-DE": "Kartencode",
+              "fr-FR": "Code de la carte",
+              "da-DK": "Kortkode",
+              "cs-CZ": "Kód karty",
+              "ar-EG": "كود البطاقة",
+              "zh-CN": "卡号",
+              "zh-TW": "卡號"
+            }
+          },
+          {
+            "ref": "moved_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "label": {
+              "en-US": "Moved to Offers",
+              "de-DE": "Nach Offers übertragen",
+              "fr-FR": "Transféré vers Offers",
+              "da-DK": "Flyttet til Offers",
+              "cs-CZ": "Přesunuto do Offers",
+              "ar-EG": "نُقل إلى Offers",
+              "zh-CN": "移至 Offers 的时间",
+              "zh-TW": "移至 Offers 的時間"
+            }
           }
         ],
         "label": {
@@ -4006,7 +5948,34 @@
           "ar-EG": "سجل بطاقات الهدايا",
           "zh-CN": "礼品卡明细",
           "zh-TW": "禮物卡明細"
-        }
+        },
+        "postings": [
+          {
+            "id": "bring-in",
+            "into": {
+              "addOn": "offers",
+              "ledger": "value",
+              "action": "move"
+            },
+            "needs": "gift-cards",
+            "post": {
+              "on": {
+                "column": "moved_at",
+                "set": true
+              }
+            },
+            "map": {
+              "old_card": "card_id",
+              "old_code": "card_code",
+              "old_table": {
+                "value": "pos:gift_cards"
+              },
+              "kind": "kind",
+              "amount": "amount",
+              "at": "at"
+            }
+          }
+        ]
       },
       {
         "ref": "booking_rules",
@@ -4297,6 +6266,22 @@
               "ar-EG": "تذييل الإيصال",
               "zh-CN": "小票页脚",
               "zh-TW": "收據頁尾"
+            }
+          },
+          {
+            "ref": "cards_moved",
+            "type": "bool",
+            "default": false,
+            "nullable": true,
+            "label": {
+              "en-US": "Gift cards moved to Offers",
+              "de-DE": "Gutscheinkarten nach Offers übertragen",
+              "fr-FR": "Cartes cadeaux transférées vers Offers",
+              "da-DK": "Gavekort flyttet til Offers",
+              "cs-CZ": "Dárkové karty přesunuty do Offers",
+              "ar-EG": "بطاقات الهدايا نُقلت إلى Offers",
+              "zh-CN": "礼品卡已移至 Offers",
+              "zh-TW": "禮品卡已移至 Offers"
             }
           }
         ],
@@ -6330,6 +8315,9 @@
         "table:@ticket_item_modifiers:read",
         "table:@ticket_item_modifiers:create",
         "table:@ticket_item_modifiers:update",
+        "table:@ticket_codes:read",
+        "table:@ticket_codes:create",
+        "table:@ticket_codes:update",
         "table:@payments:read",
         "table:@payments:create",
         "table:@payments:update",
@@ -6363,6 +8351,318 @@
         "table:@messages:read",
         "table:@messages:create",
         "app:@:staff"
+      ],
+      "limits": {
+        "tickets": {
+          "writable": [
+            "number",
+            "table_id",
+            "staff_id",
+            "shift_id",
+            "guests",
+            "status",
+            "kitchen_status",
+            "held",
+            "merged_into_id",
+            "discount_kind",
+            "discount_value",
+            "discount_reason",
+            "discount_reason_id",
+            "tip",
+            "reservation_id",
+            "customer_id",
+            "channel",
+            "pickup_code",
+            "pickup_stage",
+            "ready_at",
+            "notified_at",
+            "signed_at",
+            "receipt_via",
+            "receipt_to",
+            "opened_at",
+            "sent_at",
+            "closed_at"
+          ],
+          "creatable": [
+            "number",
+            "table_id",
+            "staff_id",
+            "shift_id",
+            "guests",
+            "status",
+            "kitchen_status",
+            "held",
+            "merged_into_id",
+            "discount_kind",
+            "discount_value",
+            "discount_reason",
+            "discount_reason_id",
+            "tip",
+            "reservation_id",
+            "customer_id",
+            "channel",
+            "pickup_code",
+            "pickup_stage",
+            "ready_at",
+            "notified_at",
+            "signed_at",
+            "receipt_via",
+            "receipt_to",
+            "opened_at",
+            "sent_at",
+            "closed_at"
+          ]
+        },
+        "ticket_items": {
+          "writable": [
+            "ticket_id",
+            "menu_item_id",
+            "name",
+            "qty",
+            "unit_price",
+            "seat",
+            "notes",
+            "sent_at",
+            "voided_at",
+            "void_reason",
+            "voided_by",
+            "reward_id",
+            "gift_card_id",
+            "card_id"
+          ],
+          "creatable": [
+            "ticket_id",
+            "menu_item_id",
+            "name",
+            "qty",
+            "unit_price",
+            "seat",
+            "notes",
+            "sent_at",
+            "voided_at",
+            "void_reason",
+            "voided_by",
+            "reward_id",
+            "gift_card_id",
+            "card_id"
+          ]
+        },
+        "ticket_codes": {
+          "writable": [
+            "removed_at"
+          ],
+          "creatable": [
+            "ticket_id",
+            "typed"
+          ]
+        },
+        "payments": {
+          "readable": [
+            "id",
+            "ticket_id",
+            "method",
+            "amount",
+            "tip",
+            "tendered",
+            "change",
+            "reference",
+            "paid_at",
+            "staff_id",
+            "card_id",
+            "card_last4",
+            "card_amount",
+            "card_balance_after",
+            "held_until"
+          ],
+          "writable": [
+            "ticket_id",
+            "method",
+            "amount",
+            "tip",
+            "tendered",
+            "change",
+            "reference",
+            "paid_at",
+            "staff_id",
+            "card_code"
+          ],
+          "creatable": [
+            "ticket_id",
+            "method",
+            "amount",
+            "tip",
+            "tendered",
+            "change",
+            "reference",
+            "paid_at",
+            "staff_id",
+            "card_code",
+            "id"
+          ]
+        },
+        "refunds": {
+          "writable": [
+            "reason"
+          ],
+          "creatable": [
+            "id",
+            "ticket_id",
+            "method",
+            "reason",
+            "staff_id",
+            "refunded_at",
+            "payment_id",
+            "reason_id"
+          ]
+        },
+        "refund_items": {
+          "writable": [
+            "back_to"
+          ],
+          "creatable": [
+            "id",
+            "refund_id",
+            "ticket_item_id",
+            "qty",
+            "back_to",
+            "not_back_at"
+          ]
+        },
+        "gift_cards": {
+          "writable": [
+            "status",
+            "issued_at"
+          ],
+          "creatable": [
+            "code",
+            "status",
+            "issued_at"
+          ]
+        },
+        "gift_card_ledger": {
+          "creatable": [
+            "id",
+            "card_id",
+            "kind",
+            "amount",
+            "ticket_id",
+            "staff_id",
+            "at"
+          ]
+        }
+      },
+      "tables": [
+        {
+          "addOn": "offers",
+          "table": "applied",
+          "actions": [
+            "read"
+          ],
+          "limit": {
+            "readable": [
+              "source_table",
+              "source_row",
+              "source_line",
+              "name",
+              "kind",
+              "amount",
+              "typed",
+              "at"
+            ]
+          }
+        },
+        {
+          "addOn": "offers",
+          "table": "reasons",
+          "actions": [
+            "read"
+          ]
+        },
+        {
+          "addOn": "inventory",
+          "table": "items",
+          "actions": [
+            "read"
+          ],
+          "limit": {
+            "readable": [
+              "id",
+              "name",
+              "unit",
+              "decimals",
+              "active"
+            ]
+          }
+        },
+        {
+          "addOn": "inventory",
+          "table": "stock_points",
+          "actions": [
+            "read"
+          ],
+          "limit": {
+            "readable": [
+              "id",
+              "item_id",
+              "place_id",
+              "on_hand",
+              "available",
+              "low",
+              "state"
+            ]
+          }
+        },
+        {
+          "addOn": "offers",
+          "table": "gift_cards",
+          "actions": [
+            "read"
+          ],
+          "limit": {
+            "readable": [
+              "kind",
+              "label",
+              "status",
+              "balance",
+              "expires_on"
+            ]
+          }
+        },
+        {
+          "addOn": "offers",
+          "table": "vouchers",
+          "actions": [
+            "read"
+          ],
+          "limit": {
+            "readable": [
+              "code_last4",
+              "worth",
+              "value",
+              "what",
+              "units",
+              "public_name",
+              "uses_left",
+              "uses_total",
+              "status",
+              "expires_on"
+            ]
+          }
+        },
+        {
+          "addOn": "offers",
+          "table": "codes",
+          "actions": [
+            "read"
+          ],
+          "limit": {
+            "readable": [
+              "offer_id",
+              "active",
+              "valid_until"
+            ]
+          }
+        }
       ]
     },
     {
@@ -6413,6 +8713,10 @@
         "table:@ticket_item_modifiers:create",
         "table:@ticket_item_modifiers:update",
         "table:@ticket_item_modifiers:delete",
+        "table:@ticket_codes:read",
+        "table:@ticket_codes:create",
+        "table:@ticket_codes:update",
+        "table:@ticket_codes:delete",
         "table:@payments:read",
         "table:@payments:create",
         "table:@payments:update",
@@ -6495,6 +8799,332 @@
         "table:@messages:create",
         "table:@messages:update",
         "app:@:staff"
+      ],
+      "limits": {
+        "tickets": {
+          "writable": [
+            "number",
+            "table_id",
+            "staff_id",
+            "shift_id",
+            "guests",
+            "status",
+            "kitchen_status",
+            "held",
+            "merged_into_id",
+            "discount_kind",
+            "discount_value",
+            "discount_reason",
+            "discount_reason_id",
+            "tip",
+            "reservation_id",
+            "customer_id",
+            "channel",
+            "pickup_code",
+            "pickup_stage",
+            "ready_at",
+            "notified_at",
+            "signed_at",
+            "receipt_via",
+            "receipt_to",
+            "opened_at",
+            "sent_at",
+            "closed_at"
+          ],
+          "creatable": [
+            "number",
+            "table_id",
+            "staff_id",
+            "shift_id",
+            "guests",
+            "status",
+            "kitchen_status",
+            "held",
+            "merged_into_id",
+            "discount_kind",
+            "discount_value",
+            "discount_reason",
+            "discount_reason_id",
+            "tip",
+            "reservation_id",
+            "customer_id",
+            "channel",
+            "pickup_code",
+            "pickup_stage",
+            "ready_at",
+            "notified_at",
+            "signed_at",
+            "receipt_via",
+            "receipt_to",
+            "opened_at",
+            "sent_at",
+            "closed_at"
+          ]
+        },
+        "ticket_items": {
+          "writable": [
+            "ticket_id",
+            "menu_item_id",
+            "name",
+            "qty",
+            "unit_price",
+            "seat",
+            "notes",
+            "sent_at",
+            "voided_at",
+            "void_reason",
+            "voided_by",
+            "reward_id",
+            "gift_card_id",
+            "card_id"
+          ],
+          "creatable": [
+            "ticket_id",
+            "menu_item_id",
+            "name",
+            "qty",
+            "unit_price",
+            "seat",
+            "notes",
+            "sent_at",
+            "voided_at",
+            "void_reason",
+            "voided_by",
+            "reward_id",
+            "gift_card_id",
+            "card_id"
+          ]
+        },
+        "ticket_codes": {
+          "writable": [
+            "removed_at"
+          ],
+          "creatable": [
+            "ticket_id",
+            "typed"
+          ]
+        },
+        "payments": {
+          "readable": [
+            "id",
+            "ticket_id",
+            "method",
+            "amount",
+            "tip",
+            "tendered",
+            "change",
+            "reference",
+            "paid_at",
+            "staff_id",
+            "card_id",
+            "card_last4",
+            "card_amount",
+            "card_balance_after",
+            "held_until"
+          ],
+          "writable": [
+            "ticket_id",
+            "method",
+            "amount",
+            "tip",
+            "tendered",
+            "change",
+            "reference",
+            "paid_at",
+            "staff_id",
+            "card_code"
+          ],
+          "creatable": [
+            "ticket_id",
+            "method",
+            "amount",
+            "tip",
+            "tendered",
+            "change",
+            "reference",
+            "paid_at",
+            "staff_id",
+            "card_code",
+            "id"
+          ]
+        },
+        "refunds": {
+          "writable": [
+            "reason"
+          ],
+          "creatable": [
+            "id",
+            "ticket_id",
+            "method",
+            "reason",
+            "staff_id",
+            "refunded_at",
+            "payment_id",
+            "reason_id"
+          ]
+        },
+        "refund_items": {
+          "writable": [
+            "back_to"
+          ],
+          "creatable": [
+            "id",
+            "refund_id",
+            "ticket_item_id",
+            "qty",
+            "back_to",
+            "not_back_at"
+          ]
+        },
+        "gift_cards": {
+          "writable": [
+            "status",
+            "issued_at"
+          ],
+          "creatable": [
+            "code",
+            "status",
+            "issued_at"
+          ]
+        },
+        "gift_card_ledger": {
+          "writable": [
+            "staff_id"
+          ],
+          "creatable": [
+            "id",
+            "card_id",
+            "kind",
+            "amount",
+            "ticket_id",
+            "staff_id",
+            "at"
+          ]
+        },
+        "settings": {
+          "writable": [
+            "venue_name",
+            "venue_mark",
+            "address",
+            "phone",
+            "tax_rate_bp",
+            "tip_presets",
+            "receipt_footer"
+          ]
+        }
+      },
+      "tables": [
+        {
+          "addOn": "offers",
+          "table": "applied",
+          "actions": [
+            "read"
+          ],
+          "limit": {
+            "readable": [
+              "source_table",
+              "source_row",
+              "source_line",
+              "name",
+              "kind",
+              "amount",
+              "typed",
+              "at"
+            ]
+          }
+        },
+        {
+          "addOn": "offers",
+          "table": "reasons",
+          "actions": [
+            "read"
+          ]
+        },
+        {
+          "addOn": "inventory",
+          "table": "items",
+          "actions": [
+            "read"
+          ],
+          "limit": {
+            "readable": [
+              "id",
+              "name",
+              "unit",
+              "decimals",
+              "active"
+            ]
+          }
+        },
+        {
+          "addOn": "inventory",
+          "table": "stock_points",
+          "actions": [
+            "read"
+          ],
+          "limit": {
+            "readable": [
+              "id",
+              "item_id",
+              "place_id",
+              "on_hand",
+              "available",
+              "low",
+              "state"
+            ]
+          }
+        },
+        {
+          "addOn": "offers",
+          "table": "gift_cards",
+          "actions": [
+            "read"
+          ],
+          "limit": {
+            "readable": [
+              "kind",
+              "label",
+              "status",
+              "balance",
+              "expires_on"
+            ]
+          }
+        },
+        {
+          "addOn": "offers",
+          "table": "vouchers",
+          "actions": [
+            "read"
+          ],
+          "limit": {
+            "readable": [
+              "code_last4",
+              "worth",
+              "value",
+              "what",
+              "units",
+              "public_name",
+              "uses_left",
+              "uses_total",
+              "status",
+              "expires_on"
+            ]
+          }
+        },
+        {
+          "addOn": "offers",
+          "table": "codes",
+          "actions": [
+            "read"
+          ],
+          "limit": {
+            "readable": [
+              "offer_id",
+              "active",
+              "valid_until"
+            ]
+          }
+        }
       ]
     }
   ],
@@ -6546,7 +9176,8 @@
       "entry": "index.html",
       "routes": {
         "book": "/",
-        "manage": "/manage"
+        "manage": "/manage",
+        "giftCard": "/gift-card"
       },
       "enabled": true
     }
@@ -6826,6 +9457,34 @@
           "zh-CN": "零售模式下，用每件商品已有的条码打印货架标签。",
           "zh-TW": "零售模式下，用每項商品已有的條碼列印貨架標籤。"
         }
+      },
+      {
+        "key": "offers",
+        "range": ">=1.0.9",
+        "reason": {
+          "en-US": "Take discount codes, give staff discounts with a reason, and sell and accept gift cards.",
+          "de-DE": "Rabattcodes annehmen, Personalrabatte mit Grund geben und Gutscheinkarten verkaufen und annehmen.",
+          "fr-FR": "Accepter des codes de réduction, accorder des remises avec un motif, vendre et accepter des cartes cadeaux.",
+          "da-DK": "Tag imod rabatkoder, giv personalerabatter med en årsag, og sælg og modtag gavekort.",
+          "cs-CZ": "Přijímejte slevové kódy, dávejte slevy s důvodem a prodávejte a přijímejte dárkové karty.",
+          "ar-EG": "اقبل أكواد الخصم، وامنح خصومات الموظفين مع ذكر السبب، وبِع بطاقات الهدايا واقبلها.",
+          "zh-CN": "接受折扣码，给出带原因的员工折扣，并销售和接受礼品卡。",
+          "zh-TW": "接受折扣碼，給予附原因的員工折扣，並銷售與接受禮品卡。"
+        }
+      },
+      {
+        "key": "inventory",
+        "range": ">=1.0.9",
+        "reason": {
+          "en-US": "Count retail stock: each sale takes it off the shelf, and a return puts it back.",
+          "de-DE": "Warenbestand zählen: Jeder Verkauf nimmt ihn aus dem Regal, eine Rückgabe legt ihn zurück.",
+          "fr-FR": "Suivre le stock en boutique : chaque vente le retire du rayon, un retour l’y remet.",
+          "da-DK": "Hold styr på lageret: hvert salg tager varen fra hylden, og en retur lægger den tilbage.",
+          "cs-CZ": "Počítejte zásoby: každý prodej je odebere z regálu a vrácení je tam vrátí.",
+          "ar-EG": "احسب مخزون المتجر: كل عملية بيع تخصم من الرف، والمرتجع يعيده إليه.",
+          "zh-CN": "清点零售库存：每笔销售从货架扣减，退货则放回。",
+          "zh-TW": "清點零售庫存：每筆銷售從貨架扣除，退貨則放回。"
+        }
       }
     ],
     "features": [
@@ -6859,6 +9518,54 @@
         },
         "requires": [
           "barcode-labels"
+        ]
+      },
+      {
+        "id": "stock",
+        "label": {
+          "en-US": "Retail stock",
+          "de-DE": "Warenbestand",
+          "fr-FR": "Stock en boutique",
+          "da-DK": "Lager",
+          "cs-CZ": "Zásoby",
+          "ar-EG": "مخزون المتجر",
+          "zh-CN": "零售库存",
+          "zh-TW": "零售庫存"
+        },
+        "requires": [
+          "inventory"
+        ]
+      },
+      {
+        "id": "offers",
+        "label": {
+          "en-US": "Codes, offers and staff discounts",
+          "de-DE": "Codes, Angebote und Personalrabatte",
+          "fr-FR": "Codes, offres et remises du personnel",
+          "da-DK": "Koder, tilbud og personalerabatter",
+          "cs-CZ": "Kódy, nabídky a slevy od obsluhy",
+          "ar-EG": "الأكواد والعروض وخصومات الموظفين",
+          "zh-CN": "折扣码、优惠和员工折扣",
+          "zh-TW": "折扣碼、優惠與員工折扣"
+        },
+        "requires": [
+          "offers"
+        ]
+      },
+      {
+        "id": "gift-cards",
+        "label": {
+          "en-US": "Gift cards",
+          "de-DE": "Gutscheinkarten",
+          "fr-FR": "Cartes cadeaux",
+          "da-DK": "Gavekort",
+          "cs-CZ": "Dárkové karty",
+          "ar-EG": "بطاقات الهدايا",
+          "zh-CN": "礼品卡",
+          "zh-TW": "禮品卡"
+        },
+        "requires": [
+          "offers"
         ]
       }
     ]

@@ -38,7 +38,7 @@ beforeEach(() => {
   sink = memorySink({ firstNumber: 2001 });
   setSink(sink);
   usePos.setState(INITIAL, true);
-  usePos.setState({ ticket: { number: 1, table: null, seats: 2, openedAt: 0, items: [] }, held: [], kds: [], discount: null, features: { 'emailed-receipts': true, 'shelf-labels': false } });
+  usePos.setState({ ticket: { number: 1, table: null, seats: 2, openedAt: 0, items: [] }, held: [], kds: [], discount: null, features: { ...NO_FEATURES, 'emailed-receipts': true } });
 });
 
 describe('emailing the receipt', () => {

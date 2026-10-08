@@ -33,7 +33,7 @@ describe('the manifest and the till name the same features', () => {
 
   it('requires no add-on: each is suggested, and only switches its own feature on', () => {
     expect(addOns.requires).toBeUndefined();
-    expect(addOns.suggests.map((s) => s.key).sort()).toEqual(['barcode-labels', 'invoices']);
+    expect(addOns.suggests.map((s) => s.key).sort()).toEqual(['barcode-labels', 'inventory', 'invoices', 'offers']);
     for (const feature of addOns.features) for (const key of feature.requires) expect(addOns.suggests.map((s) => s.key)).toContain(key);
   });
 
@@ -83,14 +83,17 @@ describe('which features the attached add-ons switch on', () => {
   it('switches a feature on only when all its add-ons are attached', () => {
     expect(featuresOf({})).toEqual(NO_FEATURES);
     expect(featuresOf(null)).toEqual(NO_FEATURES);
-    expect(featuresOf({ invoices: addOn })).toEqual({ 'emailed-receipts': true, 'shelf-labels': false });
-    expect(featuresOf({ 'barcode-labels': addOn })).toEqual({ 'emailed-receipts': false, 'shelf-labels': true });
-    expect(featuresOf({ invoices: addOn, 'barcode-labels': addOn, 'holiday-calendars': addOn })).toEqual({ 'emailed-receipts': true, 'shelf-labels': true });
+    expect(featuresOf({ invoices: addOn })).toEqual({ ...NO_FEATURES, 'emailed-receipts': true });
+    expect(featuresOf({ 'barcode-labels': addOn })).toEqual({ ...NO_FEATURES, 'shelf-labels': true });
+    expect(featuresOf({ invoices: addOn, 'barcode-labels': addOn, 'holiday-calendars': addOn })).toEqual({ ...NO_FEATURES, 'emailed-receipts': true, 'shelf-labels': true });
+    // Offers switches two features on at once; Inventory one.
+    expect(featuresOf({ offers: addOn })).toEqual({ ...NO_FEATURES, offers: true, 'gift-cards': true });
+    expect(featuresOf({ inventory: addOn })).toEqual({ ...NO_FEATURES, stock: true });
   });
 
   it('starts a hosted till with everything off, and the demo with the email only', () => {
     expect(Object.values(NO_FEATURES).every((on) => !on)).toBe(true);
     // The demo has no Adminium to draw a label sheet with.
-    expect(DEMO_FEATURES).toEqual({ 'emailed-receipts': true, 'shelf-labels': false });
+    expect(DEMO_FEATURES).toEqual({ ...NO_FEATURES, 'emailed-receipts': true });
   });
 });
