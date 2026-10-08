@@ -1545,28 +1545,6 @@
             }
           },
           {
-            "ref": "taxable",
-            "type": "money",
-            "nullable": true,
-            "rules": {
-              "rollup": {
-                "from": "ticket_items",
-                "via": "ticket_id",
-                "sum": "taxable"
-              }
-            },
-            "label": {
-              "en-US": "Goods after line reductions",
-              "de-DE": "Waren nach Positionsrabatten",
-              "fr-FR": "Articles après remises par ligne",
-              "da-DK": "Varer efter linjerabatter",
-              "cs-CZ": "Zboží po slevách na položkách",
-              "ar-EG": "البضائع بعد خصومات البنود",
-              "zh-CN": "行折扣后的商品金额",
-              "zh-TW": "行折扣後的商品金額"
-            }
-          },
-          {
             "ref": "own_discount",
             "type": "money",
             "nullable": true,
@@ -1737,7 +1715,7 @@
                     "sub": [
                       {
                         "coalesce": [
-                          "taxable",
+                          "goods",
                           0
                         ]
                       },
@@ -1752,7 +1730,7 @@
                               0
                             ]
                           },
-                          0
+                          "discount"
                         ]
                       }
                     ]
@@ -1919,10 +1897,7 @@
                 "sum": "amount",
                 "balance": {
                   "column": "due",
-                  "of": "total",
-                  "minus": [
-                    "card_paid"
-                  ]
+                  "of": "total"
                 },
                 "cap": true
               }
@@ -1939,29 +1914,6 @@
             }
           },
           {
-            "ref": "card_paid",
-            "type": "money",
-            "nullable": true,
-            "rules": {
-              "rollup": {
-                "from": "payments",
-                "via": "ticket_id",
-                "sum": "card_amount",
-                "cap": true
-              }
-            },
-            "label": {
-              "en-US": "Paid by gift card",
-              "de-DE": "Mit Gutscheinkarte bezahlt",
-              "fr-FR": "Payé par carte cadeau",
-              "da-DK": "Betalt med gavekort",
-              "cs-CZ": "Zaplaceno dárkovou kartou",
-              "ar-EG": "المدفوع ببطاقة هدية",
-              "zh-CN": "礼品卡已付",
-              "zh-TW": "禮品卡已付"
-            }
-          },
-          {
             "ref": "due",
             "type": "money",
             "nullable": true,
@@ -1974,48 +1926,6 @@
               "ar-EG": "المتبقي للدفع",
               "zh-CN": "待付",
               "zh-TW": "待付"
-            }
-          },
-          {
-            "ref": "refunded",
-            "type": "money",
-            "nullable": true,
-            "rules": {
-              "rollup": {
-                "from": "refunds",
-                "via": "ticket_id",
-                "sum": "amount",
-                "balance": {
-                  "column": "refundable",
-                  "of": "total"
-                },
-                "cap": true
-              }
-            },
-            "label": {
-              "en-US": "Refunded",
-              "de-DE": "Erstattet",
-              "fr-FR": "Remboursé",
-              "da-DK": "Refunderet",
-              "cs-CZ": "Vráceno",
-              "ar-EG": "المبلغ المسترد",
-              "zh-CN": "已退款",
-              "zh-TW": "已退款"
-            }
-          },
-          {
-            "ref": "refundable",
-            "type": "money",
-            "nullable": true,
-            "label": {
-              "en-US": "Can still be refunded",
-              "de-DE": "Noch erstattbar",
-              "fr-FR": "Encore remboursable",
-              "da-DK": "Kan stadig refunderes",
-              "cs-CZ": "Lze ještě vrátit",
-              "ar-EG": "يمكن استرداده بعد",
-              "zh-CN": "仍可退款",
-              "zh-TW": "仍可退款"
             }
           },
           {
@@ -2961,39 +2871,6 @@
               "zh-CN": "减免",
               "zh-TW": "減免"
             }
-          },
-          {
-            "ref": "taxable",
-            "type": "money",
-            "nullable": true,
-            "rules": {
-              "formula": {
-                "max": [
-                  0,
-                  {
-                    "sub": [
-                      "goods_amount",
-                      {
-                        "coalesce": [
-                          "discount",
-                          0
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            },
-            "label": {
-              "en-US": "After reduction",
-              "de-DE": "Nach Nachlass",
-              "fr-FR": "Après réduction",
-              "da-DK": "Efter reduktion",
-              "cs-CZ": "Po slevě",
-              "ar-EG": "بعد التخفيض",
-              "zh-CN": "减免后",
-              "zh-TW": "減免後"
-            }
           }
         ],
         "label": {
@@ -3586,21 +3463,6 @@
             }
           },
           {
-            "ref": "card_amount",
-            "type": "money",
-            "nullable": true,
-            "label": {
-              "en-US": "Paid by the card",
-              "de-DE": "Von der Karte bezahlt",
-              "fr-FR": "Payé par la carte",
-              "da-DK": "Betalt med kortet",
-              "cs-CZ": "Zaplaceno kartou",
-              "ar-EG": "المدفوع بالبطاقة",
-              "zh-CN": "卡内支付",
-              "zh-TW": "卡內支付"
-            }
-          },
-          {
             "ref": "card_balance_after",
             "type": "money",
             "nullable": true,
@@ -3613,6 +3475,48 @@
               "ar-EG": "المتبقي في البطاقة",
               "zh-CN": "卡内余额",
               "zh-TW": "卡內餘額"
+            }
+          },
+          {
+            "ref": "refunded",
+            "type": "money",
+            "nullable": true,
+            "rules": {
+              "rollup": {
+                "from": "refunds",
+                "via": "payment_id",
+                "sum": "amount",
+                "balance": {
+                  "column": "refundable",
+                  "of": "amount"
+                },
+                "cap": true
+              }
+            },
+            "label": {
+              "en-US": "Refunded",
+              "de-DE": "Erstattet",
+              "fr-FR": "Remboursé",
+              "da-DK": "Refunderet",
+              "cs-CZ": "Vráceno",
+              "ar-EG": "المبلغ المسترد",
+              "zh-CN": "已退款",
+              "zh-TW": "已退款"
+            }
+          },
+          {
+            "ref": "refundable",
+            "type": "money",
+            "nullable": true,
+            "label": {
+              "en-US": "Can still be refunded",
+              "de-DE": "Noch erstattbar",
+              "fr-FR": "Encore remboursable",
+              "da-DK": "Kan stadig refunderes",
+              "cs-CZ": "Lze ještě vrátit",
+              "ar-EG": "يمكن استرداده بعد",
+              "zh-CN": "仍可退款",
+              "zh-TW": "仍可退款"
             }
           },
           {
@@ -3689,7 +3593,7 @@
             },
             "map": {
               "card": "card_id",
-              "amount": "card_amount",
+              "amount": "amount",
               "due": {
                 "parent": "due"
               },
@@ -3816,8 +3720,10 @@
             },
             "rules": {
               "formula": {
-                "coalesce": [
-                  "repriced",
+                "if": [
+                  {
+                    "isNull": "t_discount"
+                  },
                   {
                     "add": [
                       {
@@ -3830,6 +3736,27 @@
                         "coalesce": [
                           "own_tax",
                           0
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "coalesce": [
+                      "repriced",
+                      {
+                        "add": [
+                          {
+                            "coalesce": [
+                              "own_sub",
+                              0
+                            ]
+                          },
+                          {
+                            "coalesce": [
+                              "own_tax",
+                              0
+                            ]
+                          }
                         ]
                       }
                     ]
@@ -3854,9 +3781,22 @@
             },
             "rules": {
               "formula": {
-                "coalesce": [
-                  "repriced_tax",
-                  "own_tax"
+                "if": [
+                  {
+                    "isNull": "t_discount"
+                  },
+                  {
+                    "coalesce": [
+                      "own_tax",
+                      0
+                    ]
+                  },
+                  {
+                    "coalesce": [
+                      "repriced_tax",
+                      "own_tax"
+                    ]
+                  }
                 ]
               }
             }
@@ -4016,6 +3956,29 @@
               "ar-EG": "إجمالي الفاتورة",
               "zh-CN": "账单合计",
               "zh-TW": "訂單合計"
+            }
+          },
+          {
+            "ref": "t_discount",
+            "type": "decimal",
+            "scale": "currency",
+            "nullable": true,
+            "rules": {
+              "copy": {
+                "via": "ticket_id",
+                "from": "discount",
+                "mode": "always"
+              }
+            },
+            "label": {
+              "en-US": "Ticket reductions",
+              "de-DE": "Nachlässe des Bons",
+              "fr-FR": "Réductions du ticket",
+              "da-DK": "Bonens reduktioner",
+              "cs-CZ": "Slevy na účtu",
+              "ar-EG": "تخفيضات الفاتورة",
+              "zh-CN": "账单减免",
+              "zh-TW": "訂單減免"
             }
           },
           {
@@ -5606,7 +5569,7 @@
                 "sum": "amount",
                 "times": "sign",
                 "balance": {
-                  "column": "left",
+                  "column": "remaining",
                   "of": "opening"
                 },
                 "cap": true
@@ -5624,7 +5587,7 @@
             }
           },
           {
-            "ref": "left",
+            "ref": "remaining",
             "type": "money",
             "nullable": true,
             "label": {
@@ -8470,8 +8433,9 @@
             "staff_id",
             "card_id",
             "card_last4",
-            "card_amount",
             "card_balance_after",
+            "refunded",
+            "refundable",
             "held_until"
           ],
           "writable": [
@@ -8918,8 +8882,9 @@
             "staff_id",
             "card_id",
             "card_last4",
-            "card_amount",
             "card_balance_after",
+            "refunded",
+            "refundable",
             "held_until"
           ],
           "writable": [

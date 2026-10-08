@@ -161,7 +161,6 @@ CREATE TABLE pos_tickets (
   subtotal NUMERIC(12, 2) NOT NULL DEFAULT 0,
   tax_rate_bp INTEGER,
   goods NUMERIC(12, 2),
-  taxable NUMERIC(12, 2),
   own_discount NUMERIC(12, 2),
   discount NUMERIC(12, 2),
   discount_by VARCHAR(120),
@@ -172,10 +171,7 @@ CREATE TABLE pos_tickets (
   total NUMERIC(12, 2) NOT NULL DEFAULT 0,
   charged NUMERIC(12, 2),
   paid NUMERIC(12, 2),
-  card_paid NUMERIC(12, 2),
   due NUMERIC(12, 2),
-  refunded NUMERIC(12, 2),
-  refundable NUMERIC(12, 2),
   customer_proved BOOLEAN,
   reservation_id INTEGER REFERENCES pos_reservations (id),
   customer_id INTEGER REFERENCES pos_customers (id),
@@ -210,7 +206,7 @@ CREATE TABLE pos_gift_cards (
   issued_at TIMESTAMPTZ,
   opening NUMERIC(12, 2) DEFAULT 0,
   taken NUMERIC(12, 2),
-  left NUMERIC(12, 2)
+  remaining NUMERIC(12, 2)
 );
 
 CREATE TABLE pos_ticket_items (
@@ -232,8 +228,7 @@ CREATE TABLE pos_ticket_items (
   card_id INTEGER,
   load_ref INTEGER,
   goods_amount NUMERIC(12, 2),
-  discount NUMERIC(12, 2),
-  taxable NUMERIC(12, 2)
+  discount NUMERIC(12, 2)
 );
 
 CREATE TABLE pos_ticket_item_modifiers (
@@ -268,8 +263,9 @@ CREATE TABLE pos_payments (
   card_code VARCHAR(64),
   card_id INTEGER,
   card_last4 VARCHAR(4),
-  card_amount NUMERIC(12, 2),
   card_balance_after NUMERIC(12, 2),
+  refunded NUMERIC(12, 2),
+  refundable NUMERIC(12, 2),
   held_until TIMESTAMPTZ
 );
 
@@ -287,6 +283,7 @@ CREATE TABLE pos_refunds (
   t_net NUMERIC(12, 2),
   t_subtotal NUMERIC(12, 2),
   t_total NUMERIC(12, 2),
+  t_discount NUMERIC(12, 2),
   t_tax NUMERIC(12, 2),
   own_sub NUMERIC(12, 2),
   own_tax NUMERIC(12, 2),

@@ -10,7 +10,7 @@
  *
  * Tests only; nothing that ships imports it.
  */
-import { spawn, type ChildProcess } from 'node:child_process';
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -449,26 +449,64 @@ export const FROM_TARBALL = process.env["CONTRACT_FROM_TARBALL"] ?? "";
  */
 export const FROM_ADMINIUM = process.env["CONTRACT_FROM_ADMINIUM"] ?? "";
 
-/** Why the released tarball, or the Adminium it was installed under, cannot be used here, or null when they can. */
+/** The release an update starts from: the last one published. */
+export const FROM_VERSION = '0.2.3';
+
+/** Whether the published tarball itself is here (`CONTRACT_FROM_TARBALL`); without it the release is read from its tag. */
+export const publishedHere = (): boolean => FROM_TARBALL !== '' && existsSync(FROM_TARBALL);
+
+/** Why the released version, or the Adminium it was installed under, cannot be used here, or null when they can. */
 export function releasedMissing(): string | null {
-  if (FROM_TARBALL === "") return "CONTRACT_FROM_TARBALL is not set (the published tarball of the release this one updates)";
-  if (!existsSync(FROM_TARBALL)) return `no tarball at ${FROM_TARBALL}`;
-  if (FROM_ADMINIUM === "") return "CONTRACT_FROM_ADMINIUM is not set (a built checkout of the Adminium the released version was installed under)";
-  if (!existsSync(join(FROM_ADMINIUM, "apps", "server", "dist", "app.js"))) return `no built server in ${FROM_ADMINIUM}`;
-  if (!existsSync(join(FROM_ADMINIUM, "apps", "dashboard", "dist", "index.html"))) return `no built dashboard in ${FROM_ADMINIUM}`;
+  // Where the contract must run (CI), only the published bytes will do.
+  if (!publishedHere() && process.env['ADMINIUM_REQUIRE_CONTRACT'] === '1') return `no published tarball of ${FROM_VERSION} (CONTRACT_FROM_TARBALL)`;
+  if (!publishedHere() && taggedFile('manifest.json') === null) return `neither the published tarball of ${FROM_VERSION} (CONTRACT_FROM_TARBALL) nor its tag v${FROM_VERSION} is here`;
+  if (FROM_ADMINIUM === '') return 'CONTRACT_FROM_ADMINIUM is not set (a built checkout of the Adminium the released version was installed under)';
+  if (!existsSync(join(FROM_ADMINIUM, 'apps', 'server', 'dist', 'app.js'))) return `no built server in ${FROM_ADMINIUM}`;
+  if (!existsSync(join(FROM_ADMINIUM, 'apps', 'dashboard', 'dist', 'index.html'))) return `no built dashboard in ${FROM_ADMINIUM}`;
   return null;
 }
 
-export function releasedBundle(): Bundle & { key: string; version: string; files: Record<string, Buffer>; manifest: Record<string, unknown> } {
-  const buffer = readFileSync(FROM_TARBALL);
-  const integrity = `sha512-${createHash("sha512").update(buffer).digest("base64")}`;
-  const files = untar(buffer);
-  const pkg = JSON.parse(files["package.json"]!.toString("utf8")) as { version: string };
-  const recorded = recordedRelease(pkg.version);
-  if (recorded === null) throw new Error(`RELEASES.json records no ${pkg.version}`);
-  if (recorded.integrity !== integrity) throw new Error(`${FROM_TARBALL} is not the published ${pkg.version}: ${integrity} ≠ ${recorded.integrity}`);
-  const manifest = JSON.parse(files["manifest.json"]!.toString("utf8")) as Record<string, unknown> & { key: string; version: string };
-  return { buffer, integrity, key: manifest.key, version: manifest.version, files, manifest };
+/** A file of the release as its tag holds it, or null when the tag is not in this clone. */
+function taggedFile(path: string): Buffer | null {
+  try {
+    return execFileSync('git', ['show', `v${FROM_VERSION}:${path}`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * THE RELEASED APP. The published tarball's own bytes when they are here
+ * (`CONTRACT_FROM_TARBALL`), refused unless they hash to the integrity
+ * RELEASES.json recorded — so the update is proved from what was really
+ * shipped. Without them, the release's manifest and sample as its tag holds
+ * them, with stand-in pages (the update writes tables and rules; a page is
+ * none of it): said in the test's name, and never accepted where the contract
+ * must run.
+ */
+export function releasedBundle(): Bundle & { key: string; version: string; manifest: Record<string, unknown>; published: boolean } {
+  if (publishedHere()) {
+    const buffer = readFileSync(FROM_TARBALL);
+    const integrity = `sha512-${createHash('sha512').update(buffer).digest('base64')}`;
+    const files = untar(buffer);
+    const pkg = JSON.parse(files['package.json']!.toString('utf8')) as { version: string };
+    const recorded = recordedRelease(pkg.version);
+    if (recorded === null) throw new Error(`RELEASES.json records no ${pkg.version}`);
+    if (recorded.integrity !== integrity) throw new Error(`${FROM_TARBALL} is not the published ${pkg.version}: ${integrity} ≠ ${recorded.integrity}`);
+    const manifest = JSON.parse(files['manifest.json']!.toString('utf8')) as Record<string, unknown> & { key: string; version: string };
+    return { buffer, integrity, key: manifest.key, version: manifest.version, manifest, published: true };
+  }
+  const text = taggedFile('manifest.json');
+  if (text === null) throw new Error(`the tag v${FROM_VERSION} is not in this clone`);
+  const manifest = JSON.parse(text.toString('utf8')) as Record<string, unknown> & { key: string; version: string; sampleData?: { file: string } };
+  if (manifest.version !== FROM_VERSION) throw new Error(`the tag v${FROM_VERSION} holds ${manifest.version}`);
+  const files: Record<string, Buffer> = {
+    'package.json': Buffer.from(JSON.stringify({ name: `@adminiumjs/app-${manifest.key}`, version: manifest.version })),
+    'manifest.json': text,
+  };
+  for (const side of ['staff', 'customer']) files[`${side}/index.html`] = Buffer.from(`<!doctype html><html><body data-app="pos-${side}"></body></html>`);
+  if (manifest.sampleData !== undefined) files[manifest.sampleData.file] = taggedFile(manifest.sampleData.file)!;
+  return { ...bundle(files), key: manifest.key, version: manifest.version, manifest, published: false };
 }
 
 /** One table read straight from the kitchen's database: its columns as the engine declares them, and every row as exact text. */
