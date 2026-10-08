@@ -1,0 +1,86 @@
+{
+  "name": "card-sale",
+  "version": 1,
+  "parts": {
+    "order": {
+      "columns": [
+        {
+          "ref": "id",
+          "type": "int",
+          "role": "pk"
+        },
+        {
+          "ref": "paid_at",
+          "type": "timestamptz",
+          "nullable": true
+        },
+        {
+          "ref": "cancelled_at",
+          "type": "timestamptz",
+          "nullable": true
+        }
+      ]
+    },
+    "lines": {
+      "postings": [
+        {
+          "id": "card-load",
+          "into": {
+            "addOn": "offers",
+            "ledger": "value",
+            "action": "issue"
+          },
+          "via": "order_id",
+          "post": {
+            "on": {
+              "column": "paid_at",
+              "set": true
+            }
+          },
+          "reverse": {
+            "on": {
+              "column": "cancelled_at",
+              "set": true
+            }
+          },
+          "map": {
+            "card": "gift_card_id",
+            "amount": "load_amount"
+          }
+        }
+      ],
+      "columns": [
+        {
+          "ref": "id",
+          "type": "int",
+          "role": "pk"
+        },
+        {
+          "ref": "order_id",
+          "type": "fk",
+          "references": "order"
+        },
+        {
+          "ref": "gift_card_id",
+          "type": "int",
+          "nullable": true,
+          "rules": {
+            "addOnLink": {
+              "addOn": "offers",
+              "table": "gift_cards"
+            }
+          }
+        },
+        {
+          "ref": "load_amount",
+          "type": "money",
+          "scale": "currency",
+          "nullable": true
+        }
+      ],
+      "inAdjust": {
+        "excludes": "gift_card_id"
+      }
+    }
+  }
+}

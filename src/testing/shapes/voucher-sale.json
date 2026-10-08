@@ -1,0 +1,93 @@
+{
+  "name": "voucher-sale",
+  "version": 1,
+  "parts": {
+    "order": {
+      "columns": [
+        {
+          "ref": "id",
+          "type": "int",
+          "role": "pk"
+        },
+        {
+          "ref": "paid_at",
+          "type": "timestamptz",
+          "nullable": true
+        },
+        {
+          "ref": "cancelled_at",
+          "type": "timestamptz",
+          "nullable": true
+        }
+      ]
+    },
+    "lines": {
+      "postings": [
+        {
+          "id": "voucher-sold",
+          "into": {
+            "addOn": "offers",
+            "ledger": "value",
+            "action": "sell"
+          },
+          "via": "order_id",
+          "post": {
+            "on": {
+              "column": "paid_at",
+              "set": true
+            }
+          },
+          "reverse": {
+            "on": {
+              "column": "cancelled_at",
+              "set": true
+            }
+          },
+          "map": {
+            "voucher": "voucher_id",
+            "amount": "amount",
+            "tax_later": "tax_later"
+          }
+        }
+      ],
+      "columns": [
+        {
+          "ref": "id",
+          "type": "int",
+          "role": "pk"
+        },
+        {
+          "ref": "order_id",
+          "type": "fk",
+          "references": "order"
+        },
+        {
+          "ref": "voucher_id",
+          "type": "int",
+          "nullable": true,
+          "rules": {
+            "addOnLink": {
+              "addOn": "offers",
+              "table": "vouchers"
+            }
+          }
+        },
+        {
+          "ref": "amount",
+          "type": "money",
+          "scale": "currency",
+          "nullable": true
+        },
+        {
+          "ref": "tax_later",
+          "type": "bool",
+          "default": false,
+          "nullable": true
+        }
+      ],
+      "inAdjust": {
+        "paidBy": "voucher_id"
+      }
+    }
+  }
+}

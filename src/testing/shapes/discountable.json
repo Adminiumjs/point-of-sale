@@ -1,0 +1,231 @@
+{
+  "name": "discountable",
+  "version": 1,
+  "parts": {
+    "order": {
+      "adjust": {
+        "by": {
+          "addOn": "offers"
+        },
+        "lines": [
+          {
+            "table": "lines",
+            "via": "order_id",
+            "price": "amount",
+            "discount": "discount",
+            "what": [
+              {
+                "column": "item",
+                "as": "item"
+              }
+            ]
+          }
+        ],
+        "order": {
+          "discount": "discount",
+          "staff": {
+            "kind": "discount_kind",
+            "value": "discount_value",
+            "reason": "discount_reason",
+            "by": "discount_by"
+          }
+        },
+        "codes": {
+          "table": "codes",
+          "via": "order_id",
+          "typed": "typed",
+          "code": "code_id",
+          "voucher": "voucher_id",
+          "removed": "removed_at"
+        },
+        "uses": "uses"
+      },
+      "postings": [
+        {
+          "id": "uses",
+          "into": {
+            "addOn": "offers",
+            "ledger": "value",
+            "action": "redeem"
+          },
+          "post": {
+            "on": {
+              "column": "paid_at",
+              "set": true
+            }
+          },
+          "reverse": {
+            "on": {
+              "column": "cancelled_at",
+              "set": true
+            }
+          },
+          "map": {
+            "reason": "discount_reason"
+          }
+        }
+      ],
+      "columns": [
+        {
+          "ref": "id",
+          "type": "int",
+          "role": "pk"
+        },
+        {
+          "ref": "subtotal",
+          "type": "money",
+          "scale": "currency",
+          "nullable": true,
+          "rules": {
+            "rollup": {
+              "from": "lines",
+              "via": "order_id",
+              "sum": "amount"
+            }
+          }
+        },
+        {
+          "ref": "discount",
+          "type": "money",
+          "scale": "currency",
+          "default": 0
+        },
+        {
+          "ref": "net",
+          "type": "money",
+          "scale": "currency",
+          "nullable": true,
+          "rules": {
+            "formula": {
+              "sub": [
+                "subtotal",
+                "discount"
+              ]
+            }
+          }
+        },
+        {
+          "ref": "discount_kind",
+          "type": "enum",
+          "enum": [
+            "percent",
+            "amount"
+          ],
+          "nullable": true
+        },
+        {
+          "ref": "discount_value",
+          "type": "decimal",
+          "scale": 3,
+          "nullable": true
+        },
+        {
+          "ref": "discount_reason",
+          "type": "int",
+          "nullable": true,
+          "rules": {
+            "addOnLink": {
+              "addOn": "offers",
+              "table": "reasons"
+            }
+          }
+        },
+        {
+          "ref": "discount_by",
+          "type": "text",
+          "maxLength": 120,
+          "nullable": true
+        },
+        {
+          "ref": "paid_at",
+          "type": "timestamptz",
+          "nullable": true
+        },
+        {
+          "ref": "cancelled_at",
+          "type": "timestamptz",
+          "nullable": true
+        }
+      ]
+    },
+    "lines": {
+      "columns": [
+        {
+          "ref": "id",
+          "type": "int",
+          "role": "pk"
+        },
+        {
+          "ref": "order_id",
+          "type": "fk",
+          "references": "order"
+        },
+        {
+          "ref": "item",
+          "type": "text",
+          "maxLength": 64,
+          "nullable": true
+        },
+        {
+          "ref": "amount",
+          "type": "money",
+          "scale": "currency",
+          "nullable": true
+        },
+        {
+          "ref": "discount",
+          "type": "money",
+          "scale": "currency",
+          "default": 0
+        }
+      ]
+    },
+    "codes": {
+      "columns": [
+        {
+          "ref": "id",
+          "type": "int",
+          "role": "pk"
+        },
+        {
+          "ref": "order_id",
+          "type": "fk",
+          "references": "order"
+        },
+        {
+          "ref": "typed",
+          "type": "text",
+          "maxLength": 64,
+          "nullable": true
+        },
+        {
+          "ref": "code_id",
+          "type": "int",
+          "nullable": true,
+          "rules": {
+            "addOnLink": {
+              "addOn": "offers",
+              "table": "codes"
+            }
+          }
+        },
+        {
+          "ref": "voucher_id",
+          "type": "int",
+          "nullable": true,
+          "rules": {
+            "addOnLink": {
+              "addOn": "offers",
+              "table": "vouchers"
+            }
+          }
+        },
+        {
+          "ref": "removed_at",
+          "type": "timestamptz",
+          "nullable": true
+        }
+      ]
+    }
+  }
+}

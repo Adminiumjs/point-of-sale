@@ -1,0 +1,120 @@
+{
+  "name": "card-payment",
+  "version": 1,
+  "parts": {
+    "order": {
+      "columns": [
+        {
+          "ref": "id",
+          "type": "int",
+          "role": "pk"
+        },
+        {
+          "ref": "due",
+          "type": "money",
+          "scale": "currency",
+          "nullable": true
+        }
+      ]
+    },
+    "payments": {
+      "postings": [
+        {
+          "id": "card",
+          "into": {
+            "addOn": "offers",
+            "ledger": "value",
+            "action": "spend"
+          },
+          "via": "order_id",
+          "post": {
+            "on": {
+              "create": true
+            }
+          },
+          "reverse": {
+            "on": {
+              "column": "voided_at",
+              "set": true,
+              "own": true
+            }
+          },
+          "map": {
+            "card": "card_id",
+            "due": {
+              "parent": "due"
+            },
+            "amount": "amount",
+            "balance_after": "card_balance_after"
+          }
+        }
+      ],
+      "columns": [
+        {
+          "ref": "id",
+          "type": "int",
+          "role": "pk"
+        },
+        {
+          "ref": "order_id",
+          "type": "fk",
+          "references": "order"
+        },
+        {
+          "ref": "card_code",
+          "type": "text",
+          "maxLength": 64,
+          "nullable": true
+        },
+        {
+          "ref": "card_id",
+          "type": "int",
+          "nullable": true,
+          "rules": {
+            "addOnLink": {
+              "addOn": "offers",
+              "table": "gift_cards"
+            },
+            "lookup": {
+              "from": "card_code",
+              "table": {
+                "addOn": "offers",
+                "table": "gift_cards"
+              },
+              "column": "code",
+              "where": [
+                {
+                  "column": "status",
+                  "eq": "active"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "ref": "card_last4",
+          "type": "text",
+          "maxLength": 4,
+          "nullable": true
+        },
+        {
+          "ref": "amount",
+          "type": "money",
+          "scale": "currency",
+          "nullable": true
+        },
+        {
+          "ref": "card_balance_after",
+          "type": "money",
+          "scale": "currency",
+          "nullable": true
+        },
+        {
+          "ref": "voided_at",
+          "type": "timestamptz",
+          "nullable": true
+        }
+      ]
+    }
+  }
+}
