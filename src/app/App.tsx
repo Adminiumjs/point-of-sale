@@ -11,6 +11,8 @@ import { HeldTray } from '../components/HeldTray';
 import { VoidModal } from '../components/VoidModal';
 import { MoveModal } from '../components/MoveModal';
 import { DiscountModal } from '../components/DiscountModal';
+import { CardSaleModal } from '../components/CardSaleModal';
+import { ReloadTill } from '../components/ReloadTill';
 import { SignedOut } from '../components/SignedOut';
 import { Login } from '../screens/Login';
 import { Register } from '../screens/Register';
@@ -148,10 +150,12 @@ export function App() {
         <VoidModal />
         <MoveModal />
         <DiscountModal />
+        <CardSaleModal />
         {pickupSheet && <PickupSheet />}
         <TipPad />
         <Toast />
         <SignedOut />
+        <ReloadTill />
       </div>
     </div>
   );

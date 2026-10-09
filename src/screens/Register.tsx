@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon';
 import { MenuThumb } from '../components/MenuThumb';
 import { css } from '../components/css';
 import { TicketPane } from '../components/TicketPane';
+import { CardMoveBanner } from '../components/CardMoveBanner';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
 
@@ -37,6 +38,18 @@ export function Register() {
 
   const q = s.search.trim().toLowerCase();
   const list = source.menu().filter((m) => (q ? m.name.toLowerCase().indexOf(q) >= 0 : s.cat === 'all' || m.cat === s.cat));
+  /*
+   * STOCK WORDS (Inventory): how many are left of what is on screen, asked for
+   * the tiles shown — a category at a time — and again after a sale closes.
+   * A word is advice: an item that reads "Out" still sells, and says so.
+   */
+  const stockOn = s.features.stock && s.connected;
+  const shownIds = list.map((m) => m.id).join(',');
+  const closed = s.sales.length;
+  const loadStock = s.loadStock;
+  useEffect(() => {
+    if (stockOn && shownIds !== '') void loadStock(shownIds.split(','));
+  }, [stockOn, shownIds, closed, loadStock]);
   const imgH = dense ? '62px' : '98px';
   const rad = dense ? '13px' : '18px';
 
@@ -51,6 +64,7 @@ export function Register() {
     <div className="reg-body">
       {/* LEFT: menu */}
       <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg);')}>
+        <CardMoveBanner />
         {/* Quick add favourites */}
         <div className="pos-scroll" style={css('flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px 18px 2px;overflow-x:auto;')}>
           <span style={css('display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);flex-shrink:0;')}>
@@ -145,6 +159,7 @@ export function Register() {
                             </span>
                           </div>
                         )}
+                        {!sold && stockOn && <StockChip word={s.stock[m.id]} />}
                         {groupsOf(m.id).length > 0 && (
                           <span title={t('register.hasOptions')} style={css('position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);')}>
                             <Icon name="sliders-horizontal" size={13} color="var(--fg-muted)" />
@@ -167,5 +182,18 @@ export function Register() {
       {/* RIGHT: ticket */}
       <TicketPane />
     </div>
+  );
+}
+
+/** A tile's stock word: how many are left when it runs low, "Out" at none. Nothing while there is plenty, or nobody counts it. */
+export function StockChip({ word }: { word: { state: 'in' | 'low' | 'out'; exact: number | null } | undefined }) {
+  const t = useT();
+  if (word === undefined || word.state === 'in') return null;
+  if (word.state === 'low' && word.exact === null) return null;
+  const out = word.state === 'out';
+  return (
+    <span data-stock={word.state} style={css('position:absolute;bottom:8px;inset-inline-start:8px;font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:var(--surface);color:' + (out ? 'var(--danger)' : 'var(--warn)') + ';border:1px solid var(--border);')}>
+      {out ? t('stock.out') : t('stock.left', { n: word.exact ?? 0 })}
+    </span>
   );
 }

@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { usePos } from '../state/store';
+import { cardState, usePos } from '../state/store';
+import type { MoveOutcome } from '../state/move';
+import { CardMoveBanner } from '../components/CardMoveBanner';
 import { money } from '../state/calc';
 import { source } from '../data/source';
 import { useI18n, useT, type MessageKey } from '../i18n';
@@ -50,9 +52,44 @@ export function GiftCards() {
   const signed = (amount: number) => (amount >= 0 ? '+' : '−') + money(Math.abs(amount));
   const busy = card === undefined || card.code === '';
 
+  /*
+   * The three states. 1: the till keeps its own cards — this screen as ever.
+   * 2: Offers & gift cards is connected and the cards have not moved — this
+   * screen still, with the banner that opens the move. 3: moved — the cards
+   * are Offers', sold and spent on the ticket and at Pay, and this screen has
+   * nothing left to do but say so.
+   */
+  const state = cardState(s);
+  if (s.cardMove.open || state === 3) {
+    return (
+      <div style={css('flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg);')}>
+        <AuxHeader
+          title={t('cards.bannerTitle')}
+          sub={t('gift.title')}
+          onBack={() => (s.cardMove.open && state !== 3 ? s.openCardMove(false) : usePos.setState({ view: 'register' }))}
+          backLabel={s.cardMove.open && state !== 3 ? t('gift.title') : t('nav.register')}
+        />
+        <div className="pos-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:24px;')}>
+          <div style={css('max-width:620px;margin:0 auto;')}>
+            <CardMovePanel
+              moved={state === 3 && !s.cardMove.open}
+              busy={s.cardMove.busy}
+              progress={{ moved: s.cardMove.moved, of: s.cardMove.of }}
+              outcome={s.cardMove.outcome}
+              failed={s.cardMove.failed}
+              onRun={() => void s.runMove()}
+              onReload={() => window.location.reload()}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={css('flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg);')}>
       <AuxHeader title={t('gift.title')} sub={t('gift.sub')} onBack={() => usePos.setState({ view: 'register' })} backLabel={t('nav.register')} />
+      <CardMoveBanner />
       <div className="pos-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:24px;')}>
         <div style={css('display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;max-width:940px;margin:0 auto;')}>
           <div style={css('flex:1 1 320px;min-width:300px;display:flex;flex-direction:column;')}>
@@ -167,6 +204,90 @@ export function GiftCards() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Bringing the till's gift cards into Offers & gift cards: one button, and
+ * what the run answered, in plain words. The steps themselves are `move.ts`;
+ * every one is an ordinary save, so pressing again is always safe.
+ */
+export function CardMovePanel({
+  moved,
+  busy,
+  progress,
+  outcome,
+  failed,
+  onRun,
+  onReload,
+}: {
+  /** The cards moved before this till opened: nothing to run. */
+  moved: boolean;
+  busy: boolean;
+  progress: { moved: number; of: number };
+  outcome: MoveOutcome | null;
+  failed: boolean;
+  onRun: () => void;
+  onReload: () => void;
+}) {
+  const t = useT();
+  const box = 'background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;';
+  const note = (tone: 'pos' | 'danger' | 'warn') => 'margin-top:16px;padding:14px 16px;border-radius:14px;font-size:14.5px;font-weight:700;line-height:1.5;background:var(--' + tone + '-soft);color:var(--' + tone + ');';
+  const done = moved || outcome?.state === 'done';
+  return (
+    <div style={css(box)}>
+      <div style={css('display:flex;align-items:center;gap:12px;')}>
+        <Icon name="gift" size={26} color="var(--accent)" />
+        <div style={css('font-size:20px;font-weight:800;letter-spacing:-.02em;')}>{t('cards.bannerTitle')}</div>
+      </div>
+      <div style={css('font-size:14px;color:var(--fg-muted);margin-top:8px;line-height:1.5;')}>{moved ? t('cards.reloadBody') : t('cards.moveBody')}</div>
+      {!done && (
+        <button className="pos-press" disabled={busy} onClick={onRun} style={css('width:100%;height:58px;margin-top:18px;border-radius:15px;border:none;background:var(--accent);color:var(--accent-fg);font-family:inherit;font-size:16px;font-weight:800;cursor:' + (busy ? 'wait' : 'pointer') + ';')}>
+          {busy ? t('cards.moveRunning', { moved: progress.moved, of: progress.of }) : t('cards.moveStart')}
+        </button>
+      )}
+      {failed && (
+        <div role="alert" style={css(note('danger'))}>
+          {t('cards.moveFailed')} · {t('cards.moveAgain')}
+        </div>
+      )}
+      {outcome?.state === 'blocked' && (
+        <div role="alert" style={css(note('warn'))}>
+          {t('cards.moveBlocked', { tickets: outcome.tickets.map((ticket) => '#' + ticket.number).join(', ') })}
+        </div>
+      )}
+      {outcome?.state === 'ask-owner' && (
+        <div role="alert" style={css(note('warn'))}>
+          {t('cards.moveAskOwner')}
+        </div>
+      )}
+      {outcome?.state === 'row-refused' && (
+        <div role="alert" style={css(note('danger'))}>
+          {t('cards.moveRowRefused', { card: outcome.card, code: outcome.reason ?? outcome.code })} · {t('cards.moveAgain')}
+        </div>
+      )}
+      {outcome?.state === 'mismatch' && (
+        <div role="alert" style={css(note('danger'))}>
+          <div>{t('cards.moveMismatch')}</div>
+          <ul style={css('margin:8px 0 0;padding-inline-start:18px;font-weight:600;' + MONO)}>
+            {outcome.cards.map((one) => (
+              <li key={one.code}>{t('cards.moveMismatchRow', { code: one.code, here: money(one.here / 100), there: one.inOffers === null ? t('cards.moveMissing') : money(one.inOffers / 100) })}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {outcome?.state === 'done' && (
+        <div role="status" style={css(note('pos'))}>
+          <div>{t('cards.moveDone')}</div>
+          <div style={css('font-weight:600;')}>{t('cards.figures', { sum: money(outcome.cents / 100) }, outcome.cards)}</div>
+        </div>
+      )}
+      {done && (
+        <button className="pos-press" onClick={onReload} style={css('width:100%;height:58px;margin-top:18px;border-radius:15px;border:none;background:var(--accent);color:var(--accent-fg);font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;')}>
+          {t('cards.reload')}
+        </button>
+      )}
     </div>
   );
 }

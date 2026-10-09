@@ -30,7 +30,12 @@ const TOOLS: { v: View; label: MessageKey; icon: string }[] = [
 ];
 
 /** The tools this till offers: shelf labels only in retail, and only while Barcode Labels is attached. */
-export const toolsFor = (retail: boolean, features: Features) => TOOLS.filter((x) => x.v !== 'labels' || (retail && features['shelf-labels']));
+/**
+ * `cardsMoved`: the till's gift cards are Offers' now — sold and spent on the
+ * ticket and at Pay — so the old Gift cards screen leaves the menu.
+ */
+export const toolsFor = (retail: boolean, features: Features, cardsMoved = false) =>
+  TOOLS.filter((x) => (x.v !== 'labels' || (retail && features['shelf-labels'])) && (x.v !== 'giftcards' || !(features['gift-cards'] && cardsMoved)));
 
 const seg = (on: boolean) =>
   'width:44px;height:40px;border-radius:10px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;background:' +
@@ -145,7 +150,7 @@ export function TillNav() {
             {SCREENS.map((x) => item(x))}
             <div role="separator" style={css('height:1px;margin:6px 8px;background:var(--border);')} />
           </div>
-          {toolsFor(retail, s.features).map((x) => item(x))}
+          {toolsFor(retail, s.features, s.cardsMoved).map((x) => item(x))}
         </div>
       )}
     </div>
