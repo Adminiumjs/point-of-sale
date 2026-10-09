@@ -555,10 +555,22 @@ const num = (value: unknown): number => {
 };
 const blank = (value: unknown): boolean => value === null || value === undefined || value === '';
 
-/** A reduction's name: text, or text by locale. */
-const nameOf = (value: unknown): string => {
-  if (typeof value === 'string') return value;
-  if (value === null || typeof value !== 'object') return '';
+/**
+ * A reduction's name: text, or text by locale. An engine that keeps JSON as
+ * text (SQLite) reads the by-locale form back as the text of an object, so
+ * that is read as one too — never shown as it came.
+ */
+export const nameOf = (raw: unknown): string => {
+  let value = raw;
+  if (typeof value === 'string') {
+    if (!value.trimStart().startsWith('{')) return value;
+    try {
+      value = JSON.parse(value) as unknown;
+    } catch {
+      return raw as string;
+    }
+  }
+  if (value === null || typeof value !== 'object') return typeof raw === 'string' ? raw : '';
   const by = value as Record<string, unknown>;
   const pick = by[locale()] ?? by['en-US'] ?? Object.values(by)[0];
   return typeof pick === 'string' ? pick : '';

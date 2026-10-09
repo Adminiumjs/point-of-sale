@@ -15,7 +15,7 @@ import { NO_FEATURES } from '../features';
 import type { PastSale } from '../data/types';
 import { isEstimate, regTotal, remaining, tipFor } from './calc';
 import { cardPrints, dropCardPrint } from './cardPrints';
-import { cardState, isOffline, partPaidBefore, showsEstimate, usePos } from './store';
+import { cardState, foldApplied, isOffline, nameOf, partPaidBefore, showsEstimate, usePos } from './store';
 import { outbox, setSink } from './writes';
 
 const INITIAL = usePos.getState();
@@ -206,6 +206,19 @@ describe('offline', () => {
     expect(s().sync.retrying).toBe(true);
     expect(isOffline(s())).toBe(true);
     expect(showsEstimate(s())).toBe(true);
+  });
+});
+
+describe('a reduction’s name', () => {
+  it('is read by locale whether it came as an object or — from an engine that keeps JSON as text — as the text of one', () => {
+    const byLocale = { 'en-US': 'Croissants, a tenth off', 'de-DE': 'Croissants, ein Zehntel weniger' };
+    expect(nameOf(byLocale)).toBe('Croissants, a tenth off');
+    expect(nameOf(JSON.stringify(byLocale))).toBe('Croissants, a tenth off');
+    expect(nameOf('Staff · Goodwill')).toBe('Staff · Goodwill');
+    // Text that only looks like an object is shown as it is.
+    expect(nameOf('{half off}')).toBe('{half off}');
+    // Offers keeps a row per line an offer touched: folded into one line under the one name.
+    expect(foldApplied([{ name: JSON.stringify(byLocale), kind: 'offer', amount: '0.38' }, { name: byLocale, kind: 'offer', amount: '0.38' }])).toEqual([{ name: 'Croissants, a tenth off', kind: 'offer', amount: 0.76 }]);
   });
 });
 
