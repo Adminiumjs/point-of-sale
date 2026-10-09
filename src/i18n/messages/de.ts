@@ -973,4 +973,5 @@ export const de: Translated<typeof enUS> = {
   'stock.out': 'Aus',
   'stock.countThis': 'Laut Bestand aus · diesen Artikel zählen',
   'stock.toastOut': 'Für {name} ist kein Bestand mehr gezählt, der Verkauf geht trotzdem durch',
+  'cards.typedFirst': 'Eine Gutscheinkarte ist eingetippt · Sie wurde zuerst geprüft, es wurde nichts berechnet',
 };

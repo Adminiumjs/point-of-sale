@@ -971,4 +971,5 @@ export const fr: Translated<typeof enUS> = {
   'stock.out': 'Épuisé',
   'stock.countThis': 'Épuisé dans les comptes · comptez cet article',
   'stock.toastOut': 'Le stock de {name} est à zéro, et la vente passe quand même',
+  'cards.typedFirst': 'Une carte cadeau est saisie · Elle a d’abord été vérifiée, rien n’a été encaissé',
 };

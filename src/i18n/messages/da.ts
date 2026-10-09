@@ -970,4 +970,5 @@ export const da: Translated<typeof enUS> = {
   'stock.out': 'Udsolgt',
   'stock.countThis': 'Udsolgt i bøgerne · tæl denne vare',
   'stock.toastOut': '{name} står til nul på lager, og salget går stadig igennem',
+  'cards.typedFirst': 'Der er indtastet et gavekort · Det blev tjekket først, og intet er opkrævet',
 };

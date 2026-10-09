@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { source } from '../data/source';
 import { cardState, isOffline, showsEstimate, usePos } from '../state/store';
 import type { PayMethod } from '../data/types';
@@ -75,7 +74,9 @@ export function Payment() {
   const off = isOffline(s);
   const estimate = showsEstimate(s);
   const server = s.ticket.server;
-  const [cardCode, setCardCode] = useState(s.ticket.card?.code ?? '');
+  // What is typed here is the store's (in memory only): no other payment is taken past a card that was typed.
+  const cardCode = s.cardDraft;
+  const setCardCode = s.setCardDraft;
 
   const tend = parseFloat(s.cash || '0') || 0;
   const target = chargeTarget(s);
@@ -422,7 +423,6 @@ export function Payment() {
                     value={cardCode}
                     onChange={(e) => {
                       setCardCode(e.target.value);
-                      if (s.cardPay !== null || s.cardPayWords !== null) usePos.setState({ cardPay: null, cardPayWords: null });
                     }}
                     placeholder={t('cards.codeLabel')}
                     aria-label={t('cards.codeLabel')}
@@ -471,7 +471,7 @@ export function Payment() {
             <button
               data-charge=""
               className="pos-press"
-              onClick={isGift && s.cardPay === null ? () => void s.quoteCard(cardCode) : s.onCharge}
+              onClick={s.onCharge}
               style={css('width:100%;height:68px;border-radius:17px;border:none;background:' + (chargeEnabled ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (chargeEnabled ? 'var(--accent-fg)' : 'var(--fg-subtle)') + ';font-size:19px;font-weight:800;cursor:' + (chargeEnabled ? 'pointer' : 'not-allowed') + ';display:flex;align-items:center;justify-content:center;gap:11px;')}
             >
               <Icon name={chargeIcon} size={22} />

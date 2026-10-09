@@ -971,4 +971,5 @@ export const cs: Translated<typeof enUS> = {
   'stock.out': 'Není',
   'stock.countThis': 'Podle evidence vyprodáno · tuto položku přepočítejte',
   'stock.toastOut': '{name} má na skladě nulu a prodej přesto proběhne',
+  'cards.typedFirst': 'Je zadaná dárková karta · Nejdřív se ověřila, nic se nenaúčtovalo',
 };

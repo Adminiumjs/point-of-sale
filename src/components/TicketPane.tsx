@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { isOffline, kindWord, partPaidBefore, showsEstimate, usePos } from '../state/store';
 import type { LineItem } from '../data/types';
 import { discountAmt, itemById, lineName, lineTotal, modLabel, money, payDue, regTotal, subtotal, tableName, tax, taxLabel } from '../state/calc';
@@ -38,12 +38,20 @@ export function TicketPane() {
   // A ticket from before tickets kept their own tax rate can never be paid: its items move to a new one.
   const rateless = s.ticket.rateless === true;
   const canPay = canAct && !rateless;
-  const [code, setCode] = useState('');
+  // What is typed and not applied is the store's: Pay applies it first, so it is never dropped.
+  const code = s.codeDraft;
+  const setCode = s.setCodeDraft;
   const kept = s.ticket.card;
   // What Offers said of a code belongs to the ticket it was typed on.
   const clearSaid = s.clearCodeSaid;
   const onTicket = s.ticket.rid;
   useEffect(() => clearSaid, [onTicket, clearSaid]);
+  // So does what was typed: another ticket on the register starts with an empty field (a new ticket's first save does not).
+  const wasOn = useRef(onTicket);
+  useEffect(() => {
+    if (wasOn.current !== undefined && wasOn.current !== onTicket) setCode('');
+    wasOn.current = onTicket;
+  }, [onTicket, setCode]);
   const said = s.codeSaid;
   // What came off the ticket sits under the items: it is brought into view when it changes.
   const reductions = useRef<HTMLDivElement | null>(null);

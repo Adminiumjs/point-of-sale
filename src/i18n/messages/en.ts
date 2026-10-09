@@ -975,4 +975,5 @@ export const enUS = {
   'stock.out': 'Out',
   'stock.countThis': 'Out on the books · count this item',
   'stock.toastOut': '{name} shows none in stock, and the sale still goes through',
+  'cards.typedFirst': 'A gift card is typed in · It was checked first, and nothing was charged',
 } as const;

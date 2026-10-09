@@ -191,6 +191,10 @@ export interface PosState {
   codeAsk: { typed: string; noEmail: boolean } | null;
   /** What Offers said of the last code typed, shown under the field: taken (and as what), or why not. */
   codeSaid: { ok: boolean; words: string } | null;
+  /** What is typed in the ticket's code field and not applied yet: Pay applies it first, so it is never dropped. */
+  codeDraft: string;
+  /** The typed text Offers last refused: answered already, so Pay does not ask it a second time. */
+  codeRefused: string | null;
 
   // gift cards kept by Offers
   /** What a gift card would cover on this ticket, as the dry run answered. */
@@ -198,6 +202,10 @@ export interface PosState {
   cardPayBusy: boolean;
   /** Why the card cannot pay, in plain words. */
   cardPayWords: string | null;
+  /** What is typed in Payment's gift card field (in memory only): no other payment is taken past it. */
+  cardDraft: string;
+  /** The typed card Adminium last answered for — what it covers, or why it cannot pay: asked already, so not asked twice. */
+  cardAsked: string | null;
   /** The sheet that sells a new card, or tops one up. */
   cardSaleOpen: boolean;
   /** New cards waiting to be printed: which card and its print ticket — never its code (`cardPrints.ts`). */
@@ -376,6 +384,8 @@ export interface PosState {
   removeCode: (id: string) => Promise<void>;
   dismissCodeAsk: () => void;
   clearCodeSaid: () => void;
+  setCodeDraft: (typed: string) => void;
+  setCardDraft: (typed: string) => void;
   /** Forget the gift card kept for Payment. */
   forgetCard: () => void;
   /** Ask what a gift card would cover on this ticket. */
@@ -1152,6 +1162,42 @@ export const usePos = create<PosState>()((set, get) => {
     }
   };
 
+  /** Payment, for the ticket on the register. */
+  const toPayment = () => {
+    const cur = get();
+    // A gift card kept on the ticket is offered first: Payment opens on its tab, with the code in its field.
+    const kept = cardState(cur) === 3 && !offline() ? (cur.ticket.card?.code ?? '') : '';
+    /*
+     * Resume a part-paid ticket instead of restarting it.
+     *
+     * This used to reset `splits: []` unconditionally, so stepping back to
+     * the ticket to add a forgotten item and pressing Pay again silently
+     * discarded every payment already collected — the balance jumped back to
+     * full and the guest who had already handed over cash was asked again.
+     */
+    if (cur.splits.length) {
+      set({ view: 'payment', cardDraft: kept, cardAsked: null, cardPay: null, cardPayWords: null, ...(kept === '' ? {} : { payMethod: 'gift_card' as PayMethod }) });
+      return;
+    }
+    clearTimeout(ctTimer);
+    clearTimeout(ct2Timer);
+    set({
+      view: 'payment',
+      payMethod: kept === '' ? 'card' : 'gift_card',
+      cardDraft: kept, cardAsked: null,
+      cardPay: null,
+      cardPayWords: null,
+      cash: '',
+      splits: [],
+      splitMode: 'none',
+      splitN: 0,
+      splitCustom: '',
+      card: 'waiting',
+      // NOT the tip: the guest may have chosen one on the customer display
+      // already, and Payment keeps it.
+    });
+  };
+
   const finalize = async (splits: Split[], change: number) => {
     const before = get();
     const rid = before.ticket.rid;
@@ -1276,6 +1322,13 @@ export const usePos = create<PosState>()((set, get) => {
        * a second Sale under the same order number.
        */
       ticket: freshTicket(),
+      // Nothing typed for the paid ticket is left for the next one.
+      codeDraft: '',
+      codeRefused: null,
+      cardDraft: '',
+      cardAsked: null,
+      cardPay: null,
+      cardPayWords: null,
       splits: [],
       cash: '',
       card: 'waiting',
@@ -1470,6 +1523,10 @@ export const usePos = create<PosState>()((set, get) => {
     codeBusy: false,
     codeAsk: null,
     codeSaid: null,
+    codeDraft: '',
+    codeRefused: null,
+    cardDraft: '',
+    cardAsked: null,
     cardPay: null,
     cardPayBusy: false,
     cardPayWords: null,
@@ -1795,7 +1852,7 @@ export const usePos = create<PosState>()((set, get) => {
         discount: worded(h.discount),
       });
       knowMember(h.customerId);
-      set({ codeAsk: null, cardPay: null, cardPayWords: null });
+      set({ codeAsk: null, cardPay: null, cardPayWords: null, codeDraft: '', codeRefused: null, cardDraft: '', cardAsked: null });
       get().showToast(t('toast.resumed', { table: tableName(h.table, s.mode) }));
     },
 
@@ -2104,7 +2161,8 @@ export const usePos = create<PosState>()((set, get) => {
           }
         }
         const reply = await saved.d.create('ticket_codes', { ticket_id: dbKey(saved.id), typed });
-        set({ codeAsk: null });
+        // The figures read before the code was taken are no longer the ticket's: an estimate until the new ones are in.
+        set((st) => ({ codeAsk: null, ...(st.ticket.rid === saved.rid ? { ticket: withoutServer(st.ticket) } : {}) }));
         const better = (reply.told ?? []).find((one) => one.note === 'better-offer-applied');
         const mine = (reply.applied ?? []).filter((one) => one.typed === true);
         const kind = reply.data['voucher_id'] !== null && reply.data['voucher_id'] !== undefined ? 'voucher' : (mine[0]?.kind ?? 'code');
@@ -2118,6 +2176,8 @@ export const usePos = create<PosState>()((set, get) => {
           return;
         }
         say(false, codeRefusal(error, typed));
+        // Offers answered, and the answer was no: that text has been tried.
+        if (error.kind !== 'offline') set({ codeRefused: typed });
       } finally {
         set({ codeBusy: false });
       }
@@ -2140,10 +2200,12 @@ export const usePos = create<PosState>()((set, get) => {
     clearCodeSaid: () => {
       if (get().codeSaid !== null) set({ codeSaid: null });
     },
+    setCodeDraft: (typed) => set({ codeDraft: typed }),
+    setCardDraft: (typed) => set({ cardDraft: typed, cardPay: null, cardPayWords: null, cardAsked: null }),
     forgetCard: () =>
       set((st) => {
         const { card: _gone, ...rest } = st.ticket;
-        return { ticket: rest, cardPay: null, cardPayWords: null };
+        return { ticket: rest, cardPay: null, cardPayWords: null, cardDraft: '', cardAsked: null };
       }),
 
     // ---- gift cards kept by Offers ----
@@ -2163,9 +2225,11 @@ export const usePos = create<PosState>()((set, get) => {
           set({ cardPayWords: t('cards.refused') });
           return;
         }
-        set({ cardPay: { code, covers: num(reply.payment.amount), due: num(reply.payment.due) } });
+        set({ cardPay: { code, covers: num(reply.payment.amount), due: num(reply.payment.due) }, cardAsked: code });
       } catch (raw2) {
-        set({ cardPayWords: cardRefusal(asSinkError(raw2)) });
+        const error = asSinkError(raw2);
+        // A refusal is an answer; no answer at all is not.
+        set({ cardPayWords: cardRefusal(error), ...(error.kind === 'offline' ? {} : { cardAsked: code }) });
       } finally {
         set({ cardPayBusy: false });
       }
@@ -2349,34 +2413,36 @@ export const usePos = create<PosState>()((set, get) => {
         return;
       }
       /*
-       * Resume a part-paid ticket instead of restarting it.
-       *
-       * This used to reset `splits: []` unconditionally, so stepping back to
-       * the ticket to add a forgotten item and pressing Pay again silently
-       * discarded every payment already collected — the balance jumped back to
-       * full and the guest who had already handed over cash was asked again.
+       * A code typed in the ticket's field and never applied is applied FIRST:
+       * it is not dropped because Pay was pressed instead of Apply. Refused,
+       * nothing moves and the field says why (pressed again with the same
+       * refused text still there, Pay goes on: it was answered); taken,
+       * Payment opens on the figures Adminium worked out with it. A gift card
+       * typed there is kept for Payment's own tab.
        */
-      if (cur.splits.length) {
-        set({ view: 'payment' });
+      const typed = cur.codeDraft.trim();
+      // One Offers has already refused, left in the field unchanged, has had its answer: the cashier read why, and pays.
+      if (typed !== '' && typed !== cur.codeRefused && cur.features.offers && cur.connected) {
+        if (cur.codeBusy) return;
+        const rid = cur.ticket.rid;
+        void (async () => {
+          await get().applyCode(typed);
+          const now = get();
+          if (now.ticket.rid !== rid && rid !== undefined) return;
+          // A code for a named customer is asked for on the ticket, and tried again once it names one.
+          if (now.codeAsk !== null) {
+            set({ codeDraft: '' });
+            return;
+          }
+          if (now.codeSaid === null || !now.codeSaid.ok) return;
+          set({ codeDraft: '' });
+          toPayment();
+        })();
         return;
       }
-      clearTimeout(ctTimer);
-      clearTimeout(ct2Timer);
-      set({
-        view: 'payment',
-        payMethod: 'card',
-        cash: '',
-        splits: [],
-        splitMode: 'none',
-        splitN: 0,
-        splitCustom: '',
-        card: 'waiting',
-        // NOT the tip: the guest may have chosen one on the customer display
-        // already, and Payment keeps it.
-      });
+      toPayment();
     },
-    openHeld: () => set({ heldOpen: true }),
-    closeHeld: () => set({ heldOpen: false }),
+    openHeld: () => set({ heldOpen: true }),     closeHeld: () => set({ heldOpen: false }),
     setMethod: (m) => set({ payMethod: m, cash: '', card: 'waiting' }),
     setTip: (i) => set({ tip: i }),
     cashPush: (d) =>
@@ -2401,7 +2467,28 @@ export const usePos = create<PosState>()((set, get) => {
     },
     clearSplit: () => set({ splitMode: 'none', splitN: 0, splitCustom: '' }),
     onCharge: () => {
-      const m = get().payMethod;
+      const cur = get();
+      const m = cur.payMethod;
+      /*
+       * A gift card typed in Payment's field and never asked comes first: no
+       * other payment is taken past it. It is asked what it covers, and the
+       * answer — or why it cannot pay — is shown on its own tab before any
+       * money goes on. Once the cashier has that answer the choice is theirs:
+       * use the card, or charge another way.
+       */
+      const typedCard = cardState(cur) === 3 ? cur.cardDraft.trim() : '';
+      if (typedCard !== '' && (m === 'gift_card' ? cur.cardPay === null : cur.cardAsked !== typedCard)) {
+        if (offline()) {
+          set({ payMethod: 'gift_card', cardPayWords: t('cards.offline') });
+          return;
+        }
+        if (m !== 'gift_card') {
+          set({ payMethod: 'gift_card', cash: '', card: 'waiting' });
+          get().showToast(t('cards.typedFirst'));
+        }
+        void get().quoteCard(typedCard);
+        return;
+      }
       if (m === 'cash') applyCash();
       else if (m === 'card') runCard();
       // A gift card kept by Offers pays what Adminium says it covers, never an amount the till names.

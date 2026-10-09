@@ -423,6 +423,58 @@ test.describe('the staff screens on a built Adminium', () => {
     expect(tally.failures.join('\n\n')).toBe('');
   });
 
+  test('a code typed and never applied is not dropped at Pay: refused, nothing is paid; taken, the amount asked is the reduced one', async () => {
+    test.setTimeout(240_000);
+    await roomFor('cashier', 90);
+    const context = contexts.cashier!;
+    const page = await openTill(context);
+    // Three bowls: the code asks for a ticket of at least $30.00.
+    for (let i = 0; i < 3; i += 1) await tile(page, 'Breakfast Bowl').click();
+    let row = await figuresAreTheServers(page, context);
+    expect([usd(row['subtotal']), usd(row['discount']), usd(row['total'])]).toEqual(['$36.00', '$0.00', '$38.97']);
+    const field = page.locator('[data-code-form] input');
+
+    // A code nobody issued, typed, and Pay pressed instead of Apply: the cashier stays, the field says why, nothing is paid.
+    await field.fill('NOSUCHCODE');
+    await payButton(page).click();
+    await expect(page.locator('[data-code-said="refused"]')).toHaveText('No code or voucher matches NOSUCHCODE');
+    await expect(aside(page)).toBeVisible();
+    await expect(page.locator('[data-charge]')).toHaveCount(0);
+    await expect(field).toHaveValue('NOSUCHCODE');
+    expect(usd((await ticketOnServer(context))['due'])).toBe('$38.97');
+
+    // A real one, typed the same way: it is applied first, and Payment opens on Adminium's figures with it on.
+    await field.fill('AUTUMN5');
+    await payButton(page).click();
+    const summary = page.locator('.pay-summary');
+    await expect(summary).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('[data-estimate]'), 'the figures are the server’s').toHaveCount(0, { timeout: 45_000 });
+    row = await ticketOnServer(context);
+    expect([usd(row['discount']), usd(row['total']), usd(row['due'])]).toEqual(['$5.00', '$33.56', '$33.56']);
+    await expect(summary).toContainText('$5.00 off');
+    await expect(summary).toContainText('−$5.00');
+    await expect(summary).toContainText('$33.56');
+    // The amount asked is the reduced one.
+    await expect(page.locator('[data-charge]')).toContainText('$33.56');
+    await expect(page.locator('[data-cash-preset]')).toHaveCount(0);
+    await page.locator('[data-method="cash"]').click();
+    await expect(page.locator('[data-cash-preset]').first()).toHaveAttribute('data-cash-preset', '33.56');
+
+    // Back on the ticket the reduction is a line of its own, and the field is empty: the code has done its work.
+    await page.getByRole('button', { name: 'Ticket', exact: true }).click();
+    await expect(reductions(page)).toContainText('$5.00 off');
+    await expect(reductions(page)).toContainText('−$5.00');
+    await expect(field).toHaveValue('');
+    await expect(payButton(page)).toContainText('$33.56');
+
+    await payButton(page).click();
+    await payCash(page);
+    const paid = newest((await rows(context, tables['tickets']!)).filter((one) => one['status'] === 'paid'));
+    expect([usd(paid['discount']), usd(paid['total']), usd(paid['due'])]).toEqual(['$5.00', '$33.56', '$0.00']);
+    await page.locator('[data-new-order]').click();
+    await page.close();
+  });
+
   test('a new card is sold by someone Offers lets, reloaded past, and printed once — its code never on the till', async ({}, testInfo) => {
     test.setTimeout(240_000);
     await roomFor('manager', 120);

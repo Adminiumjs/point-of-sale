@@ -968,4 +968,5 @@ export const zhCn: Translated<typeof enUS> = {
   'stock.out': '缺货',
   'stock.countThis': '账面已无库存 · 请清点此商品',
   'stock.toastOut': '{name} 的库存显示为零，但仍可继续销售',
+  'cards.typedFirst': '已输入礼品卡 · 已先查询该卡，尚未收取任何款项',
 };

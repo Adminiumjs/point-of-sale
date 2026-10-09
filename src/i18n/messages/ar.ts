@@ -973,4 +973,5 @@ export const ar: Translated<typeof enUS> = {
   'stock.out': 'نفد',
   'stock.countThis': 'نفد في الدفاتر · عُدَّ هذا الصنف',
   'stock.toastOut': 'مخزون {name} صفر، والبيع يتم مع ذلك',
+  'cards.typedFirst': 'تم إدخال بطاقة هدية · جرى التحقق منها أولًا، ولم يُحصَّل أي مبلغ',
 };
