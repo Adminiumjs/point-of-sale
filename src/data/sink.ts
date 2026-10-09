@@ -15,13 +15,17 @@
  * the outbox decides on:
  *
  *   signed-out   401 — sign in again; nothing more can be saved until then
- *   saved        409 — it is already there (a retried payment the first try
- *                saved): done, not an error. Not the booking guard's 409
- *                (`CAPACITY_…`: the slot is full, or too late to change),
- *                which is a refusal like any other
- *   refused      422 and other 4xx — this change will never be accepted:
- *                undo it on screen and say why
- *   offline      no answer, or 5xx — keep it and try again later
+ *   saved        409 `UNIQUE_VIOLATION` on a row the till keyed itself (a
+ *                retried payment the first try saved): it is already there,
+ *                done, not an error
+ *   offline      no answer, 5xx, or a 409 that only asks to try again
+ *                (`WRITE_CONFLICT`, `CAPACITY_BUSY`) — keep it and try later
+ *   refused      every other 4xx, and every other 409 (a rule said no: a
+ *                ticket that cannot close, a card that cannot pay) — this
+ *                change will never be accepted: undo it on screen and say why
+ *
+ * A refusal keeps what the server said beyond its code (`details`): the
+ * screens word a refusal from its reason, never from a guess.
  */
 import type { SessionTransport, TableOfRef } from './sessionSource';
 
@@ -51,21 +55,41 @@ export class SinkError extends Error {
   readonly code: string;
   /** The column the server refused, when it named one. */
   readonly field: string | null;
+  /** What the server said beyond its code: a rule's reason, a ceiling, what is owing. */
+  readonly details: Readonly<Record<string, unknown>>;
 
-  constructor(message: string, kind: SinkErrorKind, status: number, code: string, field: string | null = null) {
+  constructor(message: string, kind: SinkErrorKind, status: number, code: string, field: string | null = null, details: unknown = null) {
     super(message);
     this.name = 'SinkError';
     this.kind = kind;
     this.status = status;
     this.code = code;
     this.field = field;
+    this.details = details !== null && typeof details === 'object' && !Array.isArray(details) ? (details as Record<string, unknown>) : {};
+  }
+
+  /** The rule's own reason for a refusal (`over-ceiling`, `used-up`, `expired`…), when it gave one. */
+  get reason(): string | null {
+    const reason = this.details['reason'];
+    return typeof reason === 'string' && reason !== '' ? reason : null;
   }
 }
 
-export function kindOfStatus(status: number, code = ''): SinkErrorKind {
+/** A 409 that only asks for the same write again. */
+const TRY_AGAIN = new Set(['WRITE_CONFLICT', 'CAPACITY_BUSY']);
+
+/**
+ * What to do about a failed write. `keyed` says the write was an insert under
+ * a key the till made itself: only then does "that key is taken" mean the
+ * first try saved it.
+ */
+export function kindOfStatus(status: number, code = '', keyed = false): SinkErrorKind {
   if (status === 401) return 'signed-out';
-  if (status === 409) return code.startsWith('CAPACITY_') ? 'refused' : 'saved';
   if (status === 0 || status >= 500) return 'offline';
+  if (status === 409) {
+    if (code === 'UNIQUE_VIOLATION' && keyed) return 'saved';
+    if (TRY_AGAIN.has(code)) return 'offline';
+  }
   return 'refused';
 }
 
@@ -93,12 +117,12 @@ function fieldOf(error: ErrorLike): string | null {
   return Object.keys(fields)[0] ?? null;
 }
 
-function asSinkError(error: unknown): SinkError {
+export function asSinkError(error: unknown, keyed = false): SinkError {
   if (error instanceof SinkError) return error;
   const e = (error ?? {}) as ErrorLike;
   // fetch() rejects with a TypeError when there was no answer at all.
   const status = typeof e.status === 'number' ? e.status : 0;
-  return new SinkError(e.message ?? 'The change could not be saved.', kindOfStatus(status, e.code), status, e.code ?? 'NETWORK', fieldOf(e));
+  return new SinkError(e.message ?? 'The change could not be saved.', kindOfStatus(status, e.code, keyed), status, e.code ?? 'NETWORK', fieldOf(e), e.details);
 }
 
 export function sessionSink(transport: SessionTransport, tableOfRef: TableOfRef): DataSink {
@@ -113,16 +137,16 @@ export function sessionSink(transport: SessionTransport, tableOfRef: TableOfRef)
     return id === undefined ? base : `${base}/${encodeURIComponent(String(id))}`;
   };
   /** One retry with a fresh token when the session's has rotated. */
-  const send = async <T>(url: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> => {
+  const send = async <T>(url: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown, keyed = false): Promise<T> => {
     try {
       return await transport.mutate<T>(url, method, body);
     } catch (error) {
-      if ((error as ErrorLike).code !== 'CSRF_FAILED') throw asSinkError(error);
+      if ((error as ErrorLike).code !== 'CSRF_FAILED') throw asSinkError(error, keyed);
       await transport.refresh().catch(() => undefined);
       try {
         return await transport.mutate<T>(url, method, body);
       } catch (again) {
-        throw asSinkError(again);
+        throw asSinkError(again, keyed);
       }
     }
   };
@@ -137,7 +161,8 @@ export function sessionSink(transport: SessionTransport, tableOfRef: TableOfRef)
         }
         body = { ...body, children: linked };
       }
-      const reply = await send<Mutation>(await path(ref), 'POST', body);
+      // A key the till made (a payment's, a refund's) makes a second try the same row.
+      const reply = await send<Mutation>(await path(ref), 'POST', body, values['id'] !== undefined && values['id'] !== null);
       return reply.data ?? {};
     },
     async update(ref, id, patch) {

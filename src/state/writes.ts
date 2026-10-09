@@ -16,9 +16,11 @@ import { createOutbox, type Outbox, type OutboxState } from './outbox';
 /** Every table the till writes, short name → the name an install gives it. */
 export const WRITE_TABLES: Readonly<Record<string, string>> = Object.fromEntries(
   [
+    'settings',
     'tickets',
     'ticket_items',
     'ticket_item_modifiers',
+    'ticket_codes',
     'payments',
     'refunds',
     'refund_items',

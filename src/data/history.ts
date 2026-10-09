@@ -73,9 +73,13 @@ interface WireOption {
   modifier_id: Key | null;
 }
 interface WirePayment {
+  id?: Key;
   ticket_id: Key;
   method: PayMethod;
   reference: string | null;
+  amount?: Num | null;
+  /** The last four of a gift card kept by Offers, when one paid. */
+  card_last4?: string | null;
   paid_at: string;
 }
 interface WireRefund {
@@ -137,6 +141,9 @@ export function portHistory(
         ...(row.gift_card_id === null || row.gift_card_id === undefined ? {} : { giftCard: true as const }),
       }));
       const paid = payments.filter((p) => key(p.ticket_id) === key(ticket.id)).sort((a, b) => a.paid_at.localeCompare(b.paid_at));
+      const paidWith = paid.flatMap((p) =>
+        p.id === undefined ? [] : [{ id: key(p.id), method: p.method, amount: n(p.amount), ...(p.card_last4 === null || p.card_last4 === undefined || p.card_last4 === '' ? {} : { last4: p.card_last4 }) }],
+      );
       const subtotal = n(ticket.subtotal);
       const tax = n(ticket.tax);
       const total = n(ticket.total);
@@ -155,6 +162,8 @@ export function portHistory(
         refunded: round2(refunds.filter((r) => key(r.ticket_id) === key(ticket.id)).reduce((sum, r) => sum + n(r.amount), 0)),
         ...(ticket.customer_id === null || ticket.customer_id === undefined ? {} : { customerId: key(ticket.customer_id) }),
         ...(giftCodeOf(paid) === undefined ? {} : { giftCardCode: giftCodeOf(paid)! }),
+        // Payment by payment: a refund goes back to the one it names.
+        ...(paidWith.length === 0 ? {} : { payments: paidWith }),
       };
     });
   };

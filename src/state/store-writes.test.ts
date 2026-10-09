@@ -156,7 +156,9 @@ describe('money waits for the server', () => {
     expect(payment!.values).toMatchObject({ ticket_id: 1, method: 'cash', tendered: 20, tip: 0 });
     expect(String(payment!.values!['id'])).toMatch(/^[0-9a-f-]{36}$/);
     expect(closed).toMatchObject({ op: 'update', ref: 'tickets' });
-    expect(closed!.values).toMatchObject({ status: 'paid', tax: expect.any(Number), total: expect.any(Number) });
+    // No figure is sent with the close: the tax and the total are Adminium's to decide.
+    expect(closed!.values).toMatchObject({ status: 'paid', tip: 0 });
+    expect(Object.keys(closed!.values!).sort()).toEqual(['closed_at', 'status', 'tip']);
   });
 
   it('keeps the ticket open when the payment is refused', async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { SessionPortError, type SessionTransport } from './sessionSource';
-import { dbKey, memorySink, sessionSink, type SinkError } from './sink';
+import { dbKey, kindOfStatus, memorySink, sessionSink, type SinkError } from './sink';
 
 const MAP = { tickets: 'pos_tickets', ticketItems: 'pos_ticket_items', lineOptions: 'pos_ticket_item_modifiers' };
 
@@ -69,10 +69,18 @@ describe('the session sink', () => {
     const kinds: string[] = [];
     for (const answer of [
       fail(401, 'UNAUTHENTICATED'),
+      // A rule said no: the ticket cannot close, the card cannot pay, the row is locked.
+      fail(409, 'STATE_MOVE_REFUSED', { requires: 'due' }),
+      fail(409, 'RECORD_LOCKED'),
       fail(409, 'CONFLICT'),
       // The booking guard's 409 is a refusal: the slot is full, nothing was saved.
       fail(409, 'CAPACITY_FULL'),
+      // Asked to try again: kept, and sent again.
+      fail(409, 'WRITE_CONFLICT'),
+      fail(409, 'CAPACITY_BUSY'),
       fail(422, 'VALIDATION_FAILED', { fields: { qty: { code: 'MIN' } } }),
+      fail(403, 'COLUMN_FORBIDDEN'),
+      fail(429, 'RATE_LIMITED'),
       fail(503, 'UNAVAILABLE'),
       () => {
         throw new TypeError('Failed to fetch');
@@ -82,7 +90,27 @@ describe('the session sink', () => {
       const error = (await sessionSink(t, MAP).insert('tickets', {}).catch((e: unknown) => e)) as SinkError;
       kinds.push(`${error.kind}${error.field === null ? '' : `:${error.field}`}`);
     }
-    expect(kinds).toEqual(['signed-out', 'saved', 'refused', 'refused:qty', 'offline', 'offline']);
+    expect(kinds).toEqual(['signed-out', 'refused', 'refused', 'refused', 'refused', 'offline', 'offline', 'refused:qty', 'refused', 'refused', 'offline', 'offline']);
+  });
+
+  it('takes "that key is there already" as saved only for a row the till keyed itself', async () => {
+    const taken = fail(409, 'UNIQUE_VIOLATION');
+    const keyed = (await sessionSink(transport([taken]).t, MAP).insert('tickets', { id: 'a-uuid' }).catch((e: unknown) => e)) as SinkError;
+    const unkeyed = (await sessionSink(transport([taken]).t, MAP).insert('tickets', { number: '7' }).catch((e: unknown) => e)) as SinkError;
+    const patched = (await sessionSink(transport([taken]).t, MAP).update('tickets', 4, { number: '7' }).catch((e: unknown) => e)) as SinkError;
+    expect([keyed.kind, unkeyed.kind, patched.kind]).toEqual(['saved', 'refused', 'refused']);
+  });
+
+  it('never reads a refused close as saved: the reason travels with the refusal', async () => {
+    const { t } = transport([fail(409, 'ADJUST_REFUSED', { reason: 'over-ceiling', max: 10 })]);
+    const error = (await sessionSink(t, MAP).update('tickets', 4, { discount_kind: 'percent' }).catch((e: unknown) => e)) as SinkError;
+    expect([error.kind, error.code, error.reason, error.details['max']]).toEqual(['refused', 'ADJUST_REFUSED', 'over-ceiling', 10]);
+    expect(kindOfStatus(409, 'STATE_MOVE_REFUSED')).toBe('refused');
+    expect(kindOfStatus(409, 'UNIQUE_VIOLATION', true)).toBe('saved');
+    expect(kindOfStatus(409, 'UNIQUE_VIOLATION')).toBe('refused');
+    expect(kindOfStatus(0)).toBe('offline');
+    expect(kindOfStatus(500)).toBe('offline');
+    expect(kindOfStatus(404)).toBe('refused');
   });
 
   it('turns the till’s text keys back into numbers', () => {

@@ -10,6 +10,7 @@ import { refreshDataSource, setDataSource } from './data/source';
 import { clientFromEnv, loadSnapshot, readReservation, snapshotFailure, snapshotSource } from './data/adminiumSource';
 import { createSessionTransport } from './data/sessionSource';
 import { sessionSink } from './data/sink';
+import { addOnTables, sessionDesk, setDesk } from './data/desk';
 import { setSink, WRITE_TABLES } from './state/writes';
 import { initialsOf, readSessionOperator, SESSION_STAFF_ID } from './data/sessionOperator';
 import { realTables } from './data/tableOfRef';
@@ -322,11 +323,24 @@ async function boot(): Promise<void> {
     // A shop set up as retail opens in retail: the store's default is restaurant.
     openInBusinessType(staffConfig?.settings, usePos.getState());
     // What the add-ons attached to this app switch on: an emailed receipt, shelf labels.
-    usePos.setState({ features: featuresOf(staffConfig?.addOns) });
+    usePos.setState({
+      features: featuresOf(staffConfig?.addOns),
+      // What this person may do, and whether the till's gift cards have moved to Offers.
+      access: staffConfig?.access ?? null,
+      cardsMoved: snap.cardsMoved,
+    });
     // Every action at the till is saved as the signed-in staff member, from here on.
     if (transport !== null) {
       const tables = { ...WRITE_TABLES, ...(staffConfig?.tables ?? {}) };
       setSink(sessionSink(transport, tables));
+      /*
+       * The doors that are never queued: a ticket's figures as Adminium decided
+       * them, a dry run, a code, a gift card. An add-on's tables are reached by
+       * the names the staff config stores them under.
+       */
+      setDesk(sessionDesk(transport, { ...tables, ...addOnTables(staffConfig?.addOns) }));
+      usePos.setState({ connected: true });
+      void usePos.getState().refreshTicket();
       // Label sheets are drawn by Adminium, asked for through the same session.
       const { setDocuments, portDocuments } = await import('./data/documents');
       setDocuments(portDocuments(transport));

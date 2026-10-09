@@ -122,7 +122,7 @@ describe('paying with a card', () => {
     s().payWithGiftCard();
     await settled();
     expect(s().view).toBe('payment');
-    expect(s().splits).toEqual([{ method: 'gift_card', amount: 5, reference: 'GC-48219930' }]);
+    expect(s().splits).toEqual([{ id: expect.any(String), method: 'gift_card', amount: 5, reference: 'GC-48219930' }]);
     expect(s().cards['gc-1']!.balance).toBe(0);
   });
 

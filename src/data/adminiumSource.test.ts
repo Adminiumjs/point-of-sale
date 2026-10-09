@@ -371,6 +371,8 @@ describe('closed sales, read when Refund asks', () => {
         tax: 0.37,
         total: 4.87,
         refunded: 1.2,
+        // Payment by payment: a refund names the one it goes back to.
+        payments: [{ id: 'p1', method: 'card', amount: 4.5 }],
       },
     ]);
     // From the venue's midnight, paid only.

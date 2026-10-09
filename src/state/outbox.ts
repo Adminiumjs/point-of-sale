@@ -72,6 +72,8 @@ export interface Outbox {
    * the server may announce it before the till knows its key.
    */
   unanswered(ref: string): boolean;
+  /** How many writes of one queue (a ticket's) are not saved yet. */
+  pendingIn(queue: string): number;
   state(): OutboxState;
   subscribe(listener: (state: OutboxState) => void): () => void;
   /** Start again after signing in. */
@@ -266,6 +268,7 @@ export function createOutbox(sink: DataSink, opts: OutboxOptions = {}): Outbox {
       [...queues.values()].some((list) =>
         list.some(({ op }) => op.kind === 'insert' && (op.ref === ref || (op.children ?? []).some((child) => child.ref === ref))),
       ),
+    pendingIn: (queue) => queues.get(queue)?.length ?? 0,
     state: snapshot,
     subscribe(listener) {
       listeners.add(listener);

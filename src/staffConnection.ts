@@ -121,6 +121,8 @@ export interface StaffConfig {
 export interface AttachedAddOn {
   version: string | null;
   settings: Record<string, unknown>;
+  /** The add-on's tables this app may reach: short name → the name it is stored under. */
+  tables?: Record<string, string>;
 }
 
 /** `addOns` as the server sent it: every key with an object, nothing else. */
@@ -129,7 +131,13 @@ function addOnsOf(value: unknown): Record<string, AttachedAddOn> {
   for (const [key, entry] of Object.entries(record(value))) {
     if (entry === null || typeof entry !== "object" || Array.isArray(entry)) continue;
     const e = entry as Record<string, unknown>;
-    out[key] = { version: text(e.version), settings: record(e.settings) };
+    out[key] = {
+      version: text(e.version),
+      settings: record(e.settings),
+      ...(e.tables === undefined
+        ? {}
+        : { tables: Object.fromEntries(Object.entries(record(e.tables)).filter((entry): entry is [string, string] => typeof entry[1] === "string")) }),
+    };
   }
   return out;
 }

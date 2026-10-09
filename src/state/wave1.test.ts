@@ -150,7 +150,10 @@ describe('Refund', () => {
     await done;
     const [call] = sink.calls;
     expect(call).toMatchObject({ op: 'insert', ref: 'refunds' });
-    expect(call!.values).toMatchObject({ ticket_id: '77', method: 'cash', amount: 25.98, tax: 1.98 });
+    expect(call!.values).toMatchObject({ ticket_id: '77', method: 'cash' });
+    // No money is sent: Adminium works a refund out from its lines.
+    expect(Object.keys(call!.values!)).not.toContain('amount');
+    expect(Object.keys(call!.values!)).not.toContain('tax');
     expect(call!.children).toEqual([{ ref: 'refund_items', via: 'refund_id', rows: [{ id: expect.any(String), ticket_item_id: '701', qty: 2 }] }]);
     expect(s().refundDone).toEqual({ total: 25.98, count: 1 });
     // The shift's takings and the drawer both know.

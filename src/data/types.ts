@@ -89,7 +89,56 @@ export interface LineItem {
    * menu item, no tax and no discount, and never goes to the kitchen; the
    * card is credited when the ticket is paid.
    */
-  giftCard?: { cardId: string; code: string; amount: number };
+  giftCard?: {
+    cardId: string;
+    code: string;
+    amount: number;
+    /** A card kept by Offers & gift cards: the line names it by `card_id`, and Adminium loads it when the ticket is paid. */
+    offers?: true;
+  };
+}
+/** One reduction of a ticket (a code, an offer, a staff discount), as Adminium worked it out. */
+export interface AppliedLine {
+  name: string;
+  /** `code`, `voucher`, `offer`, `staff`… — Offers' own word for where it came from. */
+  kind: string;
+  amount: number;
+}
+/**
+ * A ticket's figures as ADMINIUM decided them — the only figures a screen
+ * shows as fact. Kept on the ticket from its last read, and dropped the moment
+ * the till changes the ticket again: until the next answer is in, the screens
+ * show the till's own estimate, labelled as one.
+ */
+export interface ServerFigures {
+  subtotal: number;
+  /** The goods: what a reduction and the tax are worked out on. */
+  goods: number;
+  /** The whole reduction: codes, offers and the staff discount. */
+  discount: number;
+  net: number;
+  tax: number;
+  total: number;
+  /** What is still owing (the tip is none of it). */
+  due: number;
+  /** The reductions, one line each. */
+  applied: AppliedLine[];
+  /** When it was read: a millisecond stamp. */
+  at: number;
+}
+/** A code typed on a ticket (`ticket_codes`), so it can be taken off again. */
+export interface TicketCode {
+  id: string;
+  typed: string;
+}
+/**
+ * A gift card looked up for this ticket and kept for Payment. Its code lives
+ * here, in memory, until the ticket is paid or left — it is never stored.
+ */
+export interface KeptCard {
+  code: string;
+  last4: string;
+  balance: number | null;
 }
 
 export interface Ticket {
@@ -111,6 +160,14 @@ export interface Ticket {
    * empty here — the register words it in the till's language when it loads.
    */
   discount?: Discount;
+  /** Adminium's figures for it, while nothing the till changed is still unsaved. */
+  server?: ServerFigures;
+  /** Opened before tickets kept a tax rate of their own: it can never be paid, only moved to a new ticket. */
+  rateless?: boolean;
+  /** The codes typed on it (Offers). */
+  codes?: TicketCode[];
+  /** A gift card looked up for it, used at Pay. */
+  card?: KeptCard;
 }
 
 export interface HeldTicket {
@@ -154,8 +211,12 @@ export interface Discount {
 export type PayMethod = 'cash' | 'card' | 'qr' | 'gift_card';
 
 export interface Split {
+  /** The payment's own key, made on the device: a refund names it. */
+  id?: string;
   method: PayMethod;
   amount: number;
+  /** What a gift card held after it paid, as Adminium answered. */
+  cardLeft?: number;
   /** A gift card's code, when it paid (`payments.reference`). */
   reference?: string;
   tendered?: number;
@@ -198,6 +259,17 @@ export interface Sale {
   receipt?: { via: ReceiptVia; to: string | null };
   /** The addresses its receipt was emailed to from the till, in order. */
   emailedTo?: string[];
+  /** The reductions Adminium applied, one row each (Offers). */
+  reductions?: AppliedLine[];
+  /** True while the figures are the till's own estimate (the demo's always are). */
+  estimate?: boolean;
+  /** What each gift card that paid has left. */
+  cardBalances?: { last4: string; left: number }[];
+  /**
+   * Cards sold on this ticket, with their whole code: shown and printed this
+   * once. Adminium never reads a code back, and the till keeps it nowhere else.
+   */
+  newCards?: { code: string; amount: number }[];
 }
 
 export type KdsStatus = 'new' | 'cooking' | 'ready';
@@ -271,7 +343,19 @@ export interface PastSale {
   customerId?: string;
   /** The gift card that paid for it, by code: a refund can go back onto it. */
   giftCardCode?: string;
+  /** How it was paid, payment by payment: a refund goes back to one of them. */
+  payments?: PastPayment[];
 }
+/** One payment of a closed sale. */
+export interface PastPayment {
+  id: string;
+  method: PayMethod;
+  amount: number;
+  /** A gift card's last four, when one paid. */
+  last4?: string;
+}
+/** Where a returned item goes (Inventory): back on the shelf, written off, or nowhere. */
+export type BackTo = 'shelf' | 'damaged' | 'none';
 
 export interface Extra {
   v: string;

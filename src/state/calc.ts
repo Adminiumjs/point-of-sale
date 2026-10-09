@@ -4,13 +4,13 @@
 
 import { seedTicket } from '../data/demo';
 import { source } from '../data/source';
-import type { Category, Discount, LineItem, MenuItem, ModifierGroup, Sale, Split, ServiceMode } from '../data/types';
+import type { Category, Discount, LineItem, MenuItem, ModifierGroup, Sale, ServerFigures, Split, ServiceMode } from '../data/types';
 import type { MessageKey } from '../i18n';
 import { money as fmtMoney, number as fmtNumber, t, tOr } from '../i18n/ambient';
 
 /** The slice of store state the pricing helpers read. */
 export interface PricingState {
-  ticket: { items: LineItem[]; table: string | null; seats: number };
+  ticket: { items: LineItem[]; table: string | null; seats: number; server?: ServerFigures };
   discount: Discount | null;
   tip: number | 'c';
   tipCustom: string;
@@ -137,7 +137,12 @@ export const goodsOf = (items: LineItem[]): LineItem[] => (items || []).filter((
 
 /** A line's name as the ticket, the receipt and the kitchen say it. */
 export const lineName = (li: LineItem): string =>
-  li.giftCard !== undefined ? t('gift.lineName', { code: li.giftCard.code }) : (itemById(li.id)?.name ?? li.id);
+  li.giftCard === undefined
+    ? (itemById(li.id)?.name ?? li.id)
+    : // A card kept by Offers is known by its last four: its whole code is never the till's to keep.
+      li.giftCard.offers === true
+      ? t('cards.kept', { last4: li.giftCard.code })
+      : t('gift.lineName', { code: li.giftCard.code });
 
 /**
  * Round to whole cents.
@@ -214,11 +219,21 @@ const estimateOf = (s: PricingState): Estimate =>
     source.taxRate(),
   );
 
-export const subtotal = (s: PricingState): number => estimateOf(s).subtotal;
-export const discountAmt = (s: PricingState): number => estimateOf(s).discount;
+/**
+ * The figures a screen shows: ADMINIUM's while the ticket holds them, the
+ * till's estimate otherwise. Nothing here adds money up for the server's side
+ * — its figures are passed through as they came.
+ */
+const figures = (s: PricingState): Estimate => s.ticket.server ?? estimateOf(s);
+
+/** True while the figures shown are the till's own estimate, not yet Adminium's answer. */
+export const isEstimate = (s: PricingState): boolean => s.ticket.server === undefined;
+
+export const subtotal = (s: PricingState): number => figures(s).subtotal;
+export const discountAmt = (s: PricingState): number => figures(s).discount;
 /** The taxable/tippable base: the goods less the rounded reduction. A gift card load is none of it. */
-export const netSub = (s: PricingState): number => estimateOf(s).net;
-export const tax = (s: PricingState): number => estimateOf(s).tax;
+export const netSub = (s: PricingState): number => figures(s).net;
+export const tax = (s: PricingState): number => figures(s).tax;
 
 /** What tip preset `i` is worth on this ticket — the one authority for the
  * amount, so the preset buttons cannot quote a figure the total disagrees with. */
@@ -230,7 +245,7 @@ export const tipAmt = (s: PricingState): number => {
 };
 
 /** Goods + tax, no tip — what the register shows before the payment screen. */
-export const regTotal = (s: PricingState): number => estimateOf(s).total;
+export const regTotal = (s: PricingState): number => figures(s).total;
 
 /**
  * Goods + tax for a bare list of lines — the held tray and the move sheet,
@@ -250,7 +265,13 @@ export const linesTotal = (items: LineItem[]): number =>
   ).total;
 export const total = (s: PricingState): number => round2(regTotal(s) + tipAmt(s));
 export const paid = (s: PricingState): number => s.splits.reduce((a, x) => a + x.amount, 0);
-export const remaining = (s: PricingState): number => Math.max(0, total(s) - paid(s));
+/**
+ * What is left to take. With Adminium's figures it is what the server says is
+ * owing, and the tip the guest chose on top (a tip is no part of what is
+ * owing, and rides on the payment that settles the ticket).
+ */
+export const remaining = (s: PricingState): number =>
+  s.ticket.server === undefined ? Math.max(0, total(s) - paid(s)) : Math.max(0, round2(s.ticket.server.due + tipAmt(s)));
 
 // Even-split with last-payer remainder absorption; fraction split absorbs to
 // the remaining balance. Ported exactly from the comp's chargeTarget().

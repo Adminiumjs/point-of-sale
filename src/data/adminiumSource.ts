@@ -176,6 +176,8 @@ interface WireTicketItem {
   reward_id: Key | null;
   /** The gift card this line puts money on (wave 2). */
   gift_card_id: Key | null;
+  /** A card kept by Offers & gift cards that this line sells or loads (0.3.0). */
+  card_id?: Key | null;
 }
 interface WirePayment {
   id: Key;
@@ -273,6 +275,8 @@ export interface Snapshot {
   /** The venue's address, phone and receipt footer. */
   venue: { address: string | null; phone: string | null; footer: string | null };
   taxRate: number | null;
+  /** The till's gift cards have been brought into Offers & gift cards (`settings.cards_moved`). */
+  cardsMoved: boolean;
   tipPresets: number[] | null;
   rules: BookingRules | null;
   staff: Staff[];
@@ -534,6 +538,8 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
           ...(row.gift_card_id === null || row.gift_card_id === undefined
             ? {}
             : { giftCard: { cardId: key(row.gift_card_id), code: codeOfCard.get(key(row.gift_card_id)) ?? '', amount: num(row.unit_price) } }),
+          // Offers' card: its code is never read back, so the line shows no digits of it after a reload.
+          ...(row.card_id === null || row.card_id === undefined ? {} : { giftCard: { cardId: key(row.card_id), code: '', amount: num(row.unit_price), offers: true as const } }),
         }));
     const numberOf = (value: string | null, id: Key): number => {
       const match = value === null ? null : /(\d+)/.exec(value);
@@ -697,6 +703,7 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
       brand: settings?.venue_name ?? null,
       venue: { address: settings?.address ?? null, phone: settings?.phone ?? null, footer: settings?.receipt_footer ?? null },
       taxRate: settings === undefined ? null : num(settings.tax_rate_bp) / 10_000,
+      cardsMoved: settings !== undefined && yes((settings as unknown as { cards_moved?: boolean | number | null }).cards_moved ?? false),
       tipPresets: tipPresets.length === 0 ? null : tipPresets.map((p) => p / 100),
       rules,
       staff,
