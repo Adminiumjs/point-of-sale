@@ -164,6 +164,38 @@ describe.skipIf(why !== null)(`a ticket's cents on a built Adminium${why === nul
         expect(early.status).toBe(409);
       }, 60_000);
 
+      it('with no add-on, nothing Adminium or an add-on decides is a cashier’s to type — on a new row or a change — and the till’s own discount still works', async () => {
+        const cashier = s.as(await s.member('cashier', 'Lena Fischer'));
+        /** Refused outright, or saved with the typed value dropped: never kept. */
+        const never = async (reply: Awaited<ReturnType<typeof cashier.post>>, column: string, typed: number | string | boolean, ref: string) => {
+          if (reply.status >= 400) return;
+          const kept = (await s.one(ref, reply.body.data['id']))[column];
+          expect([ref, column, kept === typed || Number(kept) === Number(typed)], JSON.stringify(reply.body.data).slice(0, 200)).toEqual([ref, column, false]);
+        };
+        const ticket = await cashier.insert('tickets', { guests: 1, status: 'open', staff_id: person['id'] });
+        const line = await cashier.insert('ticket_items', { ticket_id: ticket['id'], name: 'Flat White', qty: 2, unit_price: 5, seat: 1 });
+        for (const [column, typed] of [['discount', 7.77], ['discount_by', 'someone'], ['customer_proved', true], ['paid', 7.77], ['due', 7.77], ['goods', 7.77], ['net', 7.77], ['own_discount', 7.77], ['tax', 7.77], ['total', 7.77], ['subtotal', 7.77], ['charged', 7.77]] as const) {
+          await never(await cashier.post('tickets', { guests: 1, status: 'open', [column]: typed }), column, typed, 'tickets');
+          await never(await cashier.patch('tickets', ticket['id'], { [column]: typed }), column, typed, 'tickets');
+        }
+        for (const [column, typed] of [['discount', 1.11], ['goods_amount', 1.11], ['load_ref', 1], ['category_id', 999]] as const) {
+          await never(await cashier.post('ticket_items', { ticket_id: ticket['id'], name: 'Flat White', qty: 1, unit_price: 5, seat: 1, voided_at: new Date().toISOString(), [column]: typed }), column, typed, 'ticket_items');
+          await never(await cashier.patch('ticket_items', line['id'], { [column]: typed }), column, typed, 'ticket_items');
+        }
+        for (const [column, typed] of [['card_amount', 3.33], ['card_balance_after', 3.33], ['took', 3.33], ['refunded', 3.33], ['refundable', 3.33], ['card_id', 1], ['card_last4', 'ABCD']] as const) {
+          await never(await cashier.post('payments', { id: randomUUID(), ticket_id: ticket['id'], method: 'cash', amount: 0, [column]: typed }), column, typed, 'payments');
+        }
+        // The ticket is exactly what its two coffees come to.
+        const now = await s.one('tickets', ticket['id']);
+        expect(figures(now)).toEqual({ subtotal: 1000, discount: 0, net: 1000, tax: 83, total: 1083 });
+        expect([now['discount'] ?? null, cents(now['paid'])]).toEqual([null, 0]);
+        // The till's own ticket discount, as 0.2 had it: a cashier gives ten percent, with the reason as text.
+        const given = await cashier.update('tickets', ticket['id'], { discount_kind: 'percent', discount_value: 10, discount_reason: 'Regular' });
+        expect(figures(given)).toEqual({ subtotal: 1000, discount: 100, net: 900, tax: 74, total: 974 });
+        // A link into an add-on that is not there is not a cashier's to fill.
+        await never(await cashier.patch('tickets', ticket['id'], { discount_reason_id: 1 }), 'discount_reason_id', 1, 'tickets');
+      }, 180_000);
+
       it('a cashier cannot set a ticket’s tax rate, and a ticket takes the rate of the day it was opened', async () => {
         const cashier = s.as(await s.member('cashier', 'Sam Okafor'));
         const refused = await cashier.post('tickets', { guests: 1, status: 'open', tax_rate_bp: 0 });

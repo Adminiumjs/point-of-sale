@@ -9565,7 +9565,7 @@
       },
       {
         "key": "offers",
-        "range": ">=1.0.9",
+        "range": ">=1.0.10",
         "reason": {
           "en-US": "Take discount codes, give staff discounts with a reason, and sell and accept gift cards.",
           "de-DE": "Rabattcodes annehmen, Personalrabatte mit Grund geben und Gutscheinkarten verkaufen und annehmen.",
