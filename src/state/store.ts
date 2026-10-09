@@ -189,6 +189,8 @@ export interface PosState {
   codeBusy: boolean;
   /** A code that needs a named customer: asked for on the ticket until one is added. */
   codeAsk: { typed: string; noEmail: boolean } | null;
+  /** What Offers said of the last code typed, shown under the field: taken (and as what), or why not. */
+  codeSaid: { ok: boolean; words: string } | null;
 
   // gift cards kept by Offers
   /** What a gift card would cover on this ticket, as the dry run answered. */
@@ -215,7 +217,7 @@ export interface PosState {
   };
 
   /** Inventory's stock words, by menu item. */
-  stock: Record<string, { state: 'in' | 'low' | 'out'; exact: number | null }>;
+  stock: Record<string, { state: 'in' | 'low' | 'out'; exact: number | null; /** The level one more sale would leave, as Inventory says it. */ after?: number | null }>;
 
   /** The floor as it stands: which tables are free, and since when one is not. */
   floor: TableInfo[];
@@ -373,6 +375,7 @@ export interface PosState {
   applyCode: (typed: string) => Promise<void>;
   removeCode: (id: string) => Promise<void>;
   dismissCodeAsk: () => void;
+  clearCodeSaid: () => void;
   /** Forget the gift card kept for Payment. */
   forgetCard: () => void;
   /** Ask what a gift card would cover on this ticket. */
@@ -554,6 +557,10 @@ const num = (value: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 const blank = (value: unknown): boolean => value === null || value === undefined || value === '';
+
+/** What kind of reduction a line is, in words: Offers' own word for where it came from, said plainly. */
+export const kindWord = (kind: string): string =>
+  t(kind === 'staff' ? 'offers.kind.staff' : kind === 'code' ? 'offers.kind.code' : kind === 'voucher' ? 'offers.kind.voucher' : 'offers.kind.offer');
 
 /**
  * A reduction's name: text, or text by locale. An engine that keeps JSON as
@@ -1462,6 +1469,7 @@ export const usePos = create<PosState>()((set, get) => {
     reasons: null,
     codeBusy: false,
     codeAsk: null,
+    codeSaid: null,
     cardPay: null,
     cardPayBusy: false,
     cardPayWords: null,
@@ -2074,12 +2082,14 @@ export const usePos = create<PosState>()((set, get) => {
         get().showToast(t('toast.addItemsFirst'));
         return;
       }
-      set({ codeBusy: true });
+      // Said under the field, tied to it — not in a toast that is gone before it is read.
+      const say = (ok: boolean, words: string) => set({ codeSaid: { ok, words } });
+      set({ codeBusy: true, codeSaid: null });
       try {
         const saved = await savedTicket();
         // Never from the till's memory, never queued: a code needs Offers' answer.
         if (saved === null) {
-          get().showToast(t('offers.applyOffline'), 'error');
+          say(false, t('offers.applyOffline'));
           return;
         }
         if (cardState(get()) === 3) {
@@ -2087,14 +2097,18 @@ export const usePos = create<PosState>()((set, get) => {
           if (found !== null && found.found && found.kind === 'gift-card') {
             // A gift card is money, not a reduction: it is kept for Payment, its code in memory only.
             const balance = found.record?.['balance'];
-            set((st) => (st.ticket.rid === saved.rid ? { ticket: { ...st.ticket, card: { code: typed, last4: found.last4 ?? typed.slice(-4), balance: blank(balance) ? null : num(balance) } }, codeAsk: null } : {}));
+            const last4 = found.last4 ?? typed.slice(-4);
+            set((st) => (st.ticket.rid === saved.rid ? { ticket: { ...st.ticket, card: { code: typed, last4, balance: blank(balance) ? null : num(balance) } }, codeAsk: null } : {}));
+            say(true, `${t('offers.kind.card')} · ${t('cards.keptAtPay')}`);
             return;
           }
         }
         const reply = await saved.d.create('ticket_codes', { ticket_id: dbKey(saved.id), typed });
         set({ codeAsk: null });
         const better = (reply.told ?? []).find((one) => one.note === 'better-offer-applied');
-        get().showToast(better === undefined ? t('code.applied', { code: typed }) : t('code.better', { name: nameOf(better.name) }), 'success');
+        const mine = (reply.applied ?? []).filter((one) => one.typed === true);
+        const kind = reply.data['voucher_id'] !== null && reply.data['voucher_id'] !== undefined ? 'voucher' : (mine[0]?.kind ?? 'code');
+        say(true, better === undefined ? `${kindWord(kind)} · ${t('code.applied', { code: typed })}` : t('code.better', { name: nameOf(better.name) }));
         await refreshTicket(saved.rid);
       } catch (raw) {
         const error = asSinkError(raw);
@@ -2103,7 +2117,7 @@ export const usePos = create<PosState>()((set, get) => {
           set({ codeAsk: { typed, noEmail: get().ticket.customerId !== undefined } });
           return;
         }
-        get().showToast(codeRefusal(error, typed), 'error');
+        say(false, codeRefusal(error, typed));
       } finally {
         set({ codeBusy: false });
       }
@@ -2123,6 +2137,9 @@ export const usePos = create<PosState>()((set, get) => {
       }
     },
     dismissCodeAsk: () => set({ codeAsk: null }),
+    clearCodeSaid: () => {
+      if (get().codeSaid !== null) set({ codeSaid: null });
+    },
     forgetCard: () =>
       set((st) => {
         const { card: _gone, ...rest } = st.ticket;
@@ -2313,7 +2330,7 @@ export const usePos = create<PosState>()((set, get) => {
       if (d === null || !get().features.stock || ids.length === 0) return;
       try {
         const words = await d.stockWords(ids.filter((id) => /^[\w-]+$/.test(id)));
-        set((st) => ({ stock: { ...st.stock, ...Object.fromEntries(words.map((word) => [word.id, { state: word.state, exact: blank(word.exact) ? null : num(word.exact) }])) } }));
+        set((st) => ({ stock: { ...st.stock, ...Object.fromEntries(words.map((word) => [word.id, { state: word.state, exact: blank(word.exact) ? null : num(word.exact), after: blank(word.after) ? null : num(word.after) }])) } }));
       } catch {
         /* No words: the tiles show none, and the sale goes through as ever. */
       }

@@ -14,6 +14,8 @@ export function Toast() {
   const icon = toast.kind === 'error' ? 'x-circle' : toast.kind === 'success' ? 'check-circle-2' : 'bell';
   return (
     <div
+      // Read out when it appears: a refusal at once, anything else when the reader is free.
+      role={toast.kind === 'error' ? 'alert' : 'status'}
       style={css(
         'position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:260;display:flex;align-items:center;gap:10px;padding:14px 20px;border-radius:14px;font-size:15px;font-weight:800;box-shadow:0 12px 34px rgba(10,10,20,.3);animation:pos-toast .24s cubic-bezier(.2,.8,.2,1);' +
           tone,

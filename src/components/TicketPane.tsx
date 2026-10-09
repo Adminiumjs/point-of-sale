@@ -1,14 +1,16 @@
-import { useState } from 'react';
-import { cardState, isOffline, partPaidBefore, showsEstimate, usePos } from '../state/store';
+import { useEffect, useState } from 'react';
+import { isOffline, kindWord, partPaidBefore, showsEstimate, usePos } from '../state/store';
 import type { LineItem } from '../data/types';
 import { discountAmt, itemById, lineName, lineTotal, modLabel, money, payDue, regTotal, subtotal, tableName, tax, taxLabel } from '../state/calc';
 import { useI18n, useT, type MessageKey } from '../i18n';
 import { pointsLeft } from '../state/points';
 import { Icon } from './Icon';
-import { ReductionRows, TotalLabel, WhyOff } from './Figures';
+import { TotalLabel, WhyOff } from './Figures';
 import { css } from './css';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
+/** The × on a reduction: a 44 px target around a small mark. */
+const removeBtn = 'width:44px;height:36px;border-radius:9px;border:none;background:transparent;color:var(--fg-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;';
 
 interface Group {
   header: boolean;
@@ -38,6 +40,12 @@ export function TicketPane() {
   const canPay = canAct && !rateless;
   const [code, setCode] = useState('');
   const kept = s.ticket.card;
+  // What Offers said of a code belongs to the ticket it was typed on.
+  const clearSaid = s.clearCodeSaid;
+  const onTicket = s.ticket.rid;
+  useEffect(() => clearSaid, [onTicket, clearSaid]);
+  const said = s.codeSaid;
+  const stockOf = (li: LineItem) => (s.features.stock && s.connected && li.giftCard === undefined ? s.stock[li.id] : undefined);
   // A gift card load never goes to the kitchen, so Send does not count it.
   const unsent = items.filter((x) => !x.sent && x.giftCard === undefined).reduce((a, x) => a + x.qty, 0);
 
@@ -179,16 +187,23 @@ export function TicketPane() {
               const ml = modLabel(li);
               return (
                 <div key={li.key} style={css('display:flex;align-items:flex-start;gap:11px;padding:12px 10px;border-radius:15px;margin-bottom:2px;' + (li.sent ? '' : 'background:var(--surface-2);'))}>
-                  <div style={css('display:flex;align-items:center;gap:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:3px;flex-shrink:0;')}>
-                    <button className="pos-press" onClick={() => s.dec(li.key)} aria-label={t('ticket.decrease')} style={css('width:40px;height:40px;border-radius:9px;border:none;background:transparent;color:var(--fg);display:flex;align-items:center;justify-content:center;cursor:pointer;')}>
-                      <Icon name={li.qty <= 1 ? 'trash-2' : 'minus'} size={19} />
-                    </button>
-                    <span style={css('min-width:26px;text-align:center;font-size:17px;font-weight:800;' + MONO)}>{li.qty}</span>
-                    {/* A reward is one of it: points buy one, and another is another reward. */}
-                    <button className="pos-press" disabled={li.rewardId !== undefined || li.giftCard !== undefined} onClick={() => s.inc(li.key)} aria-label={t('ticket.increase')} style={css('width:40px;height:40px;border-radius:9px;border:none;background:transparent;color:' + (li.rewardId === undefined && li.giftCard === undefined ? 'var(--fg)' : 'var(--fg-subtle)') + ';display:flex;align-items:center;justify-content:center;cursor:' + (li.rewardId === undefined && li.giftCard === undefined ? 'pointer' : 'default') + ';')}>
-                      <Icon name="plus" size={19} />
-                    </button>
-                  </div>
+                  {li.giftCard?.offers === true ? (
+                    // Money for a card is one of it: no stepper, only the × that takes it off.
+                    <span aria-hidden="true" style={css('width:46px;height:46px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);')}>
+                      <Icon name="gift" size={22} />
+                    </span>
+                  ) : (
+                    <div style={css('display:flex;align-items:center;gap:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:3px;flex-shrink:0;')}>
+                      <button className="pos-press" onClick={() => s.dec(li.key)} aria-label={t('ticket.decrease')} style={css('width:40px;height:40px;border-radius:9px;border:none;background:transparent;color:var(--fg);display:flex;align-items:center;justify-content:center;cursor:pointer;')}>
+                        <Icon name={li.qty <= 1 ? 'trash-2' : 'minus'} size={19} />
+                      </button>
+                      <span style={css('min-width:26px;text-align:center;font-size:17px;font-weight:800;' + MONO)}>{li.qty}</span>
+                      {/* A reward is one of it: points buy one, and another is another reward. */}
+                      <button className="pos-press" disabled={li.rewardId !== undefined || li.giftCard !== undefined} onClick={() => s.inc(li.key)} aria-label={t('ticket.increase')} style={css('width:40px;height:40px;border-radius:9px;border:none;background:transparent;color:' + (li.rewardId === undefined && li.giftCard === undefined ? 'var(--fg)' : 'var(--fg-subtle)') + ';display:flex;align-items:center;justify-content:center;cursor:' + (li.rewardId === undefined && li.giftCard === undefined ? 'pointer' : 'default') + ';')}>
+                        <Icon name="plus" size={19} />
+                      </button>
+                    </div>
+                  )}
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('display:flex;align-items:center;gap:7px;')}>
                       <span style={css('font-size:15.5px;font-weight:700;letter-spacing:-.01em;')}>{lineName(li)}</span>
@@ -206,6 +221,13 @@ export function TicketPane() {
                       )}
                     </div>
                     {!!ml && <div style={css('font-size:12.5px;color:var(--fg-muted);margin-top:3px;')}>{ml}</div>}
+                    {/* Inventory counts none of it: the sale goes through, and the shelf wants counting. */}
+                    {stockOf(li)?.state === 'out' && (
+                      <div data-stock-note="" style={css('display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--fg-muted);margin-top:5px;')}>
+                        <Icon name="info" size={12} />
+                        {typeof stockOf(li)!.after === 'number' && li.qty === 1 ? t('stock.willShow', { n: number(stockOf(li)!.after!) }) : t('stock.countThis')}
+                      </div>
+                    )}
                     {/* Money for one of Offers' cards: on the card when this ticket is paid, not before. */}
                     {li.giftCard?.offers === true && (
                       <div data-card-line="" style={css('display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:3px 9px;border-radius:8px;margin-top:6px;')}>
@@ -231,6 +253,37 @@ export function TicketPane() {
             })}
           </div>
         ))}
+
+        {/* With Offers, what came off the ticket is Adminium's own lines — a code, an offer, the staff discount — under the items. */}
+        {offers && ((server?.applied.length ?? 0) > 0 || (s.ticket.codes ?? []).length > 0) && (
+          <div data-reductions="" style={css('margin-top:6px;padding:8px 10px 2px;border-top:1px dashed var(--border-strong);')}>
+            {(server?.applied ?? []).map((line, i) => (
+              <div key={line.kind + line.name + String(i)} style={css('display:flex;align-items:center;gap:10px;padding:6px 0;color:var(--pos);')}>
+                <span style={css('flex:1;min-width:0;')}>
+                  <span style={css('display:block;font-size:14.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{line.name}</span>
+                  <span style={css('display:block;font-size:12px;font-weight:600;color:var(--fg-muted);')}>{kindWord(line.kind)}</span>
+                </span>
+                <span dir="ltr" style={css('font-size:14.5px;font-weight:800;flex-shrink:0;' + MONO)}>−{money(line.amount)}</span>
+                {/* A staff discount comes off at a tap — by its giver, or by someone whose limit covers it: the server says. */}
+                {line.kind === 'staff' ? (
+                  <button className="pos-press" onClick={s.clearDiscount} title={t('offers.removeLine', { name: line.name })} aria-label={t('offers.removeLine', { name: line.name })} style={css(removeBtn)}>
+                    <Icon name="x" size={15} />
+                  </button>
+                ) : (
+                  <span aria-hidden="true" style={css('width:44px;flex-shrink:0;')} />
+                )}
+              </div>
+            ))}
+            {(s.ticket.codes ?? []).map((one) => (
+              <div key={one.id} style={css('display:flex;align-items:center;gap:10px;padding:2px 0;color:var(--fg-muted);')}>
+                <span style={css('flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + MONO)}>{t('code.typed', { code: one.typed })}</span>
+                <button className="pos-press" onClick={() => void s.removeCode(one.id)} title={t('offers.removeLine', { name: one.typed })} aria-label={t('offers.removeLine', { name: one.typed })} style={css(removeBtn)}>
+                  <Icon name="x" size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={css('flex-shrink:0;border-top:1px solid var(--border);padding:16px 18px;background:var(--surface);')}>
@@ -238,19 +291,6 @@ export function TicketPane() {
           <span style={css('color:var(--fg-muted);font-weight:600;')}>{t('common.subtotal')}</span>
           <span style={css(MONO + 'font-weight:600;')}>{money(subtotal(s))}</span>
         </div>
-        {/* With Offers, the reductions are Adminium's lines: a code, an offer, the staff discount. */}
-        {offers && server !== undefined && (
-          <ReductionRows lines={server.applied} onRemove={(line) => (line.kind === 'staff' ? s.clearDiscount : undefined)} />
-        )}
-        {offers &&
-          (s.ticket.codes ?? []).map((one) => (
-            <div key={one.id} style={css('display:flex;align-items:center;justify-content:space-between;font-size:13px;margin-bottom:8px;color:var(--fg-muted);')}>
-              <span style={css('font-weight:600;' + MONO)}>{t('code.typed', { code: one.typed })}</span>
-              <button className="pos-press" onClick={() => void s.removeCode(one.id)} aria-label={t('offers.removeLine', { name: one.typed })} style={css('width:22px;height:22px;border-radius:6px;border:none;background:transparent;color:var(--fg-subtle);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;')}>
-                <Icon name="x" size={13} />
-              </button>
-            </div>
-          ))}
         {kept !== undefined && (
           <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:8px;color:var(--accent);font-weight:700;')}>
             <span style={css('display:inline-flex;align-items:center;gap:6px;min-width:0;')}>
@@ -287,30 +327,40 @@ export function TicketPane() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              void s.applyCode(code).then(() => setCode(''));
+              void s.applyCode(code).then(() => {
+                // A refused code stays in the field to be put right; one that was taken has done its work.
+                if (usePos.getState().codeSaid?.ok !== false) setCode('');
+              });
             }}
             style={css('margin-top:12px;')}
           >
             <div style={css('display:flex;gap:8px;')}>
               <input
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(e) => {
+                  setCode(e.target.value);
+                  clearSaid();
+                }}
                 placeholder={t('offers.codeLabel')}
                 aria-label={t('offers.codeLabel')}
+                aria-describedby={said === null ? undefined : 'code-said'}
+                aria-invalid={said !== null && !said.ok ? true : undefined}
                 autoComplete="off"
                 disabled={off}
-                style={css('flex:1;min-width:0;height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--fg);font-size:14px;font-weight:600;outline:none;' + MONO)}
+                style={css('flex:1;min-width:0;height:44px;padding:0 12px;border-radius:12px;border:1px solid ' + (said !== null && !said.ok ? 'var(--danger)' : 'var(--border-strong)') + ';background:var(--surface-2);color:var(--fg);font-size:14px;font-weight:600;outline:none;' + MONO)}
               />
               <button type="submit" className="pos-press" disabled={off || s.codeBusy || code.trim() === ''} style={css('height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface);color:' + (off || code.trim() === '' ? 'var(--fg-subtle)' : 'var(--fg)') + ';font-family:inherit;font-size:14px;font-weight:800;cursor:' + (off ? 'not-allowed' : 'pointer') + ';')}>
                 {t(s.codeBusy ? 'offers.checking' : 'offers.apply')}
               </button>
-              {cardState(s) === 3 && (
-                <button type="button" className="pos-press" onClick={() => s.setCardSale(true)} title={t('cards.title')} aria-label={t('cards.title')} style={css('width:44px;height:44px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;')}>
-                  <Icon name="gift" size={18} />
-                </button>
-              )}
             </div>
             {off && <WhyOff>{t('offers.applyOffline')}</WhyOff>}
+            {/* What Offers answered, under the field it was typed in. */}
+            {!off && said !== null && (
+              <div id="code-said" role={said.ok ? 'status' : 'alert'} data-code-said={said.ok ? 'ok' : 'refused'} style={css('display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;margin-top:7px;color:' + (said.ok ? 'var(--pos)' : 'var(--danger)') + ';')}>
+                <Icon name={said.ok ? 'check' : 'x-circle'} size={14} />
+                {said.words}
+              </div>
+            )}
           </form>
         )}
         <div style={css('display:flex;gap:10px;margin-top:16px;')}>

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { usePos } from '../state/store';
+import { cardState, usePos } from '../state/store';
 import { createScanDetector } from '../state/scanner';
 import { source } from '../data/source';
 import { catName, groupsOf, itemById, money } from '../state/calc';
@@ -138,6 +138,18 @@ export function Register() {
         {/* Menu grid */}
         <div className="pos-scroll" style={css('flex:1;overflow-y:auto;padding:18px;')}>
           <div style={css('display:grid;grid-template-columns:repeat(auto-fill, minmax(' + (dense ? '120px' : '166px') + ', 1fr));gap:' + (dense ? '10px' : '14px') + ';')}>
+            {/* Gift cards kept by Offers are sold and topped up from here — the first tile, once the till's own cards have moved. */}
+            {cardState(s) === 3 && s.connected && q === '' && (
+              <button className="pos-tile" data-gift-tile="" onClick={() => s.setCardSale(true)} style={css('display:flex;flex-direction:column;text-align:start;padding:0;border:1px solid var(--border);border-radius:' + rad + ';background:var(--surface);cursor:pointer;overflow:hidden;box-shadow:var(--shadow);font-family:inherit;color:var(--fg);')}>
+                <span aria-hidden="true" style={css('height:' + imgH + ';display:flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);')}>
+                  <Icon name="gift" size={dense ? 26 : 34} />
+                </span>
+                <span style={css('display:block;padding:' + (dense ? '8px 10px 9px' : '11px 12px 12px') + ';text-align:start;')}>
+                  <span style={css('display:block;font-size:' + (dense ? '13px' : '15px') + ';font-weight:700;letter-spacing:-.01em;line-height:1.2;margin-bottom:' + (dense ? '3px' : '5px') + ';')}>{t('cards.title')}</span>
+                  <span style={css('display:block;font-size:' + (dense ? '12px' : '13px') + ';font-weight:600;color:var(--fg-muted);')}>{t('cards.tileSub')}</span>
+                </span>
+              </button>
+            )}
             {list.map((m) => {
               const sold = m.available === false || s.unavail.indexOf(m.id) >= 0;
               return (
@@ -164,7 +176,7 @@ export function Register() {
                         )}
                         {!sold && stockOn && <StockChip word={s.stock[m.id]} />}
                         {groupsOf(m.id).length > 0 && (
-                          <span title={t('register.hasOptions')} style={css('position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);')}>
+                          <span title={t('register.hasOptions')} style={css('position:absolute;top:8px;inset-inline-end:8px;width:24px;height:24px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);')}>
                             <Icon name="sliders-horizontal" size={13} color="var(--fg-muted)" />
                           </span>
                         )}
@@ -195,7 +207,8 @@ export function StockChip({ word }: { word: { state: 'in' | 'low' | 'out'; exact
   if (word.state === 'low' && word.exact === null) return null;
   const out = word.state === 'out';
   return (
-    <span data-stock={word.state} style={css('position:absolute;bottom:8px;inset-inline-start:8px;font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:var(--surface);color:' + (out ? 'var(--danger)' : 'var(--warn)') + ';border:1px solid var(--border);')}>
+    <span data-stock={word.state} style={css('position:absolute;top:8px;inset-inline-start:8px;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:var(--surface);color:' + (out ? 'var(--danger)' : 'var(--warn)') + ';border:1px solid var(--border);' + (out ? 'text-transform:uppercase;letter-spacing:.04em;' : ''))}>
+      {!out && <Icon name="package" size={12} />}
       {out ? t('stock.out') : t('stock.left', { n: word.exact ?? 0 })}
     </span>
   );

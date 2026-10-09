@@ -101,7 +101,7 @@ describe('the refund’s figures', () => {
 
 describe('a tile’s stock word', () => {
   it('says how many are left when it runs low, and "Out" at none', () => {
-    expect(html(<StockChip word={{ state: 'low', exact: 3 }} />)).toContain('>3 left<');
+    expect(html(<StockChip word={{ state: 'low', exact: 3 }} />)).toContain('Only 3 left<');
     expect(html(<StockChip word={{ state: 'out', exact: 0 }} />)).toContain('>Out<');
   });
   it('says nothing while there is plenty, or nobody counts it', () => {

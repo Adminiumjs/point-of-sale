@@ -216,12 +216,16 @@ export function Payment() {
               {s.splits.map((sp, i) => (
                 <div key={i} style={css('display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:13px;background:var(--surface);border:1px solid var(--border);')}>
                   <Icon name={sp.method === 'cash' ? 'banknote' : sp.method === 'card' ? 'credit-card' : sp.method === 'gift_card' ? 'gift' : 'qr-code'} size={17} color="var(--pos)" />
-                  <span style={css('font-size:14px;font-weight:700;')}>
+                  <span style={css('font-size:14px;font-weight:700;min-width:0;')}>
                     {sp.method === 'gift_card'
                       ? sp.cardLeft === undefined
                         ? t('gift.paidFrom', { code: sp.reference ?? '' })
                         : t('cards.kept', { last4: sp.reference ?? '' })
                       : t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : 'payment.qrPay')}
+                    {/* What one of Offers' cards held after it paid, as Adminium answered. */}
+                    {sp.method === 'gift_card' && sp.cardLeft !== undefined && (
+                      <span data-card-left="" style={css('display:block;font-size:12px;font-weight:600;color:var(--fg-muted);')}>{t('cards.leftOnIt', { amount: money(sp.cardLeft) })}</span>
+                    )}
                   </span>
                   <span style={css('margin-inline-start:auto;' + MONO + 'font-weight:700;')}>{money(sp.amount)}</span>
                   <Icon name="check" size={16} color="var(--pos)" />
@@ -424,7 +428,14 @@ export function Payment() {
                 {s.cardPay !== null && (
                   <div role="status" style={css('margin-top:16px;padding:22px;border-radius:18px;border:1.5px solid color-mix(in srgb, var(--pos) 45%, transparent);background:var(--surface);text-align:center;')}>
                     <Icon name="gift" size={34} color="var(--pos)" />
-                    <div style={css('font-size:20px;font-weight:800;margin-top:10px;')}>{t('cards.covers', { amount: money(s.cardPay.covers) })}</div>
+                    <div style={css('font-size:13.5px;font-weight:700;color:var(--fg-muted);margin-top:8px;')}>{t('cards.kept', { last4: s.cardPay.code.trim().slice(-4) })}</div>
+                    <div style={css('font-size:20px;font-weight:800;margin-top:4px;')}>{t('cards.covers', { amount: money(s.cardPay.covers) })}</div>
+                    {/* What is then still owing is Adminium's figure too, from the same dry run. */}
+                    {s.cardPay.due > 0 && (
+                      <div data-card-rest="" style={css('font-size:13.5px;color:var(--fg-muted);margin-top:6px;')}>
+                        {t('cards.leftToPay', { amount: money(s.cardPay.due) })} · {t('cards.coversRest')}
+                      </div>
+                    )}
                   </div>
                 )}
                 {s.cardPayWords !== null && (
