@@ -788,8 +788,8 @@ export const usePos = create<PosState>()((set, get) => {
       if (st.ticket.rid !== rid) return {};
       const fig = figuresOfRow(row, applied, st.features.offers);
       const open = row['status'] === undefined || row['status'] === 'open' || row['status'] === 'sent';
-      // A ticket from before tickets kept their own rate: it can never be paid.
-      const rateless = open && 'tax_rate_bp' in row && blank(row['tax_rate_bp']);
+      // A ticket from before tickets kept their own rate: it can never be paid. A row that does not say keeps what was known.
+      const rateless = 'tax_rate_bp' in row ? open && blank(row['tax_rate_bp']) : st.ticket.rateless === true;
       return {
         ticket: {
           ...withoutServer(st.ticket),
@@ -1235,10 +1235,14 @@ export const usePos = create<PosState>()((set, get) => {
       get().showToast(t('ticket.carryStrip'), 'error');
       return;
     }
-    void refreshTicket(rid).then(() => {
-      const due = get().ticket.rid === rid ? get().ticket.server?.due : undefined;
-      get().showToast(due === undefined ? t('toast.notSaved') : t('toast.stillOwing', { amount: money(due) }), 'error');
-    });
+    // Read once the refused close has left the queue: what is owing is the server's to say.
+    void outbox()
+      .idle(rid)
+      .then(() => refreshTicket(rid))
+      .then(() => {
+        const due = get().ticket.rid === rid ? get().ticket.server?.due : undefined;
+        get().showToast(due === undefined ? t('toast.notSaved') : t('toast.stillOwing', { amount: money(due) }), 'error');
+      });
   };
 
   /**
