@@ -112,7 +112,9 @@ export function applyFrame(frame: LiveFrame, deps: ApplyDeps = {}): void {
       .then(() => {
         holding -= 1;
         applyNow(frame, id, deps);
-      });
+      })
+      // One frame that cannot be applied must not hold every later one back.
+      .catch((error: unknown) => console.warn('[adminium] a live update was not applied:', error));
     return;
   }
   applyNow(frame, id, deps);
