@@ -219,8 +219,9 @@ describe.skipIf(why !== null)(`codes, offers and staff discounts on a built Admi
         // Nor does a cashier make a card or a ceiling of their own.
         expect((await cashier.post('offers_gift_cards', { kind: 'card' })).status).toBe(403);
         expect((await cashier.post('offers_ceilings', { role: 'pos-cashier', max_percent: 100 })).status).toBe(403);
-        // The look-up: a signed-in manager of the till reads a card's state and balance by its code, never the code back.
-        const found = ok(await managerCaller.post<Row>('/api/v1/add-ons/offers/look-up', { value: 'GC-7K2MW3HNQ4XP' }));
+        // The look-up, as the cashier: a card's state and balance by its code, never the code back.
+        const found = ok(await cashierCaller.post<Row>('/api/v1/add-ons/offers/look-up', { value: 'GC-7K2MW3HNQ4XP' }));
+        expect(ok(await managerCaller.post<Row>('/api/v1/add-ons/offers/look-up', { value: 'AUTUMN5' }))['found']).toBe(true);
         expect([found['found'], found['kind'], found['last4']]).toEqual([true, 'gift-card', 'Q4XP']);
         expect(JSON.stringify(found)).not.toContain('7K2MW3HNQ4XP');
       }, 120_000);

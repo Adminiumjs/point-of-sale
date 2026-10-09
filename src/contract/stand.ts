@@ -6,7 +6,11 @@
  *
  * Tests only; nothing that ships imports it.
  */
-import { addOnBundle, appBundle, boot, Caller, ok, until, type BootOptions, type Engine, type Reply, type Server } from './harness';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { addOnBundle, appBundle, boot, Caller, FROM_ADMINIUM, ok, releasedBundle, until, type BootOptions, type Engine, type Reply, type Server } from './harness';
 
 export type Row = Record<string, unknown>;
 
@@ -177,4 +181,65 @@ export async function standUp(engine: Engine, port: number, database: string, op
       await readIds(staff, connectionId, ids);
     },
   };
+}
+
+/** A shop that began on the released version: what it did there, then the update to this build. */
+export interface UpdatedShop {
+  server: Server;
+  staff: Caller;
+  connectionId: string;
+  ids: Record<string, string>;
+  d: ReturnType<typeof doors>;
+}
+
+/**
+ * The released version installed on the Adminium it was released for, with
+ * its own sample and whatever `under` does through that version's doors; then
+ * that Adminium stopped, this build's started on the same data, and the app
+ * updated — with `addOns` connected as it updates.
+ */
+export async function standUpFromRelease(
+  engine: Engine,
+  port: number,
+  database: string,
+  options: { addOns?: string[]; under?: (d: ReturnType<typeof doors>) => Promise<void> } = {},
+): Promise<UpdatedShop> {
+  const shop = mkdtempSync(join(tmpdir(), `pos-shop-${database}-`));
+  let server = await boot(engine, port, database, { adminium: FROM_ADMINIUM, keep: shop });
+  const signIn = async () => {
+    const caller = new Caller(server.base, { origin: server.base });
+    await caller.signIn(ADMIN.email, ADMIN.password);
+    return caller;
+  };
+  try {
+    let staff = await signIn();
+    const connectionId = ok(await staff.get<{ connections: { id: string; name: string }[] }>('/api/v1/connections')).connections.find((c) => c.name === 'northwind')!.id;
+    ok(await staff.patch(`/api/v1/connections/${connectionId}`, { currency: 'USD' }));
+    const put = async (kind: 'add-ons' | 'apps', bundle: { buffer: Buffer; integrity: string }) => {
+      const reply = await staff.post(`/api/v1/${kind}/upload?expectedSha512=${encodeURIComponent(bundle.integrity)}`, bundle.buffer);
+      if (![200, 201].includes(reply.status)) throw new Error(`upload: ${JSON.stringify(reply.body).slice(0, 800)}`);
+    };
+    const released = releasedBundle();
+    await put('apps', released);
+    const body = { key: released.key, version: released.version, connectionId };
+    ok(await staff.post('/api/v1/apps/install', { ...body, planChecksum: ok(await staff.post<{ plan: { checksum: string } }>('/api/v1/apps/plan', body)).plan.checksum }));
+    ok(await staff.post('/api/v1/apps/pos/sample-data'));
+    await until(async () => (ok(await staff.get<{ loaded: boolean }>('/api/v1/apps/pos/sample-data')).loaded ? true : undefined), 'the sample to be added');
+    if (options.under !== undefined) await options.under(doors(staff, connectionId, await readIds(staff, connectionId)));
+
+    await server.stop();
+    server = await boot(engine, port, database, { keep: shop });
+    staff = await signIn();
+    for (const key of options.addOns ?? []) await put('add-ons', addOnBundle(key));
+    const app = appBundle();
+    await put('apps', app);
+    const plan = ok(await staff.post<{ plan: { checksum: string; installable: boolean } }>('/api/v1/apps/plan', { key: app.key, version: app.version, connectionId })).plan;
+    const updated = await staff.post('/api/v1/apps/pos/update', { planChecksum: plan.checksum, publicAccess: true, ...((options.addOns ?? []).length === 0 ? {} : { addOns: (options.addOns ?? []).map((key) => ({ key, version: addOnBundle(key).version })) }) });
+    if (updated.status !== 200) throw new Error(`the update: ${JSON.stringify(updated.body).slice(0, 2000)}`);
+    const ids = await readIds(staff, connectionId);
+    return { server, staff, connectionId, ids, d: doors(staff, connectionId, ids) };
+  } catch (error) {
+    await server.stop();
+    throw error;
+  }
 }

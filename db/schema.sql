@@ -263,6 +263,8 @@ CREATE TABLE pos_payments (
   card_code VARCHAR(64),
   card_id INTEGER,
   card_last4 VARCHAR(4),
+  card_amount NUMERIC(12, 2),
+  took NUMERIC(12, 2),
   card_balance_after NUMERIC(12, 2),
   refunded NUMERIC(12, 2),
   refundable NUMERIC(12, 2),
@@ -284,13 +286,14 @@ CREATE TABLE pos_refunds (
   t_subtotal NUMERIC(12, 2),
   t_total NUMERIC(12, 2),
   t_discount NUMERIC(12, 2),
+  t_own NUMERIC(12, 2),
   t_tax NUMERIC(12, 2),
   own_sub NUMERIC(12, 2),
   own_tax NUMERIC(12, 2),
   repriced NUMERIC(12, 2),
   repriced_tax NUMERIC(12, 2),
   payment_id UUID REFERENCES pos_payments (id),
-  reason_id INTEGER
+  cash_part NUMERIC(12, 2)
 );
 
 CREATE TABLE pos_refund_items (
@@ -299,9 +302,8 @@ CREATE TABLE pos_refund_items (
   ticket_item_id INTEGER NOT NULL REFERENCES pos_ticket_items (id),
   qty INTEGER NOT NULL DEFAULT 1,
   line_unit NUMERIC(12, 2),
-  amount NUMERIC(12, 2),
   menu_item_id INTEGER REFERENCES pos_menu_items (id),
-  back_to TEXT DEFAULT 'shelf' CHECK (back_to IN ('shelf', 'damaged')),
+  back_to TEXT DEFAULT 'shelf' CHECK (back_to IN ('shelf', 'damaged', 'none')),
   not_back_at TIMESTAMPTZ
 );
 

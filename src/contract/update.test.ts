@@ -52,9 +52,9 @@ const NEW_TABLES = ['ticket_codes'];
 const NEW_COLUMNS: Record<string, string[]> = {
   tickets: ['customer_proved', 'discount', 'discount_by', 'discount_reason_id', 'due', 'goods', 'net', 'own_discount', 'paid', 'tax_rate_bp'],
   ticket_items: ['card_id', 'category_id', 'discount', 'goods_amount', 'load_ref'],
-  payments: ['card_balance_after', 'card_code', 'card_id', 'card_last4', 'held_until', 'refundable', 'refunded'],
-  refunds: ['gross', 'own_sub', 'own_tax', 'payment_id', 'reason_id', 'repriced', 'repriced_tax', 't_discount', 't_goods', 't_net', 't_subtotal', 't_tax', 't_total'],
-  refund_items: ['amount', 'back_to', 'line_unit', 'menu_item_id', 'not_back_at'],
+  payments: ['card_amount', 'card_balance_after', 'card_code', 'card_id', 'card_last4', 'held_until', 'refundable', 'refunded', 'took'],
+  refunds: ['cash_part', 'gross', 'own_sub', 'own_tax', 'payment_id', 'repriced', 'repriced_tax', 't_discount', 't_goods', 't_net', 't_own', 't_subtotal', 't_tax', 't_total'],
+  refund_items: ['back_to', 'line_unit', 'menu_item_id', 'not_back_at'],
   gift_card_ledger: ['card_code', 'moved_at', 'sign'],
   gift_cards: ['opening', 'remaining', 'taken'],
   settings: ['cards_moved'],
@@ -232,8 +232,8 @@ describe.skipIf(why !== null)(`the update of a live ${FROM_VERSION} shop to ${TO
             expect([ref, Object.fromEntries(planned.edits.filter((e) => e.kind === 'enum-values').map((e) => [e.column, e.values]))]).toEqual([ref, NEW_ENUM_VALUES[ref] ?? {}]);
             expect([ref, planned.edits.filter((e) => !['add-column', 'enum-values'].includes(e.kind))]).toEqual([ref, []]);
           }
-          // Forty-seven columns on eight tables (one update adds fifty at most).
-          expect(Object.values(NEW_COLUMNS).flat()).toHaveLength(47);
+          // Forty-nine columns on eight tables (one update adds fifty at most).
+          expect(Object.values(NEW_COLUMNS).flat()).toHaveLength(49);
         }, 120_000);
 
         it(`updates in place to ${TO}, as planned`, async () => {
