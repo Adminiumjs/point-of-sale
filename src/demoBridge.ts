@@ -45,8 +45,8 @@ const SHORTCUTS: Record<DemoShortcutId, () => void> = {
   'pay-gift-card': () => {
     const pos = usePos.getState();
     if (pos.view !== 'payment') return;
+    // Asked at once; the code goes in no field (it is never shown).
     pos.setMethod('gift_card');
-    pos.setCardDraft(DEMO_GIFT_CARD.code);
     void pos.quoteCard(DEMO_GIFT_CARD.code);
   },
   declined: () => usePos.getState().toggleDeclined(),

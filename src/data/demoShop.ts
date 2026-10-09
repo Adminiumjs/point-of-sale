@@ -361,8 +361,21 @@ export function openDemoShop(shop: DemoShop = demoShop()): () => void {
     return `${tk.rid ?? ''}|${tk.items.map((li) => `${li.key}×${String(li.qty)}`).join(',')}`;
   };
   let seen = shape();
+  /*
+   * The café's gift card is typed for the visitor, and its code is never
+   * shown: a real till's Payment field holds what the cashier typed, so the
+   * demo takes its own card's code out of that field at once and asks what
+   * the card covers — the answer names the card by its last four.
+   */
+  const hideCode = (): void => {
+    const s = usePos.getState();
+    if (bare(s.cardDraft) !== bare(DEMO_GIFT_CARD.code)) return;
+    usePos.setState({ cardDraft: '' });
+    if (s.view === 'payment' && s.cardPay === null && !s.cardPayBusy) void s.quoteCard(DEMO_GIFT_CARD.code);
+  };
   const stop = usePos.subscribe(() => {
     rowFor();
+    hideCode();
     const now = shape();
     if (now === seen) return;
     seen = now;

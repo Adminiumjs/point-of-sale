@@ -236,10 +236,9 @@ describe('the gift card', () => {
     await s().applyCode(DEMO_GIFT_CARD.code);
     s().openPay();
     await settled();
-    expect([s().view, s().payMethod, s().cardDraft]).toEqual(['payment', 'gift_card', DEMO_GIFT_CARD.code]);
+    // Payment opens on the card's tab with its answer — and its code in no field: only its last four are ever shown.
+    expect([s().view, s().payMethod, s().cardDraft]).toEqual(['payment', 'gift_card', '']);
     // Asked first: what it covers, and what is then left — nothing taken yet.
-    s().onCharge();
-    await settled();
     expect(s().cardPay).toMatchObject({ code: DEMO_GIFT_CARD.code, covers: 25, due: Math.round((total - 25) * 100) / 100 });
     expect(shop.cardBalance()).toBe(25);
     s().onCharge();
@@ -270,9 +269,8 @@ describe('the gift card', () => {
     await settled();
     s().openPay();
     s().setTip(3);
-    s().setCardDraft(DEMO_GIFT_CARD.code);
     s().setMethod('gift_card');
-    s().onCharge();
+    await s().quoteCard(DEMO_GIFT_CARD.code);
     await settled();
     // $4.20 and its tax: the card covers that, and the tip is somebody else's to take.
     expect(s().cardPay).toMatchObject({ covers: worked(0).total, due: 0 });
@@ -288,14 +286,23 @@ describe('the gift card', () => {
     await settled();
     s().onCharge();
     await settled();
-    s().onCharge();
-    await settled();
     expect(shop.cardBalance()).toBe(0);
-    s().setCardDraft(DEMO_GIFT_CARD.code);
     s().setMethod('gift_card');
-    s().onCharge();
-    await settled();
+    await s().quoteCard(DEMO_GIFT_CARD.code);
     expect(s().cardPayWords).toBe('This card is empty');
+  });
+
+  it('its code is never left in a field: put there, it is taken out at once and the card is asked', async () => {
+    s().openPay();
+    await settled();
+    s().setMethod('gift_card');
+    s().setCardDraft(DEMO_GIFT_CARD.code);
+    await settled();
+    expect(s().cardDraft).toBe('');
+    expect(s().cardPay).toMatchObject({ covers: 25 });
+    // Anything else typed there stays, as on a real till.
+    s().setCardDraft('GC-SOME-OTHE-RONE');
+    expect(s().cardDraft).toBe('GC-SOME-OTHE-RONE');
   });
 
   it('a new card is sold as a line on the ticket, named by four characters — no code anywhere', async () => {
