@@ -86,6 +86,8 @@ const TRY_AGAIN = new Set(['WRITE_CONFLICT', 'CAPACITY_BUSY']);
 export function kindOfStatus(status: number, code = '', keyed = false): SinkErrorKind {
   if (status === 401) return 'signed-out';
   if (status === 0 || status >= 500) return 'offline';
+  // Too many at once: the change is good and the server is busy — it is sent again, never dropped.
+  if (status === 429) return 'offline';
   if (status === 409) {
     if (code === 'UNIQUE_VIOLATION' && keyed) return 'saved';
     if (TRY_AGAIN.has(code)) return 'offline';

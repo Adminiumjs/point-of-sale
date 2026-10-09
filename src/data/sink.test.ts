@@ -111,6 +111,13 @@ describe('the session sink', () => {
     expect(kindOfStatus(0)).toBe('offline');
     expect(kindOfStatus(500)).toBe('offline');
     expect(kindOfStatus(404)).toBe('refused');
+    // Refused for the moment only: a queued write is tried again.
+    expect(kindOfStatus(429, 'RATE_LIMITED')).toBe('offline');
+  });
+
+  it('a write the server was too busy for (429) is one to send again, not a refusal', async () => {
+    const busy = (await sessionSink(transport([fail(429, 'RATE_LIMITED')]).t, MAP).insert('tickets', { number: '7' }).catch((e: unknown) => e)) as SinkError;
+    expect([busy.kind, busy.status]).toEqual(['offline', 429]);
   });
 
   it('turns the till’s text keys back into numbers', () => {
