@@ -118,12 +118,19 @@ describe('a new gift card', () => {
       method: 'POST',
       body: { kind: 'gift-card', table: 'gift_cards', key: 13, once: TICKET, values: { first: '1' } },
     });
-    // Printed: the entry is gone, from the store and from the tab.
+    // The address is in hand, and the entry stays until a page was really opened on it:
+    // a blank page closed before the answer came must not lose the one address there is.
+    expect(again.usePos.getState().cardPrints).toHaveLength(1);
+    const before = sent.length;
+    expect(again.usePos.getState().cardPrintHeld('13')).toBe(url);
+    expect(await again.usePos.getState().cardPrintUrl('13')).toBe(url);
+    expect(sent.length).toBe(before);
+    // Opened: only now is the entry gone, from the store and from the tab.
+    again.usePos.getState().cardPrinted('13');
     expect(again.usePos.getState().cardPrints).toEqual([]);
     expect(storage.getItem('pos.cardPrints')).toBeNull();
     expect(JSON.stringify(again.usePos.getState()) + storage.dump()).not.toContain(CODE);
     // It prints once: asked again, there is nothing to ask with.
-    const before = sent.length;
     expect(await again.usePos.getState().cardPrintUrl('13')).toBeNull();
     expect(sent.length).toBe(before);
     expect(again.usePos.getState().toast?.msg).toBe('This card can no longer be printed here · A manager prints it from Offers');

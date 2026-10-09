@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { payOrder, usePos, refundMoney } from '../state/store';
+import { cardState, payOrder, usePos, refundMoney } from '../state/store';
 import { money, tableName } from '../state/calc';
 import { history } from '../data/history';
 import type { BackTo, PastSale, PayMethod } from '../data/types';
@@ -188,7 +188,9 @@ function Pick({ sale }: { sale: PastSale }) {
   const quote = asked ? s.refundQuote : null;
   const due = quote === null ? sums.total : quote.amount;
   const can = s.refundSel.length > 0 && !s.refunding && (asked ? quote !== null && !s.refundQuoting : sums.total > 0);
-  const pays = asked ? payOrder(sale) : [];
+  // With the cards moved and Offers switched off there is no card to give money back to: only the other payments are offered.
+  const noCards = cardState(s) === 4;
+  const pays = (asked ? payOrder(sale) : []).filter((one) => !(noCards && one.method === 'gift_card'));
   // Where a returned thing goes is asked in retail, with Inventory attached.
   const stockChoice = s.features.stock && s.mode === 'retail';
   return (
@@ -223,9 +225,9 @@ function Pick({ sale }: { sale: PastSale }) {
                 </button>
                 {/* With Inventory, a retail line says where the thing itself goes; the shelf unless told otherwise. */}
                 {on && stockChoice && (
-                  <div role="radiogroup" aria-label={l.name} style={css('display:flex;gap:6px;padding-inline-start:38px;')}>
+                  <div role="radiogroup" aria-label={t('refund.backQuestion', { name: l.name })} style={css('display:flex;gap:6px;padding-inline-start:38px;')}>
                     {BACK.map((b) => (
-                      <button key={b.to} role="radio" data-back-to={b.to} aria-checked={goes === b.to} className="pos-press" onClick={() => s.setRefundGoes(i, b.to)} style={css('flex:1;height:38px;border-radius:10px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;border:1.5px solid ' + (goes === b.to ? 'var(--accent)' : 'var(--border)') + ';background:' + (goes === b.to ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (goes === b.to ? 'var(--accent)' : 'var(--fg-muted)') + ';')}>
+                      <button key={b.to} role="radio" data-back-to={b.to} aria-checked={goes === b.to} className="pos-press" onClick={() => s.setRefundGoes(i, b.to)} style={css('flex:1;min-height:44px;border-radius:10px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;border:1.5px solid ' + (goes === b.to ? 'var(--accent)' : 'var(--border)') + ';background:' + (goes === b.to ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (goes === b.to ? 'var(--accent)' : 'var(--fg-muted)') + ';')}>
                         {t(b.label)}
                       </button>
                     ))}
@@ -257,7 +259,7 @@ function Pick({ sale }: { sale: PastSale }) {
             </div>
           ) : (
             <div role="radiogroup" aria-label={t('refund.to')} style={css('display:flex;gap:10px;margin-bottom:22px;')}>
-              {[...METHODS, ...(sale.giftCardCode === undefined ? [] : [{ m: 'gift_card' as const, label: 'gift.method' as MessageKey, icon: 'gift' }])].map((x) => {
+              {[...METHODS, ...(sale.giftCardCode === undefined || noCards ? [] : [{ m: 'gift_card' as const, label: 'gift.method' as MessageKey, icon: 'gift' }])].map((x) => {
                 const on = s.refundMethod === x.m;
                 return (
                   <button key={x.m} role="radio" aria-checked={on} className="pos-press" onClick={() => s.setRefundMethod(x.m)} style={css('flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:58px;border-radius:14px;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border-strong)') + ';background:' + (on ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (on ? 'var(--accent)' : 'var(--fg)') + ';font-size:15px;font-weight:800;cursor:pointer;')}>

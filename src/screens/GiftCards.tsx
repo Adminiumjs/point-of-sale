@@ -60,6 +60,17 @@ export function GiftCards() {
    * nothing left to do but say so.
    */
   const state = cardState(s);
+  // Moved, and Offers switched off: the old screen's tables are closed. It says so, and offers nothing that would be refused.
+  if (state === 4) {
+    return (
+      <div style={css('flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg);')}>
+        <AuxHeader title={t('gift.title')} sub="" onBack={() => usePos.setState({ view: 'register' })} backLabel={t('nav.register')} />
+        <div role="note" data-cards-off="" style={css('max-width:620px;margin:24px auto;padding:16px 18px;border-radius:16px;background:var(--surface);border:1px solid var(--border);color:var(--fg-muted);font-size:14.5px;font-weight:600;')}>
+          {t('cards.needOffers')}
+        </div>
+      </div>
+    );
+  }
   if (s.cardMove.open || state === 3) {
     return (
       <div style={css('flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg);')}>
@@ -264,7 +275,8 @@ export function CardMovePanel({
       )}
       {outcome?.state === 'row-refused' && (
         <div role="alert" style={css(note('danger'))}>
-          {t('cards.moveRowRefused', { card: outcome.card, code: outcome.reason ?? outcome.code })} · {t('cards.moveAgain')}
+          {/* Why, in words: the server's own code is never the screen's to show. */}
+          {t('cards.moveRowRefused', { card: outcome.card })} · {t(outcome.reason === 'not-allowed' ? 'cards.moveWhyLimits' : 'cards.moveWhyOther')} · {t('cards.moveAgain')}
         </div>
       )}
       {outcome?.state === 'mismatch' && (

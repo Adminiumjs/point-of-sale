@@ -6,14 +6,23 @@
  * move and no banner. One that did sell its own keeps its old screens until
  * the move is run.
  */
+import { toolsFor } from '../components/TillNav';
 import { describe, expect, it } from 'vitest';
 
 import { NO_FEATURES } from '../features';
 import { cardState, cardStateOf } from './store';
 
 describe('the three gift card states', () => {
-  it('1 — without Offers the till keeps its own cards, whatever else is so', () => {
-    for (const moved of [false, true]) for (const own of [null, 0, 3]) expect(cardStateOf({ offers: false, moved, own })).toBe(1);
+  it('1 — without Offers, and the cards never moved, the till keeps its own cards', () => {
+    for (const own of [null, 0, 3]) expect(cardStateOf({ offers: false, moved: false, own })).toBe(1);
+  });
+
+  it('4 — the cards were moved and Offers is switched off: the old tables are closed, so the old screens do not come back', () => {
+    for (const own of [null, 0, 3]) expect(cardStateOf({ offers: false, moved: true, own })).toBe(4);
+    expect(cardState({ features: NO_FEATURES, cardsMoved: true, ownCards: 0 })).toBe(4);
+    // Nothing of the old screen, and nothing of Offers' either.
+    expect(toolsFor(false, NO_FEATURES, false, true).some((x) => x.v === 'giftcards')).toBe(false);
+    expect(toolsFor(false, NO_FEATURES, false, false).some((x) => x.v === 'giftcards')).toBe(true);
   });
 
   it('2 — Offers attached, and the till still holds a card of its own that has not moved', () => {

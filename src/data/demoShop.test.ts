@@ -240,7 +240,7 @@ describe('the gift card', () => {
     // Asked first: what it covers, and what is then left — nothing taken yet.
     s().onCharge();
     await settled();
-    expect(s().cardPay).toEqual({ code: DEMO_GIFT_CARD.code, covers: 25, due: Math.round((total - 25) * 100) / 100 });
+    expect(s().cardPay).toMatchObject({ code: DEMO_GIFT_CARD.code, covers: 25, due: Math.round((total - 25) * 100) / 100 });
     expect(shop.cardBalance()).toBe(25);
     s().onCharge();
     await settled();

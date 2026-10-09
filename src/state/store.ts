@@ -190,7 +190,7 @@ export interface PosState {
   /** A code is being looked up or saved. */
   codeBusy: boolean;
   /** A code that needs a named customer: asked for on the ticket until one is added. */
-  codeAsk: { typed: string; noEmail: boolean } | null;
+  codeAsk: { typed: string; noEmail: boolean; rid: string } | null;
   /** What Offers said of the last code typed, shown under the field: taken (and as what), or why not. */
   codeSaid: { ok: boolean; words: string } | null;
   /** What is typed in the ticket's code field and not applied yet: Pay applies it first, so it is never dropped. */
@@ -200,7 +200,12 @@ export interface PosState {
 
   // gift cards kept by Offers
   /** What a gift card would cover on this ticket, as the dry run answered. */
-  cardPay: { code: string; covers: number; due: number } | null;
+  /**
+   * `rid` is the ticket it was asked for — it pays no other — and `paymentId`
+   * the key the payment is saved under, made once with the quote: a second
+   * press after a lost reply is the same payment, never a second one.
+   */
+  cardPay: { code: string; covers: number; due: number; rid: string; paymentId: string } | null;
   cardPayBusy: boolean;
   /** Why the card cannot pay, in plain words. */
   cardPayWords: string | null;
@@ -401,6 +406,10 @@ export interface PosState {
   topUpCard: (card: TopUpCard, amount: number) => boolean;
   /** Where a new card prints, once — or null, with the reason said. The entry is gone once the address is in hand. */
   cardPrintUrl: (cardId: string) => Promise<string | null>;
+  /** The address already in hand for a card (good for under a minute), or null: a second tap opens it without asking again. */
+  cardPrintHeld: (cardId: string) => string | null;
+  /** The print page was opened on its address: only now is the card's entry gone. */
+  cardPrinted: (cardId: string) => void;
   /** Sell a new gift card for this much: a line on the ticket, loaded by Adminium when it is paid. */
   sellCard: (amount: number) => Promise<boolean>;
   /** The banner's figures: how many of the till's cards hold money, and how much. */
@@ -654,10 +663,13 @@ const withoutServer = (tk: Ticket): Ticket => {
  * `own` is how many of the till's own cards are not yet `moved`; null when
  * that is not known, which is never read as "none".
  */
-export const cardStateOf = (c: { offers: boolean; moved: boolean; own: number | null }): 1 | 2 | 3 => (!c.offers ? 1 : c.moved || c.own === 0 ? 3 : 2);
+export const cardStateOf = (c: { offers: boolean; moved: boolean; own: number | null }): 1 | 2 | 3 | 4 =>
+  // 4: the cards were moved and Offers is now switched off. The till's own card tables are closed for good, so the
+  // old screens must not come back (every save on them would be refused); there are no gift cards until Offers is on again.
+  !c.offers ? (c.moved ? 4 : 1) : c.moved || c.own === 0 ? 3 : 2;
 
 /** The till's own state (`cardStateOf`). */
-export const cardState = (s: Pick<PosState, 'features' | 'cardsMoved'> & { ownCards?: number | null }): 1 | 2 | 3 =>
+export const cardState = (s: Pick<PosState, 'features' | 'cardsMoved'> & { ownCards?: number | null }): 1 | 2 | 3 | 4 =>
   cardStateOf({ offers: s.features['gift-cards'], moved: s.cardsMoved, own: s.ownCards ?? null });
 
 /** Nothing reaches the server right now: the demo's switch, or a write waiting to try again. */
@@ -689,6 +701,9 @@ export const sellsNewCards = (s: Pick<PosState, 'access' | 'addOnTables'>): bool
 const lastApplied = new Map<string, AppliedLine[]>();
 /** The tip the settling payment carried: the ticket closes with the same one. */
 let settleTip: number | null = null;
+/** A card's print address, once Adminium has handed it over: in memory only, for the under-a-minute it is good for. */
+const printUrls = new Map<string, { url: string; until: number }>();
+const PRINT_URL_MS = 50_000;
 /** Which read of the ticket's figures is the latest. */
 let figureSeq = 0;
 /** Which refund quote is the latest. */
@@ -858,6 +873,8 @@ export const usePos = create<PosState>()((set, get) => {
   const offline = () => isOffline(get());
   /** Adminium's answer for a ticket, onto the ticket when it is still the one on the register. */
   const applyFigures = (rid: string, row: SinkRow, applied: AppliedLine[], codes?: TicketCode[]) => {
+    // These are the newest figures: a read of the ticket begun before them must not land after and put older ones back.
+    figureSeq += 1;
     if (get().ticket.rid === rid) lastApplied.set(rid, applied);
     set((st) => {
       if (st.ticket.rid !== rid) return {};
@@ -2162,6 +2179,7 @@ export const usePos = create<PosState>()((set, get) => {
       // Said under the field, tied to it — not in a toast that is gone before it is read.
       const say = (ok: boolean, words: string) => set({ codeSaid: { ok, words } });
       set({ codeBusy: true, codeSaid: null });
+      let askedOn = '';
       try {
         const saved = await savedTicket();
         // Never from the till's memory, never queued: a code needs Offers' answer.
@@ -2169,8 +2187,19 @@ export const usePos = create<PosState>()((set, get) => {
           say(false, t('offers.applyOffline'));
           return;
         }
+        askedOn = saved.rid;
+        const cardLike = /^\s*GC-/i.test(typed);
         if (cardState(get()) === 3) {
-          const found = await saved.d.lookUp(typed).catch(() => null);
+          let found: Awaited<ReturnType<Desk['lookUp']>> | null = null;
+          try {
+            found = await saved.d.lookUp(typed);
+          } catch (failed) {
+            // Not checked — no answer, or too many at once. It is not saved as a code on a guess: it may be a card's.
+            if (asSinkError(failed).kind === 'offline' || cardLike) {
+              say(false, t('offers.applyOffline'));
+              return;
+            }
+          }
           if (found !== null && found.found && found.kind === 'gift-card') {
             // A gift card is money, not a reduction: it is kept for Payment, its code in memory only.
             const balance = found.record?.['balance'];
@@ -2179,6 +2208,12 @@ export const usePos = create<PosState>()((set, get) => {
             say(true, `${t('offers.kind.card')} · ${t('cards.keptAtPay')}`);
             return;
           }
+        }
+        // What is shaped like a gift card's code and is no card Offers knows is never saved as a ticket's code.
+        if (cardLike) {
+          say(false, t('cards.notValid'));
+          set({ codeRefused: typed });
+          return;
         }
         const reply = await saved.d.create('ticket_codes', { ticket_id: dbKey(saved.id), typed });
         // The figures read before the code was taken are no longer the ticket's: an estimate until the new ones are in.
@@ -2192,7 +2227,7 @@ export const usePos = create<PosState>()((set, get) => {
         const error = asSinkError(raw);
         if (error.reason === 'needs-customer') {
           // Asked for on the ticket itself; with a member already on it, what is missing is their email.
-          set({ codeAsk: { typed, noEmail: get().ticket.customerId !== undefined } });
+          if (get().ticket.rid === askedOn) set({ codeAsk: { typed, noEmail: get().ticket.customerId !== undefined, rid: askedOn } });
           return;
         }
         say(false, codeRefusal(error, typed));
@@ -2240,12 +2275,15 @@ export const usePos = create<PosState>()((set, get) => {
           return;
         }
         // No amount: what the card covers is Adminium's to say.
-        const reply = await saved.d.dryCreate('payments', { id: deviceKey(), ticket_id: dbKey(saved.id), method: 'gift_card', card_code: code, staff_id: staffKey() });
+        const paymentId = deviceKey();
+        const reply = await saved.d.dryCreate('payments', { id: paymentId, ticket_id: dbKey(saved.id), method: 'gift_card', card_code: code, staff_id: staffKey() });
         if (reply.payment === undefined) {
           set({ cardPayWords: t('cards.refused') });
           return;
         }
-        set({ cardPay: { code, covers: num(reply.payment.amount), due: num(reply.payment.due) }, cardAsked: code });
+        // The ticket went elsewhere while Adminium was answering: the answer is for a ticket no longer here.
+        if (get().ticket.rid !== saved.rid) return;
+        set({ cardPay: { code, covers: num(reply.payment.amount), due: num(reply.payment.due), rid: saved.rid, paymentId }, cardAsked: code });
       } catch (raw2) {
         const error = asSinkError(raw2);
         // A refusal is an answer; no answer at all is not.
@@ -2257,28 +2295,50 @@ export const usePos = create<PosState>()((set, get) => {
     payCard: async () => {
       const quote = get().cardPay;
       if (quote === null || get().paying) return;
+      // A quote is for the ticket it was asked on, and pays no other.
+      if (quote.rid !== get().ticket.rid) {
+        set({ cardPay: null, cardPayWords: null, cardDraft: '', cardAsked: null });
+        return;
+      }
       set({ paying: true, cardPayWords: null });
+      let rid: string | undefined;
       try {
         const saved = await savedTicket();
-        if (saved === null) {
+        if (saved === null || saved.rid !== quote.rid) {
           set({ cardPayWords: t('cards.offline') });
           return;
         }
-        const reply = await saved.d.create('payments', { id: deviceKey(), ticket_id: dbKey(saved.id), method: 'gift_card', card_code: quote.code, staff_id: staffKey() });
-        const took = reply.payment === undefined ? num(reply.data['card_amount']) : num(reply.payment.amount);
+        rid = saved.rid;
+        let row: SinkRow;
+        let due: number | null;
+        try {
+          // The key made with the quote: pressed again after a lost reply, this is the same payment.
+          const reply = await saved.d.create('payments', { id: quote.paymentId, ticket_id: dbKey(saved.id), method: 'gift_card', card_code: quote.code, staff_id: staffKey() });
+          row = reply.payment === undefined ? reply.data : { ...reply.data, card_amount: reply.payment.amount };
+          due = reply.payment === undefined ? null : num(reply.payment.due);
+        } catch (raw) {
+          // "That key is there already": the first press saved it and its reply was lost. It is read, not paid twice.
+          if (asSinkError(raw).code !== 'UNIQUE_VIOLATION') throw raw;
+          row = await saved.d.one('payments', quote.paymentId);
+          due = null;
+        }
+        const took = num(row['card_amount']);
         const split: Split = {
-          id: String(reply.data['id'] ?? ''),
+          id: String(row['id'] ?? quote.paymentId),
           method: 'gift_card',
           amount: took,
-          reference: String(reply.data['card_last4'] ?? quote.code.slice(-4)),
-          ...(blank(reply.data['card_balance_after']) ? {} : { cardLeft: num(reply.data['card_balance_after']) }),
+          reference: String(row['card_last4'] ?? quote.code.slice(-4)),
+          ...(blank(row['card_balance_after']) ? {} : { cardLeft: num(row['card_balance_after']) }),
         };
         const splits = get().splits.concat([split]);
         get().forgetCard();
         get().showToast(t('gift.toastApplied', { amount: money(took) }), 'success');
         // What is left is the server's word; a tip is never the card's to pay.
-        const left = reply.payment === undefined ? null : num(reply.payment.due);
-        if (left !== null && left <= 0 && tipAmt(get()) <= 0) {
+        if (due === null) {
+          await refreshTicket(saved.rid);
+          due = get().ticket.rid === saved.rid ? (get().ticket.server?.due ?? null) : null;
+        }
+        if (due !== null && due <= 0 && tipAmt(get()) <= 0) {
           settleTip = 0;
           set({ paying: false });
           await finalize(splits, 0);
@@ -2288,6 +2348,8 @@ export const usePos = create<PosState>()((set, get) => {
         }
       } catch (raw) {
         set({ cardPayWords: cardRefusal(asSinkError(raw)) });
+        // Saved or not, what is owing is the server's to say: the ticket is read again.
+        if (rid !== undefined) void refreshTicket(rid);
       } finally {
         set({ paying: false });
       }
@@ -2361,11 +2423,17 @@ export const usePos = create<PosState>()((set, get) => {
         get().showToast(t('cards.printOffline'), 'error');
         return null;
       }
+      const held = get().cardPrintHeld(cardId);
+      if (held !== null) return held;
       try {
         const url = await d.cardPrintUrl(cardId, entry.print);
-        // The ticket is spent: the address prints the card this once.
-        dropCardPrint(cardId);
-        set({ cardPrints: cardPrints() });
+        /*
+         * The ticket is spent, and the address prints the card once, within a
+         * minute. The entry stays until a page was really opened on it
+         * (`cardPrinted`): a blank page closed before the answer came must not
+         * lose the one address there is — the next tap opens it.
+         */
+        printUrls.set(cardId, { url, until: Date.now() + PRINT_URL_MS });
         return url;
       } catch (raw) {
         const error = asSinkError(raw);
@@ -2374,11 +2442,27 @@ export const usePos = create<PosState>()((set, get) => {
           return null;
         }
         // Refused: the ticket is spent, too old, or not this person's. It will not print from here again.
+        printUrls.delete(cardId);
         dropCardPrint(cardId);
         set({ cardPrints: cardPrints() });
         get().showToast(t('cards.printGone'), 'error');
         return null;
       }
+    },
+    cardPrintHeld: (cardId) => {
+      const held = printUrls.get(cardId);
+      if (held === undefined) return null;
+      if (held.until > Date.now()) return held.url;
+      // Its minute is over and its ticket was spent on it: nothing prints this card from here now.
+      printUrls.delete(cardId);
+      dropCardPrint(cardId);
+      set({ cardPrints: cardPrints() });
+      return null;
+    },
+    cardPrinted: (cardId) => {
+      printUrls.delete(cardId);
+      dropCardPrint(cardId);
+      set({ cardPrints: cardPrints() });
     },
     loadCardMove: async () => {
       const d = desk();
@@ -2731,12 +2815,14 @@ export const usePos = create<PosState>()((set, get) => {
       set({ view: 'refund', refundSale: null, refundSel: [], refundDone: null, refunding: false, refundQuote: null, refundWords: null, refundGoes: {}, refundPayment: null }),
     pickRefundSale: (sale) => {
       // The payments it can go back to, a card's first (the demo, with no server, keeps its three ways).
-      const first = get().connected ? payOrder(sale)[0] : undefined;
+      // With the cards moved and Offers switched off, a card is not a way back.
+      const noCards = cardState(get()) === 4;
+      const first = get().connected ? payOrder(sale).find((one) => !(noCards && one.method === 'gift_card')) : undefined;
       set({
         refundSale: sale,
         // Everything not already given back starts chosen, as the comp does for the last sale.
         refundSel: sale.lines.map((l, i) => (l.refunded < l.qty && l.giftCard !== true ? i : -1)).filter((i) => i >= 0),
-        refundMethod: first?.method ?? sale.method,
+        refundMethod: first?.method ?? (noCards && sale.method === 'gift_card' ? 'cash' : sale.method),
         refundPayment: first?.id ?? null,
         refundGoes: {},
         refundQuote: null,
@@ -2865,7 +2951,7 @@ export const usePos = create<PosState>()((set, get) => {
       }
       // Money given back onto the gift card that paid: its history gets it back.
       // Only while the till keeps its own cards: once they are Offers', Adminium credits the card itself.
-      if (cardState(s) !== 3 && s.refundMethod === 'gift_card' && sale.giftCardCode !== undefined && saleRid !== undefined) {
+      if (cardState(s) <= 2 && s.refundMethod === 'gift_card' && sale.giftCardCode !== undefined && saleRid !== undefined) {
         const card = Object.values(get().cards).find((c) => c.code === sale.giftCardCode) ?? (await giftCards().byCode(sale.giftCardCode).catch(() => null));
         if (card !== null) {
           const id = deviceKey();
@@ -3131,7 +3217,9 @@ export const usePos = create<PosState>()((set, get) => {
       get().showToast(t('loyalty.toastAttached', { name: member.name }), 'success');
       // A code was waiting for a named customer: it is tried again, once the ticket names them.
       const ask = get().codeAsk;
-      if (ask !== null) void get().applyCode(ask.typed);
+      // Only on the ticket it was typed on: a prompt left from another ticket applies nothing here.
+      if (ask !== null && ask.rid === get().ticket.rid) void get().applyCode(ask.typed);
+      else if (ask !== null) set({ codeAsk: null });
     },
     detachMember: () => {
       const s = get();
@@ -3686,7 +3774,28 @@ watchOutbox((sync) => {
 let followed: string | undefined;
 usePos.subscribe((st, was) => {
   if (st.ticket.rid !== followed) {
+    /*
+     * WHAT WAS TYPED OR ASKED FOR ONE TICKET IS NOT THE NEXT ONE'S. A gift
+     * card checked at Pay holds its whole code, and the answer to "what does
+     * it cover" — left behind, one tap would spend that customer's card on
+     * somebody else's ticket. So whichever way a ticket leaves the register
+     * (paid, held, recalled, carried over, a new order), these go with it.
+     */
+    const left = followed;
     followed = st.ticket.rid;
+    const stale: Partial<PosState> = {};
+    if (st.cardPay !== null) stale.cardPay = null;
+    if (st.cardPayWords !== null) stale.cardPayWords = null;
+    if (st.cardAsked !== null) stale.cardAsked = null;
+    if (st.codeAsk !== null) stale.codeAsk = null;
+    // A ticket's first line gives it its key: that is the same ticket, and what is typed on it stays.
+    if (left !== undefined) {
+      if (st.cardDraft !== '') stale.cardDraft = '';
+      if (st.codeDraft !== '') stale.codeDraft = '';
+      if (st.codeRefused !== null) stale.codeRefused = null;
+      if (st.codeSaid !== null) stale.codeSaid = null;
+    }
+    if (Object.keys(stale).length > 0) usePos.setState(stale);
     const busy = followed !== undefined && outbox().pendingIn(followed) > 0;
     if (busy !== st.ticketBusy) usePos.setState({ ticketBusy: busy });
     if (!busy && st.ticket.server === undefined) void st.refreshTicket(followed);

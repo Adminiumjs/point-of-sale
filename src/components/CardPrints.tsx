@@ -17,6 +17,8 @@ import { css } from './css';
 export function CardPrints({ compact = false }: { compact?: boolean }) {
   const prints = usePos((s) => s.cardPrints);
   const ask = usePos((s) => s.cardPrintUrl);
+  const held = usePos((s) => s.cardPrintHeld);
+  const printed = usePos((s) => s.cardPrinted);
   const toast = usePos((s) => s.showToast);
   const t = useT();
   const [busy, setBusy] = useState<string | null>(null);
@@ -31,16 +33,32 @@ export function CardPrints({ compact = false }: { compact?: boolean }) {
      * answer that arrives later. Blocked, nothing is asked — the ticket that
      * prints the card is good for one use and is not spent on a page nobody sees.
      */
-    const page = window.open('', '_blank');
+    // The address is already in hand (the page asked for it was closed too soon): it is opened inside this tap.
+    const ready = held(card.cardId);
+    const page = window.open(ready ?? '', '_blank');
     if (page === null) {
       toast(t('cards.printPopup'), 'error');
+      return;
+    }
+    if (ready !== null) {
+      printed(card.cardId);
       return;
     }
     setBusy(card.cardId);
     void ask(card.cardId)
       .then((url) => {
-        if (url === null) page.close();
-        else page.location.replace(url);
+        if (url === null) {
+          page.close();
+          return;
+        }
+        // Closed before the answer came: the address is kept, and the next tap opens it.
+        if (page.closed) {
+          toast(t('cards.printAgain'), 'error');
+          return;
+        }
+        page.location.replace(url);
+        // Only now, with a page open on it, is the card's entry gone.
+        printed(card.cardId);
       })
       .finally(() => setBusy(null));
   };

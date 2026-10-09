@@ -138,6 +138,13 @@ export function Register() {
         {/* Menu grid */}
         <div className="pos-scroll" style={css('flex:1;overflow-y:auto;padding:18px;')}>
           <div style={css('display:grid;grid-template-columns:repeat(auto-fill, minmax(' + (dense ? '120px' : '166px') + ', 1fr));gap:' + (dense ? '10px' : '14px') + ';')}>
+            {/* The cards were moved to Offers and Offers is switched off: one plain line where the tile was, no screen that could only be refused. */}
+            {cardState(s) === 4 && s.connected && q === '' && (
+              <div role="note" data-cards-off="" style={css('grid-column:1 / -1;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);color:var(--fg-muted);font-size:13px;font-weight:600;')}>
+                <Icon name="gift" size={15} />
+                {t('cards.needOffers')}
+              </div>
+            )}
             {/* Gift cards kept by Offers are sold and topped up from here — the first tile, once the till's own cards have moved. */}
             {cardState(s) === 3 && s.connected && q === '' && (
               <button className="pos-tile" data-gift-tile="" onClick={() => s.setCardSale(true)} style={css('display:flex;flex-direction:column;text-align:start;padding:0;border:1px solid var(--border);border-radius:' + rad + ';background:var(--surface);cursor:pointer;overflow:hidden;box-shadow:var(--shadow);font-family:inherit;color:var(--fg);')}>

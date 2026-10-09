@@ -216,7 +216,7 @@ describe('a code typed on the ticket and not applied, when Pay is pressed', () =
     s().openPay();
     await settled();
     expect(s().view).toBe('register');
-    expect(s().codeAsk).toEqual({ typed: 'FIRSTORDER', noEmail: false });
+    expect(s().codeAsk).toEqual({ typed: 'FIRSTORDER', noEmail: false, rid: s().ticket.rid });
   });
 
   it('a gift card typed there is kept for Payment’s tab: its code is in that field, and no code row is written', async () => {
@@ -269,7 +269,7 @@ describe('a gift card typed in Payment’s field and not used, when another paym
     expect(sink.calls.some((c) => c.ref === 'payments')).toBe(false);
     expect(s().splits).toEqual([]);
     expect(s().payMethod).toBe('gift_card');
-    expect(s().cardPay).toEqual({ code: 'GC-7K2MW3HNQ4XP', covers: 19, due: 27.37 });
+    expect(s().cardPay).toMatchObject({ code: 'GC-7K2MW3HNQ4XP', covers: 19, due: 27.37 });
     expect(s().toast?.msg).toBe('A gift card is typed in · It was checked first, and nothing was charged');
     expect(desk.calls.map((c) => `${c.op} ${c.ref}`)).toEqual(['dryCreate payments']);
 

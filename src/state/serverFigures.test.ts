@@ -420,7 +420,7 @@ describe('Offers on the ticket', () => {
     s().tapTile('croissant');
     await settled();
     await s().applyCode('WELCOME10');
-    expect(s().codeAsk).toEqual({ typed: 'WELCOME10', noEmail: false });
+    expect(s().codeAsk).toEqual({ typed: 'WELCOME10', noEmail: false, rid: s().ticket.rid });
     named = true;
     usePos.setState({ members: { '9': { id: '9', memberNo: null, name: 'Ama Boateng', mobile: null, email: 'ama@till-members.dev', joinedAt: 0, points: 0, lifetime: 0, visits: 0 } } });
     s().attachMember('9');
@@ -437,7 +437,7 @@ describe('Offers on the ticket', () => {
     usePos.setState((st) => ({ ticket: { ...st.ticket, customerId: '9' } }));
     await settled();
     await s().applyCode('WELCOME10');
-    expect(s().codeAsk).toEqual({ typed: 'WELCOME10', noEmail: true });
+    expect(s().codeAsk).toEqual({ typed: 'WELCOME10', noEmail: true, rid: s().ticket.rid });
   });
 
   it('takes a code off by stamping its row, never by deleting it', async () => {
@@ -489,7 +489,7 @@ describe('gift cards kept by Offers', () => {
     await settled();
     s().openPay();
     await s().quoteCard('GC-7K2MW3HNQ4XP');
-    expect(s().cardPay).toEqual({ code: 'GC-7K2MW3HNQ4XP', covers: 18.6, due: 0 });
+    expect(s().cardPay).toMatchObject({ code: 'GC-7K2MW3HNQ4XP', covers: 18.6, due: 0, rid: s().ticket.rid });
     const dry = desk.calls.find((c) => c.op === 'dryCreate')!;
     expect(dry.ref).toBe('payments');
     expect(dry.values).toMatchObject({ ticket_id: 1, method: 'gift_card', card_code: 'GC-7K2MW3HNQ4XP' });

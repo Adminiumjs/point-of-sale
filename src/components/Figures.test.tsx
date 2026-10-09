@@ -134,7 +134,10 @@ describe('bringing the gift cards into Offers', () => {
   });
   it('says where it stopped, and that pressing again goes on', () => {
     const shown = panel({ state: 'row-refused', card: 'GC-48219930', code: 'POSTING_REFUSED', reason: 'paused', moved: 3 });
-    expect(shown).toContain('Stopped at card GC-48219930 (paused)');
+    // In words, never the server's own reason or code.
+    expect(shown).toContain('Stopped at card GC-48219930 · Offers refused one of its rows');
+    expect(shown).not.toMatch(/paused|POSTING_REFUSED/);
+    expect(panel({ state: 'row-refused', card: 'GC-48219930', code: 'POSTING_REFUSED', reason: 'not-allowed', moved: 0 })).toContain('Offers would not take its amount — check the card limits in Offers');
     expect(shown).toContain('Press again to go on');
   });
   it('lists the cards whose balances differ', () => {
