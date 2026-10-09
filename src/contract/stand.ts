@@ -121,7 +121,8 @@ export async function readIds(staff: Caller, connectionId: string, into: Record<
 
 export async function standUp(engine: Engine, port: number, database: string, options: StandOptions = {}): Promise<Stand> {
   const { addOns = [], addOnSamples = [], sample = false, uploadOnly = [], ...bootOptions } = options;
-  const server = await boot(engine, port, database, bootOptions);
+  // `CONTRACT_POOL_OF_ONE=1`: every stand's server gets one connection to the shop's database, so everything waits its turn.
+  const server = await boot(engine, port, database, { ...bootOptions, ...(process.env['CONTRACT_POOL_OF_ONE'] === '1' ? { poolOfOne: true } : {}) });
   try {
     return await standOn(server, engine, { addOns, addOnSamples, sample, uploadOnly });
   } catch (error) {

@@ -223,6 +223,26 @@ describe.skipIf(why !== null)(`codes, offers and staff discounts on a built Admi
         expect((await cashier.rows('ticket_codes')).filter((row) => row['ticket_id'] === id)).toHaveLength(2);
       }, 120_000);
 
+      it('one tote of a pair gives back nothing; the kept one is re-priced', async () => {
+        // The owner's offer: two totes, the second on us.
+        const offer = await s.insert('offers_offers', { name: 'Tote pair', public_name: { 'en-US': 'Two totes, the second on us' }, gives: 'bonus_item', buy_qty: 2, bonus_qty: 1, trigger: 'automatic', applies_to: 'lines', starts_on: '2026-01-01' });
+        await s.insert('offers_offer_targets', { offer_id: offer['id'], kind: 'item', source_table: 'pos:menu_items', source_row: String(menu['Tote bag']!['id']), label: 'Tote bag' });
+        await s.update('offers_offers', offer['id'], { status: 'active' });
+        const ticket = await cashier.insert('tickets', { guests: 1, status: 'open', staff_id: person['id'] });
+        const totes = await cashier.insert('ticket_items', { ticket_id: ticket['id'], menu_item_id: menu['Tote bag']!['id'], name: 'Tote bag', qty: 2, unit_price: 18, seat: 1 });
+        // $36.00 of totes, $18.00 off, tax on what is left: $19.49.
+        expect(figures(await cashier.one('tickets', ticket['id']))).toEqual([3600, 1800, 1800, 149, 1949]);
+        const payment = await cashier.insert('payments', { id: randomUUID(), ticket_id: ticket['id'], method: 'cash', amount: 19.49 });
+        await cashier.update('tickets', ticket['id'], { status: 'paid', closed_at: new Date().toISOString(), tip: 0 });
+        // One tote comes back. A share of the money would be $9.75; the truth is that one tote alone costs $19.49, so nothing is owed back.
+        const quote = await cashier.dryCreate('refunds', { id: randomUUID(), ticket_id: ticket['id'], method: 'cash', payment_id: payment['id'] }, { refund_items: [{ id: randomUUID(), ticket_item_id: totes['id'], qty: 1 }] });
+        expect(quote.status, JSON.stringify(quote.body).slice(0, 600)).toBe(200);
+        expect([cents((quote.body as { data: Row }).data['amount']), cents((quote.body as { data: Row }).data['tax'])]).toEqual([0, 0]);
+        // Both come back: all of it.
+        const both = await cashier.dryCreate('refunds', { id: randomUUID(), ticket_id: ticket['id'], method: 'cash', payment_id: payment['id'] }, { refund_items: [{ id: randomUUID(), ticket_item_id: totes['id'], qty: 2 }] });
+        expect(cents((both.body as { data: Row }).data['amount'])).toBe(1949);
+      }, 120_000);
+
       it('a cashier reads the reasons and what was applied, and nothing else of Offers: no card’s code, no holder, no ledger', async () => {
         expect((await cashier.rows('offers_reasons')).map((r) => r['label'])).toContain('Goodwill');
         const cards = await cashier.rows('offers_gift_cards');

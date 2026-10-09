@@ -143,6 +143,28 @@ describe.skipIf(why !== null)(`retail stock, and the add-ons away, on a built Ad
         expect([given.length, given.reduce((sum, one) => sum + one, 0)]).toEqual([3, 4547]);
       }, 120_000);
 
+      it('the last units sold twice at once: both sales go through, each is counted exactly once, and the one that found the shelf empty is marked', async () => {
+        // A second counted item, with a few on the shelf.
+        const points = await s.rows('inventory_stock_points');
+        const other = points.filter((one) => one['id'] !== point['id'] && Number(one['available']) >= 2 && Number(one['available']) <= 20 && Number(one['on_hand']) === Number(one['available']))[0]!;
+        expect(other).toBeDefined();
+        ok(await s.staff.post(s.data('inventory_links'), { values: { source_table: 'pos:menu_items', source_row: String(tote['id']), kind: 'item', item_id: other['item_id'], qty: '1', place_id: other['place_id'] } }), 201);
+        const all = Number(other['on_hand']);
+        const onShelf = async () => Number((await s.rows('inventory_stock_points')).find((one) => one['id'] === other['id'])!['on_hand']);
+        // Two tills, each with every one of them on a ticket, each paid in full; both press Pay at the same moment.
+        const tickets = [await sale([[tote, all]]), await sale([[tote, all]])];
+        for (const ticket of tickets) await cashier.insert('payments', { id: randomUUID(), ticket_id: ticket.id, method: 'cash', amount: Number((await cashier.one('tickets', ticket.id))['due']), staff_id: person['id'] });
+        const closes = await Promise.all(tickets.map((ticket) => cashier.patch('tickets', ticket.id, { status: 'paid', closed_at: new Date().toISOString(), tip: 0 })));
+        // A sale at the till is never stopped for stock: a moved lock is the only thing that may ask for the save again.
+        for (const [index, reply] of closes.entries()) if (reply.status !== 200) expect((await cashier.patch('tickets', tickets[index]!.id, { status: 'paid', closed_at: new Date().toISOString(), tip: 0 })).status).toBe(200);
+        // Neither deduction was lost and neither was made twice.
+        expect(await onShelf()).toBe(-all);
+        const receipts = (await s.rows('inventory_postings')).filter((row) => row['posting'] === 'sale' && Number(row['rows']) > 0 && tickets.some((ticket) => String(ticket.id) === String(row['source_row'])));
+        expect(receipts).toHaveLength(2);
+        const notes = closes.flatMap((reply) => ((reply.body as unknown as { postings?: { ledger: string; notes?: { note: string }[] }[] }).postings ?? []).filter((one) => one.ledger === 'stock').flatMap((one) => one.notes ?? [])).map((one) => one.note);
+        expect(notes.filter((note) => note === 'short').length).toBeGreaterThanOrEqual(1);
+      }, 180_000);
+
       it('Inventory switched off for the till: the stock feature goes, a sale goes through uncounted, and is counted once it is back', async () => {
         const before = await stock();
         await switched('inventory', false);
