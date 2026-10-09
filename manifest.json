@@ -9579,7 +9579,7 @@
       },
       {
         "key": "inventory",
-        "range": ">=1.0.9",
+        "range": ">=1.0.10",
         "reason": {
           "en-US": "Count retail stock: each sale takes it off the shelf, and a return puts it back.",
           "de-DE": "Warenbestand zählen: Jeder Verkauf nimmt ihn aus dem Regal, eine Rückgabe legt ihn zurück.",
