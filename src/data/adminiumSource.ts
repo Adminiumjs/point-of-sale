@@ -289,6 +289,12 @@ export interface Snapshot {
   taxRate: number | null;
   /** The till's gift cards have been brought into Offers & gift cards (`settings.cards_moved`). */
   cardsMoved: boolean;
+  /**
+   * How many of the till's own gift cards are still its own (not `moved`) —
+   * asked only as "none or some". Null when it could not be read: then nobody
+   * says there are none.
+   */
+  ownCards: number | null;
   tipPresets: number[] | null;
   rules: BookingRules | null;
   staff: Staff[];
@@ -429,6 +435,11 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
       listIn<{ id: Key; code: string | null }>(client, 'giftCards', 'id', cardKeys, 200),
     ]);
     const codeOfCard = new Map(loadedCards.map((c) => [key(c.id), c.code ?? '']));
+    // Does the till keep a card of its own that has not been brought into Offers? One row answers it.
+    const ownCards = await client
+      .list<{ id: Key }>('giftCards', { limit: 1, offset: 0, where: { column: 'status', op: 'neq', value: 'moved' } })
+      .then((page) => page.data.length)
+      .catch(() => null);
 
     /* --- the venue ------------------------------------------------------ */
 
@@ -727,6 +738,7 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
       venue: { address: settings?.address ?? null, phone: settings?.phone ?? null, footer: settings?.receipt_footer ?? null },
       taxRate: settings === undefined ? null : num(settings.tax_rate_bp) / 10_000,
       cardsMoved: settings !== undefined && yes((settings as unknown as { cards_moved?: boolean | number | null }).cards_moved ?? false),
+      ownCards,
       tipPresets: tipPresets.length === 0 ? null : tipPresets.map((p) => p / 100),
       rules,
       staff,

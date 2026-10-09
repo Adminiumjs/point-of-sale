@@ -329,6 +329,7 @@ async function boot(): Promise<void> {
       access: staffConfig?.access ?? null,
       addOnTables: addOnTables(staffConfig?.addOns),
       cardsMoved: snap.cardsMoved,
+      ownCards: snap.ownCards,
     });
     // Every action at the till is saved as the signed-in staff member, from here on.
     if (transport !== null) {

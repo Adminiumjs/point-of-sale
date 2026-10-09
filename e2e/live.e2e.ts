@@ -121,6 +121,19 @@ const newest = (list: Row[]): Row => [...list].sort((a, b) => Number(b['id']) - 
 /** The ticket on the register, as Adminium holds it. */
 const ticketOnServer = async (context: BrowserContext): Promise<Row> => newest((await rows(context, tables['tickets']!)).filter((row) => row['status'] === 'open' || row['status'] === 'sent'));
 
+/** A row made or changed as this person would through the data API: their session, and its write token. */
+async function writeAs(context: BrowserContext, table: string, values: Row, id?: unknown): Promise<Row> {
+  count(context);
+  const token = ((await (await context.request.get(`${stand.base}${TILL}surface-config.json`)).json()) as { csrfToken: string }).csrfToken;
+  count(context);
+  const url = `${stand.base}/api/v1/data/${stand.connectionId}/${table}${id === undefined ? '' : `/${String(id)}`}`;
+  const options = { data: { values }, headers: { 'x-adminium-csrf': token, origin: stand.base } };
+  const reply = id === undefined ? await context.request.post(url, options) : await context.request.patch(url, options);
+  expect(reply.status(), `${table}: ${await reply.text()}`).toBe(id === undefined ? 201 : 200);
+  return ((await reply.json()) as { data: Row }).data;
+}
+
+const moveBanner = (page: Page): Locator => page.getByRole('region', { name: 'Bring your gift cards into Offers' });
 const aside = (page: Page): Locator => page.locator('.ticket-aside');
 const tile = (page: Page, name: string): Locator => page.locator('.pos-tile', { hasText: name }).first();
 const payButton = (page: Page): Locator => page.locator('[data-pay]');
@@ -246,28 +259,58 @@ test.describe('the staff screens on a built Adminium', () => {
     if (scratch !== '') rmSync(scratch, { recursive: true, force: true });
   });
 
-  test('the till’s own cards are brought into Offers by the owner; a manager is told to ask, a cashier is not shown it', async ({}, testInfo) => {
+  test('a shop with Offers and no card of its own needs no move: gift cards are Offers’ from the first minute, and nobody is shown a banner', async ({}, testInfo) => {
     test.setTimeout(240_000);
     const tally: Sweep = { states: 0, failures: [] };
-    const banner = (page: Page) => page.getByRole('region', { name: 'Bring your gift cards into Offers' });
+    // The shop as it was stood up: Offers attached, the move never run, and not one card in the till's own table.
+    expect((await rows(contexts.admin!, tables['settings']!))[0]!['cards_moved']).toBeFalsy();
+    expect(await rows(contexts.admin!, tables['gift_cards']!)).toEqual([]);
 
-    // A cashier: no banner, and nothing of Offers' cards yet.
+    for (const who of ['cashier', 'manager', 'admin'] as const) {
+      const page = await openTill(contexts[who]!);
+      await expect(tile(page, 'Breakfast Bowl')).toBeVisible();
+      // Offers' screens: the tile that sells and tops up a card is on the register…
+      await expect(page.locator('[data-gift-tile]'), who).toBeVisible({ timeout: 30_000 });
+      // …and nobody is asked to bring in cards that do not exist.
+      await expect(moveBanner(page), who).toHaveCount(0);
+      if (who === 'admin') await sweep(page, 'the register of a shop with nothing to move', tally, testInfo);
+      await page.close();
+    }
+    // Nothing was written to say so: the till read that there is nothing to move.
+    expect((await rows(contexts.admin!, tables['settings']!))[0]!['cards_moved']).toBeFalsy();
+    expect(tally.failures.join('\n\n')).toBe('');
+  });
+
+  test('once the till holds a card of its own, its old screens are back until the owner brings it into Offers; a manager is told to ask, a cashier is not shown it', async ({}, testInfo) => {
+    test.setTimeout(240_000);
+    const tally: Sweep = { states: 0, failures: [] };
+    const banner = moveBanner;
+
+    // A card of the till's own, as a till without Offers would have sold one: $25.00 on it.
+    const person = (await rows(contexts.admin!, tables['staff']!))[0]!;
+    // (Made as the till makes one: a new card waits, its first money is written, and then it is switched on.)
+    const old = await writeAs(contexts.admin!, tables['gift_cards']!, { status: 'inactive' });
+    await writeAs(contexts.admin!, tables['gift_card_ledger']!, { id: crypto.randomUUID(), card_id: old['id'], kind: 'issue', amount: 25, staff_id: person['id'] });
+    await writeAs(contexts.admin!, tables['gift_cards']!, { status: 'active', issued_at: new Date().toISOString() }, old['id']);
+
+    // A cashier: the till's own Gift cards screen again — no banner, and nothing of Offers' cards.
     const cashier = await openTill(contexts.cashier!);
     await expect(tile(cashier, 'Breakfast Bowl')).toBeVisible();
     await expect(banner(cashier)).toHaveCount(0);
     await expect(cashier.locator('[data-gift-tile]')).toHaveCount(0);
     await cashier.close();
 
-    // A manager sees it, and is told who runs it: the first write is the owner's.
+    // A manager sees the banner, with what there is to move, and is told who runs it: the first write is the owner's.
     const manager = await openTill(contexts.manager!);
     await expect(banner(manager)).toBeVisible();
+    await expect(banner(manager)).toContainText('1 card, $25.00 in total');
     await banner(manager).getByRole('button', { name: 'Open' }).click();
     await manager.getByRole('button', { name: 'Bring them in' }).click();
     await expect(manager.getByText('Ask the owner to run this')).toBeVisible();
     await sweep(manager, 'the move, a manager told to ask the owner', tally, testInfo);
     await manager.close();
 
-    // The owner runs it. This shop never sold a card of its own, so there is nothing to compare — and it says so.
+    // The owner runs it.
     const owner = await openTill(contexts.admin!);
     await expect(banner(owner)).toBeVisible();
     await sweep(owner, 'the register with the banner', tally, testInfo);
@@ -276,6 +319,9 @@ test.describe('the staff screens on a built Adminium', () => {
     await expect(owner.getByText('All balances match')).toBeVisible({ timeout: 30_000 });
     await sweep(owner, 'the move, done', tally, testInfo);
     expect((await rows(contexts.admin!, tables['settings']!))[0]!['cards_moved']).toBeTruthy();
+    // The card is Offers' now, under the code it always had, with its $25.00.
+    const brought = (await rows(contexts.admin!, tables['offers:gift_cards']!)).filter((one) => one['moved_table'] === 'pos:gift_cards');
+    expect(brought.map((one) => [one['code'], usd(one['balance'])])).toEqual([[old['code'], '$25.00']]);
     await owner.getByRole('button', { name: 'Reload the till' }).click();
     // From now on gift cards are Offers': the tile that sells them is on the register.
     await expect(owner.locator('[data-gift-tile]')).toBeVisible({ timeout: 30_000 });

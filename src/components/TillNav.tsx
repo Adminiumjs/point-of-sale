@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { usePos } from '../state/store';
+import { cardState, usePos } from '../state/store';
 import type { View } from '../data/types';
 import type { Features } from '../features';
 import { useT, type MessageKey } from '../i18n';
@@ -150,7 +150,7 @@ export function TillNav() {
             {SCREENS.map((x) => item(x))}
             <div role="separator" style={css('height:1px;margin:6px 8px;background:var(--border);')} />
           </div>
-          {toolsFor(retail, s.features, s.cardsMoved).map((x) => item(x))}
+          {toolsFor(retail, s.features, cardState(s) === 3).map((x) => item(x))}
         </div>
       )}
     </div>

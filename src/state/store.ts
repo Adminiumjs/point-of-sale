@@ -179,6 +179,8 @@ export interface PosState {
   access: StaffAccess | null;
   /** The till's gift cards have been brought into Offers & gift cards (`settings.cards_moved`). */
   cardsMoved: boolean;
+  /** How many of the till's own gift cards are not `moved` yet (none: there is nothing to bring in); null when not known. */
+  ownCards: number | null;
   /** The old card tables are closed and this till has not noticed: nothing more until it reloads. */
   mustReload: boolean;
 
@@ -638,8 +640,25 @@ const withoutServer = (tk: Ticket): Ticket => {
   return rest;
 };
 
-/** Which of the three gift card states the till is in: 1 its own tables, 2 Offers connected but not moved, 3 moved. */
-export const cardState = (s: Pick<PosState, 'features' | 'cardsMoved'>): 1 | 2 | 3 => (!s.features['gift-cards'] ? 1 : s.cardsMoved ? 3 : 2);
+/**
+ * Which of the three gift card states a till is in, from the three things that decide it.
+ *
+ *   1  the till keeps its own cards: Offers & gift cards is not attached;
+ *   2  Offers is attached and the till still holds cards of its own that have
+ *      not been brought in — its old screens stay, with the banner that opens
+ *      the move;
+ *   3  the cards are Offers': the move is done (`settings.cards_moved`), or
+ *      there never was anything to move — a shop that attached Offers before
+ *      it sold a card of its own needs no move, and is asked for none.
+ *
+ * `own` is how many of the till's own cards are not yet `moved`; null when
+ * that is not known, which is never read as "none".
+ */
+export const cardStateOf = (c: { offers: boolean; moved: boolean; own: number | null }): 1 | 2 | 3 => (!c.offers ? 1 : c.moved || c.own === 0 ? 3 : 2);
+
+/** The till's own state (`cardStateOf`). */
+export const cardState = (s: Pick<PosState, 'features' | 'cardsMoved'> & { ownCards?: number | null }): 1 | 2 | 3 =>
+  cardStateOf({ offers: s.features['gift-cards'], moved: s.cardsMoved, own: s.ownCards ?? null });
 
 /** Nothing reaches the server right now: the demo's switch, or a write waiting to try again. */
 export const isOffline = (s: Pick<PosState, 'online' | 'sync'>): boolean => !s.online || s.sync.retrying;
@@ -1518,6 +1537,7 @@ export const usePos = create<PosState>()((set, get) => {
     figureless: false,
     access: null,
     cardsMoved: false,
+    ownCards: null,
     mustReload: false,
     reasons: null,
     codeBusy: false,
