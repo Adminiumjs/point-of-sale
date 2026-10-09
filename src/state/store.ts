@@ -789,8 +789,6 @@ export const usePos = create<PosState>()((set, get) => {
     set((st) => {
       if (st.ticket.rid !== rid) return {};
       const fig = figuresOfRow(row, applied, st.features.offers);
-      // An Adminium that answers a ticket with no figures of its own has none to wait for.
-      if (fig === null && !st.figureless) return { figureless: true };
       const open = row['status'] === undefined || row['status'] === 'open' || row['status'] === 'sent';
       // A ticket from before tickets kept their own rate: it can never be paid. A row that does not say keeps what was known.
       const rateless = 'tax_rate_bp' in row ? open && blank(row['tax_rate_bp']) : st.ticket.rateless === true;
@@ -825,6 +823,11 @@ export const usePos = create<PosState>()((set, get) => {
       ]);
       // Changed again while it was being read: the next read is the one that counts.
       if (seq !== figureSeq || outbox().pendingIn(target) > 0) return;
+      // An Adminium that reads a ticket back with no figures of its own has none to wait for.
+      if (figuresOfRow(row, [], offers) === null) {
+        set({ figureless: true });
+        return;
+      }
       applyFigures(target, row, foldApplied(appliedRows), offers ? codeRows.map((code) => ({ id: String(code['id']), typed: String(code['typed'] ?? '') })) : undefined);
     } catch {
       /* No answer: the estimate stays on screen, labelled as one. */
@@ -3065,7 +3068,7 @@ export const usePos = create<PosState>()((set, get) => {
           temp: li.rid,
           onRefused: (error) => {
             dropLine(li.rid);
-            refused(error);
+            refusedCard(error);
           },
         });
       }
@@ -3413,7 +3416,7 @@ watchOutbox((sync) => {
 
 // Another ticket came to the register: its own queue is the one to follow, and its figures are read.
 let followed: string | undefined;
-usePos.subscribe((st) => {
+usePos.subscribe((st, was) => {
   if (st.ticket.rid !== followed) {
     followed = st.ticket.rid;
     const busy = followed !== undefined && outbox().pendingIn(followed) > 0;
@@ -3423,6 +3426,8 @@ usePos.subscribe((st) => {
   }
   // Never Adminium's figures beside an unsaved change, whichever action wrote the ticket last.
   if (st.ticketBusy && st.ticket.server !== undefined) usePos.setState({ ticket: withoutServer(st.ticket) });
+  // The ticket was put back from a fresh read of the till (another till changed it): its figures are read again.
+  else if (!st.ticketBusy && st.ticket.server === undefined && was.ticket.server !== undefined && !was.ticketBusy) void st.refreshTicket(followed);
 });
 
 export { curStaffOf };
