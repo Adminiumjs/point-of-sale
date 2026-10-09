@@ -15,19 +15,18 @@
  *   4. a card that cannot pay (never sold) and a code nobody issued read as
  *      the same one answer;
  *   5. a code that is not twelve characters is never asked;
- *   6. Offers brought by the app's own install has no link key, so the page
- *      is handed none and the till's key opens no link;
- *   7. a guest who keeps guessing is stopped (last: it spends the minute's
- *      guesses);
- *
- * and, in a second shop where Offers itself was installed with its public
- * access allowed:
- *
- *   8. Offers' own key is handed to the page with the add-on, and the token of
- *      a card's emailed link reads that one card through it — a token nobody
- *      was sent, and a cancelled card's, are no card;
+ *   6. Offers came WITH the till's install and has its own link key: the shop
+ *      holds it, and the page is handed it with the add-on
+ *      (`addOns.offers.keys["offers-link"]`); the till's own key opens no link;
+ *   7. the emailed link (`/gift-card#<token>`): a real card's token reads its
+ *      balance through the page's own door; a link reads its own card and no
+ *      other; a cancelled card's link, and a token nobody was sent, read
+ *      "That code is not valid";
+ *   8. a guest who keeps guessing is stopped (it spends the minute's guesses);
  *   9. Offers switched off for the till: the entry leaves the till's key, and
  *      there is no door — the page is the not-found page.
+ *
+ * The ports are four from `BALANCE_PORT` (default 8940).
  */
 import { randomUUID } from 'node:crypto';
 
@@ -35,13 +34,17 @@ import { createPublicClient } from '@adminiumjs/public-client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { OFFERS_KEY, OFFERS_LINK_KEY, cardsRef, publicBalanceDoor, type BalanceDoor, type CardAnswer } from '../guests/balance';
+import { MESSAGES } from '../i18n/messages';
 import { resolveSurfaceConfig } from '../publicConfig';
-import { addOnBundle, Caller, ENGINES, missing, ok, type Engine } from './harness';
+import { Caller, ENGINES, missing, ok, type Engine } from './harness';
 import { cents, standUp, type Row, type Stand } from './stand';
 
 const why = missing();
 if (why !== null && process.env['ADMINIUM_REQUIRE_CONTRACT'] === '1') throw new Error(`the contract must run here, and cannot: ${why}`);
 const PORT = Number(process.env['BALANCE_PORT'] ?? 8940);
+
+/** The sentence the page shows for an answer that is not a balance (`GiftCardPage.tsx`), in English; null for a balance. */
+const sentenceOf = (answer: CardAnswer): string | null => (answer.kind === 'invalid' ? MESSAGES['en-US']['guest.cardInvalid']! : answer.kind === 'card' ? null : answer.kind);
 
 /** One of Offers' sample cards: sold, never spent, $19.00 on it. */
 const SAMPLE = 'GC-7K2MW3HNQ4XP';
@@ -70,6 +73,23 @@ describe.skipIf(why !== null)(`a gift card's balance on the Guests side, on a bu
         return res;
       };
       const card = async (code: string): Promise<Row> => (await s.rows('offers_gift_cards')).find((one) => one['code'] === code)!;
+      const servedNow = () => resolveSurfaceConfig({ baked: {}, hostedCustomer: true, base: `${s.server.base}/apps/pos/customer/`, origin: s.server.base });
+      /** The door as a page just opened has it: the served config, the till's key, and Offers' own when the page is handed one. */
+      const doorNow = async (): Promise<BalanceDoor | null> => {
+        const now = await servedNow();
+        if (now === null) throw new Error('the customer surface served no key');
+        const linkKey = now.addOns?.[OFFERS_KEY]?.keys[OFFERS_LINK_KEY];
+        const client = createPublicClient({ baseUrl: now.baseUrl, publishableKey: now.publishableKey, fetch: asBrowser })!;
+        const link = linkKey === undefined ? null : createPublicClient({ baseUrl: now.baseUrl, publishableKey: linkKey, fetch: asBrowser });
+        return publicBalanceDoor(client, link);
+      };
+      /** A card sold at Offers' desk for this much, with someone to email it to: its key, its code and its link's token. */
+      const cardFor = async (amount: string, to: string): Promise<{ id: unknown; code: string; token: string }> => {
+        const made = await s.insert('offers_gift_cards', { kind: 'card', recipient_email: to, recipient_name: 'Ada' }, { offers_card_actions: [{ action: 'issue', amount, reason: 'Sold at the desk', paid_by: 'cash' }] });
+        const kept = await s.one('offers_gift_cards', made['id']);
+        expect([kept['status'], cents(kept['balance'])]).toEqual(['active', cents(amount)]);
+        return { id: made['id'], code: String(kept['code']), token: String(kept['link_token']) };
+      };
 
       beforeAll(async () => {
         s = await standUp(engine as Engine, PORT, `pos_balance_${engine}`, { addOns: ['offers'], addOnSamples: ['offers'] });
@@ -81,7 +101,7 @@ describe.skipIf(why !== null)(`a gift card's balance on the Guests side, on a bu
       });
 
       it('Offers’ entry on gift cards rides the till’s customer key: one row, shown only with its own code', async () => {
-        served = await resolveSurfaceConfig({ baked: {}, hostedCustomer: true, base: `${s.server.base}/apps/pos/customer/`, origin: s.server.base });
+        served = await servedNow();
         if (served === null) throw new Error('the customer surface served no key');
         const raw = ok(await new Caller(s.server.base).get<Row>('/apps/pos/customer/surface-config.json'));
         const refs = ok(await new Caller(s.server.base, { authorization: `Bearer ${served.publishableKey}`, origin: s.server.base }).get<{ data: { refs: Record<string, Row> } }>('/api/v1/public/config')).data.refs;
@@ -99,24 +119,57 @@ describe.skipIf(why !== null)(`a gift card's balance on the Guests side, on a bu
         expect(door.currency).toBe('USD');
       }, 120_000);
 
-      it('Offers brought by the app’s own install has no link key of its own: the page is handed none, and asks for the code', async () => {
-        /*
-         * Offers' link key (`offers-link`) is made when Offers ITSELF is
-         * installed with its public access allowed — see the second shop
-         * below. Ticked at the app's install, as here, the shop holds one
-         * browser key, the till's; so the page has no link to open.
-         */
+      it('Offers came with the till’s install, and has its own link key: the shop holds it, and the page is handed it with the add-on', async () => {
         const keys = ok(await s.staff.get<{ keys: { appKey: string; purpose: string; access: { ref: string }[] }[] }>('/api/v1/public-keys')).keys;
-        expect(keys.map((key) => [key.appKey, key.purpose])).toEqual([['pos', 'customer']]);
-        expect(keys[0]!.access.map((entry) => entry.ref)).toContain('offers_gift_cards_unlocked');
-        expect(served!.addOns?.[OFFERS_KEY]?.keys ?? {}).toEqual({});
-        expect(door.byLink).toBeNull();
+        expect(keys.map((key) => [key.appKey, key.purpose, key.access.map((entry) => entry.ref).filter((ref) => ref.startsWith('offers_'))]).sort()).toEqual([
+          ['offers', OFFERS_LINK_KEY, ['offers_gift_cards_claimed']],
+          ['pos', 'customer', ['offers_gift_cards_unlocked']],
+        ]);
+        served = await servedNow();
+        expect(Object.keys(served!.addOns?.[OFFERS_KEY]?.keys ?? {})).toEqual([OFFERS_LINK_KEY]);
+        // A different key from the till's own, and never listed among the till's.
+        expect(served!.addOns![OFFERS_KEY]!.keys[OFFERS_LINK_KEY]).not.toBe(served!.publishableKey);
+        expect(served!.publicKeys ?? {}).toEqual({});
+        door = (await doorNow())!;
+        expect(door.byLink).not.toBeNull();
         // The till's own key opens no link: a token sent with it is refused, whatever it is.
         const stranger = createPublicClient({ baseUrl: served!.baseUrl, publishableKey: served!.publishableKey, fetch: asBrowser })!;
         heard.length = 0;
         await expect(stranger.openShared('not-a-token-anybody-was-sent')).rejects.toMatchObject({ status: 403, code: 'PUBLIC_CLAIM_UNAVAILABLE' });
         expect(heard.map((one) => [one.method, new URL(one.url).pathname, one.status, one.error])).toEqual([['POST', '/api/v1/public/claim/token', 403, 'PUBLIC_CLAIM_UNAVAILABLE']]);
       }, 60_000);
+
+      let sold: { id: unknown; code: string; token: string };
+      it('the emailed link (/gift-card#token): a real card’s token reads its balance through the page’s own door, in a body and never an address', async () => {
+        sold = await cardFor('25.00', `ada.${engine}@daybreak-guests.dev`);
+        heard.length = 0;
+        const answer = await (await doorNow())!.byLink!(sold.token);
+        expect(answer, JSON.stringify(heard.map((one) => [one.method, one.status, one.error]))).toEqual({ kind: 'card', balance: expect.stringMatching(/^25(\.0+)?$/), expiresOn: null });
+        // What the page's words are for it: a balance, never the refusal.
+        expect(sentenceOf(answer)).toBeNull();
+        const calls = heard.map((one) => [one.method, new URL(one.url).pathname]);
+        expect(calls).toContainEqual(['POST', '/api/v1/public/claim/token']);
+        expect(calls).toContainEqual(['GET', '/api/v1/public/records/offers_gift_cards_claimed']);
+        for (const one of heard) expect(one.url).not.toContain(sold.token);
+        // Its code reads the same card.
+        expect(await door.byCode(sold.code)).toEqual({ kind: 'card', balance: expect.stringMatching(/^25(\.0+)?$/), expiresOn: null });
+      }, 120_000);
+
+      it('a link reads its own card and no other', async () => {
+        const other = await cardFor('40.00', `bea.${engine}@daybreak-guests.dev`);
+        expect(await (await doorNow())!.byLink!(other.token)).toMatchObject({ kind: 'card', balance: expect.stringMatching(/^40(\.0+)?$/) });
+        // A new page, the first card's link: the first card.
+        expect(await (await doorNow())!.byLink!(sold.token)).toMatchObject({ kind: 'card', balance: expect.stringMatching(/^25(\.0+)?$/) });
+      }, 120_000);
+
+      it('a cancelled card’s link, and a token nobody was sent, read "That code is not valid"', async () => {
+        ok(await s.staff.patch(`${s.data('offers_gift_cards')}/${String(sold.id)}`, { values: { status: 'void', void_reason: 'Lost' } }));
+        expect((await s.one('offers_gift_cards', sold.id))['status']).toBe('void');
+        const cancelled = await (await doorNow())!.byLink!(sold.token);
+        const nobody = await (await doorNow())!.byLink!('NOTATOKENANYBODYWASSENT');
+        expect([cancelled, nobody]).toEqual([{ kind: 'invalid' }, { kind: 'invalid' }]);
+        expect([sentenceOf(cancelled), sentenceOf(nobody)]).toEqual(['That code is not valid', 'That code is not valid']);
+      }, 120_000);
 
       it('a card’s balance by the code on it: $19.00, in a header and never the address — however the guest spaces it', async () => {
         const kept = await card(SAMPLE);
@@ -195,85 +248,8 @@ describe.skipIf(why !== null)(`a gift card's balance on the Guests side, on a bu
         // While stopped, even the right code is not looked up.
         expect((await door.byCode(SAMPLE)).kind).toBe('wait');
       }, 120_000);
-    });
 
-    describe.skipIf(!available)(`on ${engine}, with Offers installed by itself and its public access allowed`, () => {
-      let s: Stand;
-      const asBrowser: typeof fetch = async (input, init) => fetch(input, { ...init, headers: { ...(init?.headers as Record<string, string>), origin: s.server.base } });
-      const servedNow = () => resolveSurfaceConfig({ baked: {}, hostedCustomer: true, base: `${s.server.base}/apps/pos/customer/`, origin: s.server.base });
-      const doorNow = async (): Promise<BalanceDoor | null> => {
-        const served = await servedNow();
-        if (served === null) throw new Error('the customer surface served no key');
-        const linkKey = served.addOns?.[OFFERS_KEY]?.keys[OFFERS_LINK_KEY];
-        const client = createPublicClient({ baseUrl: served.baseUrl, publishableKey: served.publishableKey, fetch: asBrowser })!;
-        const link = linkKey === undefined ? null : createPublicClient({ baseUrl: served.baseUrl, publishableKey: linkKey, fetch: asBrowser });
-        return publicBalanceDoor(client, link);
-      };
-      /** A card sold at Offers' desk for this much, with someone to email it to: its key, its code and its link's token. */
-      const cardFor = async (amount: string, to: string): Promise<{ id: unknown; code: string; token: string }> => {
-        const made = await s.insert('offers_gift_cards', { kind: 'card', recipient_email: to, recipient_name: 'Ada' }, { offers_card_actions: [{ action: 'issue', amount, reason: 'Sold at the desk', paid_by: 'cash' }] });
-        const kept = await s.one('offers_gift_cards', made['id']);
-        expect([kept['status'], cents(kept['balance'])]).toEqual(['active', cents(amount)]);
-        return { id: made['id'], code: String(kept['code']), token: String(kept['link_token']) };
-      };
-
-      beforeAll(async () => {
-        s = await standUp(engine as Engine, PORT, `pos_balance_link_${engine}`, { uploadOnly: ['offers'] });
-        await s.insert('settings', { venue_name: 'Daybreak Coffee', tax_rate_bp: 825 });
-        ok(await s.staff.put('/api/v1/public-api', { enabled: true }));
-        // Offers, installed as an owner installs an add-on: attached to the till, its public access allowed.
-        const offers = addOnBundle('offers');
-        const body = { key: offers.key, version: offers.version, attachTo: ['pos'], connectionId: s.connectionId };
-        const plan = ok(await s.staff.post<{ plan: { checksum?: string }; publicAccess?: { linkKey?: string; byApp?: Record<string, { adds: string[] }> } }>('/api/v1/add-ons/plan', body));
-        // The check says what it would open: one entry onto the till's key, and its own link key.
-        expect([plan.publicAccess?.linkKey, plan.publicAccess?.byApp?.['pos']?.adds]).toEqual([OFFERS_LINK_KEY, ['offers_gift_cards_unlocked']]);
-        const installed = await s.staff.post('/api/v1/add-ons', { ...body, publicAccess: true, ...(plan.plan.checksum === undefined ? {} : { planChecksum: plan.plan.checksum }) });
-        expect(installed.status, JSON.stringify(installed.body).slice(0, 800)).toBe(200);
-        await s.refreshIds();
-      }, 400_000);
-      afterAll(async () => {
-        await s?.server.stop();
-      });
-
-      it('Offers’ own key is handed to the till’s page with the add-on, by what it opens', async () => {
-        const keys = ok(await s.staff.get<{ keys: { appKey: string; purpose: string; access: { ref: string }[] }[] }>('/api/v1/public-keys')).keys;
-        expect(keys.map((key) => [key.appKey, key.purpose, key.access.map((entry) => entry.ref).filter((ref) => ref.startsWith('offers_'))]).sort()).toEqual([
-          ['offers', OFFERS_LINK_KEY, ['offers_gift_cards_claimed']],
-          ['pos', 'customer', ['offers_gift_cards_unlocked']],
-        ]);
-        const served = (await servedNow())!;
-        expect(Object.keys(served.addOns?.[OFFERS_KEY]?.keys ?? {})).toEqual([OFFERS_LINK_KEY]);
-        // A different key from the till's own, and never listed among the till's.
-        expect(served.addOns![OFFERS_KEY]!.keys[OFFERS_LINK_KEY]).not.toBe(served.publishableKey);
-        expect(served.publicKeys ?? {}).toEqual({});
-      }, 60_000);
-
-      let sold: { id: unknown; code: string; token: string };
-      it('the token of a card’s emailed link reads that one card; its code reads the same', async () => {
-        sold = await cardFor('25.00', `ada.${engine}@daybreak-guests.dev`);
-        const door = (await doorNow())!;
-        expect(door.byLink).not.toBeNull();
-        expect(await door.byLink!(sold.token)).toEqual({ kind: 'card', balance: expect.stringMatching(/^25(\.0+)?$/), expiresOn: null });
-        expect(await door.byCode(sold.code)).toEqual({ kind: 'card', balance: expect.stringMatching(/^25(\.0+)?$/), expiresOn: null });
-      }, 120_000);
-
-      it('a link reads its own card and no other', async () => {
-        const other = await cardFor('40.00', `bea.${engine}@daybreak-guests.dev`);
-        const door = (await doorNow())!;
-        expect(await door.byLink!(other.token)).toMatchObject({ kind: 'card', balance: expect.stringMatching(/^40(\.0+)?$/) });
-        // A new page, the first card's link: the first card.
-        expect(await (await doorNow())!.byLink!(sold.token)).toMatchObject({ kind: 'card', balance: expect.stringMatching(/^25(\.0+)?$/) });
-      }, 120_000);
-
-      it('a token nobody was sent, and the link of a card since cancelled, are no card', async () => {
-        const door = (await doorNow())!;
-        expect(await door.byLink!('NOTATOKENANYBODYWASSENT')).toEqual({ kind: 'invalid' });
-        ok(await s.staff.patch(`${s.data('offers_gift_cards')}/${String(sold.id)}`, { values: { status: 'void', void_reason: 'Lost' } }));
-        expect((await s.one('offers_gift_cards', sold.id))['status']).toBe('void');
-        expect(await (await doorNow())!.byLink!(sold.token)).toEqual({ kind: 'invalid' });
-      }, 120_000);
-
-      it('Offers switched off for the till: its entry leaves the till’s key, and there is no door', async () => {
+      it('Offers switched off for the till: its entry leaves the till’s key, and there is no door — the page is not found', async () => {
         const off = ok(await s.staff.patch<{ publicAccess?: { withdrawn: string[] } }>('/api/v1/add-ons/offers', { attachedTo: 'pos', enabled: false }));
         expect(off.publicAccess?.withdrawn).toEqual(['offers_gift_cards_unlocked']);
         expect(await doorNow()).toBeNull();
