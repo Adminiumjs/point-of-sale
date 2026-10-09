@@ -17,8 +17,20 @@ const UNAVAILABLE = 'Offers can’t answer right now, so this can’t be saved. 
 describe('a staff discount', () => {
   it('over the ceiling says how much may be given, and who to ask', () => {
     expect(discountRefusal(refused('ADJUST_REFUSED', { reason: 'over-ceiling', max: '10' }))).toBe('You can give up to 10 % · Ask a manager');
-    // A comp has no percent to name.
+    expect(discountRefusal(refused('ADJUST_REFUSED', { reason: 'over-ceiling', max: '10.00' }), 'pct')).toBe('You can give up to 10 % · Ask a manager');
+    // An amount is held to money: what the giver's percent comes to on this ticket.
+    expect(discountRefusal(refused('ADJUST_REFUSED', { reason: 'over-ceiling', max: '3.60' }), 'amt')).toBe('You can give up to $3.60 · Ask a manager');
+    // No figure came with it.
     expect(discountRefusal(refused('ADJUST_REFUSED', { reason: 'over-ceiling' }))).toBe('That is more than you can give · Ask a manager');
+  });
+  it('a role with no limit set in Offers is told that, and to ask the owner — not that it may give "up to 0 %"', () => {
+    // What a built Adminium answers when `offers_ceilings` has no row for any role the giver holds.
+    const none = refused('ADJUST_REFUSED', { column: 'discount_value', reason: 'over-ceiling', max: '0' });
+    expect(discountRefusal(none, 'pct')).toBe('Your role has no discount limit set in Offers · Ask the owner');
+    expect(discountRefusal(none, 'amt')).toBe('Your role has no discount limit set in Offers · Ask the owner');
+    expect(discountRefusal(none)).toBe('Your role has no discount limit set in Offers · Ask the owner');
+    // A comp is a leave of its own: a role with a limit and no leave to comp is answered the same `max: "0"`.
+    expect(discountRefusal(none, 'comp')).toBe('Your role can’t give a comp · Ask a manager');
   });
   it('not allowed asks for a manager', () => {
     expect(discountRefusal(refused('ADJUST_REFUSED', { reason: 'not-allowed' }))).toBe('Ask a manager to sign in');

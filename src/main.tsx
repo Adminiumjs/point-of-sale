@@ -327,6 +327,7 @@ async function boot(): Promise<void> {
       features: featuresOf(staffConfig?.addOns),
       // What this person may do, and whether the till's gift cards have moved to Offers.
       access: staffConfig?.access ?? null,
+      addOnTables: addOnTables(staffConfig?.addOns),
       cardsMoved: snap.cardsMoved,
     });
     // Every action at the till is saved as the signed-in staff member, from here on.

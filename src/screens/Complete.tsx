@@ -7,6 +7,7 @@ import { useI18n } from '../i18n';
 import { DEMO } from '../surface';
 import { Icon } from '../components/Icon';
 import { TotalLabel } from '../components/Figures';
+import { CardPrints } from '../components/CardPrints';
 import { css } from '../components/css';
 import type { Sale } from '../data/types';
 
@@ -133,6 +134,8 @@ export function Complete() {
           </div>
 
           <div className="no-print" style={css('flex:1;min-width:280px;display:flex;flex-direction:column;gap:11px;')}>
+            {/* A card sold on this ticket holds its money now: printed by Offers, once. */}
+            <CardPrints />
             <button className="pos-press" onClick={s.printReceipt} style={css('height:66px;border-radius:16px;border:none;background:var(--accent);color:var(--accent-fg);font-size:17px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:11px;')}>
               <Icon name="printer" size={21} />
               {t('complete.printReceipt')}
@@ -304,8 +307,9 @@ export function ReceiptReductions({ sale }: { sale: Pick<Sale, 'discount' | 'dis
 
 /**
  * Gift cards on the receipt: what each card that paid has left (Adminium's
- * answer when it paid), and the whole code of a card sold on this ticket —
- * printed this once, because nothing reads it back afterwards.
+ * answer when it paid), and each card sold on this ticket by its last four.
+ * A new card's whole code is not the receipt's to show: Offers & gift cards
+ * prints the card itself, once (`CardPrints`).
  */
 export function ReceiptCards({ sale }: { sale: Pick<Sale, 'cardBalances' | 'newCards'> }) {
   const { t } = useI18n();
@@ -325,11 +329,12 @@ export function ReceiptCards({ sale }: { sale: Pick<Sale, 'cardBalances' | 'newC
       {cards.map((one, i) => (
         <div key={'new' + String(i)} style={css('margin-top:8px;padding-top:8px;border-top:1px dashed var(--border-strong);')}>
           <div style={css('display:flex;justify-content:space-between;gap:10px;font-size:12px;')}>
-            <span style={css('font-weight:700;')}>{t('cards.newCode')}</span>
+            <span style={css('font-weight:700;')}>
+              {t('cards.newCode')} · {t('cards.kept', { last4: one.last4 })}
+            </span>
             <span style={css(MONO)}>{money(one.amount)}</span>
           </div>
-          <div style={css('font-size:15px;font-weight:800;letter-spacing:.06em;margin-top:4px;' + MONO)}>{one.code}</div>
-          <div style={css('font-size:11px;color:var(--fg-muted);margin-top:2px;')}>{t('cards.newCodeOnce')}</div>
+          <div style={css('font-size:11px;color:var(--fg-muted);margin-top:2px;')}>{t('cards.printOnce')}</div>
         </div>
       ))}
     </div>

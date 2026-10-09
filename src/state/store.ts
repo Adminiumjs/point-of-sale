@@ -27,6 +27,8 @@ import { demoMembers, demoRewards, loyalty } from '../data/loyalty';
 import { pointsFor, pointsLeft } from './points';
 import { matches as matchesMember } from '../data/loyalty';
 import { demoCards, giftCards, normaliseCode } from '../data/giftCards';
+import { cardPrints, dropCardPrint, keepCardPrint, markCardsPaid, type CardPrint } from './cardPrints';
+import { mayIssueCards, mayRunCardMove } from './may';
 import { printOnly } from '../components/print';
 import { SESSION_STAFF_ID } from '../data/sessionOperator';
 import type { OutboxState } from './outbox';
@@ -194,8 +196,12 @@ export interface PosState {
   cardPayBusy: boolean;
   /** Why the card cannot pay, in plain words. */
   cardPayWords: string | null;
-  /** The sheet that sells a new card. */
+  /** The sheet that sells a new card, or tops one up. */
   cardSaleOpen: boolean;
+  /** New cards waiting to be printed: which card and its print ticket — never its code (`cardPrints.ts`). */
+  cardPrints: CardPrint[];
+  /** The names the staff config stores the add-ons' tables under (`offers:gift_cards` → `offers_gift_cards`). */
+  addOnTables: Record<string, string>;
   /** Bringing the till's cards into Offers. */
   cardMove: {
     open: boolean;
@@ -374,6 +380,12 @@ export interface PosState {
   /** Take what the card covers. */
   payCard: () => Promise<void>;
   setCardSale: (open: boolean) => void;
+  /** A card the customer already holds, found by its code for a top-up: Offers' answer, never the till's memory. */
+  findCardToTopUp: (code: string) => Promise<TopUpCard | { words: string }>;
+  /** Money for a card the customer holds, as a line on the ticket: Adminium loads it when the ticket is paid. */
+  topUpCard: (card: TopUpCard, amount: number) => boolean;
+  /** Where a new card prints, once — or null, with the reason said. The entry is gone once the address is in hand. */
+  cardPrintUrl: (cardId: string) => Promise<string | null>;
   /** Sell a new gift card for this much: a line on the ticket, loaded by Adminium when it is paid. */
   sellCard: (amount: number) => Promise<boolean>;
   /** The banner's figures: how many of the till's cards hold money, and how much. */
@@ -606,12 +618,25 @@ export const isOffline = (s: Pick<PosState, 'online' | 'sync'>): boolean => !s.o
 /** The figures on screen are the till's estimate, and a server will say otherwise soon. */
 export const showsEstimate = (s: Pick<PosState, 'connected' | 'ticket' | 'figureless'>): boolean => s.connected && !s.figureless && s.ticket.server === undefined;
 
-/** Whether this person runs the shop: the staff config says so, or says nothing (then the server decides). */
-export const canManage = (s: Pick<PosState, 'access'>): boolean =>
-  s.access === null || s.access.roles.some((role) => /manager|owner|admin/i.test(role.slug)) || (s.access.tables['settings'] ?? []).includes('update');
+/** A card found for a top-up: its key in Offers, its last four and what it holds now. */
+export interface TopUpCard {
+  cardId: string;
+  last4: string;
+  balance: number | null;
+}
 
-/** The whole code of a card sold on an open ticket, by card: in memory only, shown once when the ticket is paid. */
-const onceCodes = new Map<string, string>();
+/**
+ * A ticket from before the update that already holds payments — as Adminium
+ * answered, or as this till took them. Until the answer is in it counts as
+ * such: the button that moves its items shows only once nothing was paid.
+ */
+export const partPaidBefore = (s: Pick<PosState, 'ticket' | 'splits'>): boolean => s.ticket.rateless === true && (s.ticket.partPaid !== false || s.splits.length > 0);
+
+/** Whether the banner that brings the till's cards into Offers is this person's to see. */
+export const seesCardMove = (s: Pick<PosState, 'access' | 'addOnTables'>): boolean => mayRunCardMove(s.access, s.addOnTables);
+/** Whether "Sell a new card" is this person's: making a card is a grant of its own in Offers. */
+export const sellsNewCards = (s: Pick<PosState, 'access' | 'addOnTables'>): boolean => mayIssueCards(s.access, s.addOnTables);
+
 /** The reductions last read for a ticket, for the receipt of the sale that closes it. */
 const lastApplied = new Map<string, AppliedLine[]>();
 /** The tip the settling payment carried: the ticket closes with the same one. */
@@ -801,6 +826,22 @@ export const usePos = create<PosState>()((set, get) => {
         },
       };
     });
+    askPartPaid(rid);
+  };
+  /**
+   * A ticket from before the update that cannot be paid: does it already hold
+   * payments? Asked of Adminium once per ticket. Its items can be carried to a
+   * new ticket; a payment cannot follow them.
+   */
+  const askPartPaid = (rid: string) => {
+    const tk = get().ticket;
+    const d = desk();
+    const id = outbox().resolve(rid);
+    if (tk.rid !== rid || tk.rateless !== true || tk.partPaid !== undefined || d === null || id === undefined) return;
+    void d
+      .rows('payments', { column: 'ticket_id', op: 'eq', value: dbKey(id) }, 200)
+      .then((rows) => set((st) => (st.ticket.rid === rid ? { ticket: { ...st.ticket, partPaid: rows.length > 0 } } : {})))
+      .catch(() => undefined);
   };
   const refreshTicket = async (rid?: string): Promise<void> => {
     const d = desk();
@@ -914,7 +955,38 @@ export const usePos = create<PosState>()((set, get) => {
   /** A line the server would not take comes off the screen again. */
   const dropLine = (rid: string | undefined) => {
     if (rid === undefined) return;
+    forgetPrints(get().ticket.items.filter((x) => x.rid === rid));
     set((s) => ({ ticket: { ...s.ticket, items: s.ticket.items.filter((x) => x.rid !== rid) } }));
+  };
+  /** A new card whose line leaves the ticket is not sold: there is nothing of it left to print. */
+  const forgetPrints = (lines: readonly LineItem[]) => {
+    const gone = lines.flatMap((li) => (li.giftCard?.offers === true ? [li.giftCard.cardId] : []));
+    if (gone.length === 0) return;
+    gone.forEach(dropCardPrint);
+    set({ cardPrints: cardPrints() });
+  };
+  /** A line that sells money for one of Offers' cards — a new card, or a top-up: Adminium loads the card when the ticket is paid. */
+  const addCardLine = (cardId: string, last4: string, amount: number) => {
+    const li: LineItem = {
+      key: `gift:${cardId}`,
+      rid: outbox().temp(),
+      id: '',
+      qty: 1,
+      selection: {},
+      note: '',
+      seat: 0,
+      sent: false,
+      giftCard: { cardId, code: last4, amount: round2(amount), offers: true },
+    };
+    set((st) => ({ ticket: { ...st.ticket, items: [...st.ticket.items, li] }, cardSaleOpen: false }));
+    const ticketRid = ensureTicket();
+    void outbox().insert(ticketRid, 'ticket_items', lineValues(ticketRid, li), {
+      temp: li.rid,
+      onRefused: (error) => {
+        dropLine(li.rid);
+        refused(error);
+      },
+    });
   };
   const saveQty = (li: LineItem) => {
     if (li.rid === undefined) return;
@@ -1079,13 +1151,16 @@ export const usePos = create<PosState>()((set, get) => {
       applyFigures(rid, closed, lastApplied.get(rid) ?? []);
     }
     const s = get();
-    // Cards sold on this ticket: their whole codes, shown this once.
+    // Cards sold on this ticket now hold their money: each can be printed, once, on the ticket its sale was handed.
+    const waiting = cardPrints();
     const newCards = s.ticket.items.flatMap((li) => {
-      const code = li.giftCard?.offers === true ? onceCodes.get(li.giftCard.cardId) : undefined;
-      if (li.giftCard === undefined || code === undefined) return [];
-      onceCodes.delete(li.giftCard.cardId);
-      return [{ code, amount: li.giftCard.amount }];
+      const made = li.giftCard?.offers === true ? waiting.find((one) => one.cardId === li.giftCard!.cardId) : undefined;
+      return li.giftCard === undefined || made === undefined ? [] : [{ cardId: made.cardId, last4: made.last4, amount: li.giftCard.amount }];
     });
+    if (newCards.length > 0) {
+      markCardsPaid(newCards.map((one) => one.cardId));
+      set({ cardPrints: cardPrints() });
+    }
     const cardBalances = splits.flatMap((x) => (x.cardLeft === undefined ? [] : [{ last4: x.reference ?? '', left: x.cardLeft }]));
     // What was taken in all, tip included: Adminium's `charged` when it answered one.
     const charged = closed !== null && !blank(closed['charged']) ? num(closed['charged']) : round2(regTotal(s) + tip);
@@ -1244,6 +1319,7 @@ export const usePos = create<PosState>()((set, get) => {
     }
     if (error.details['requires'] === 'tax_rate_bp') {
       set((st) => (st.ticket.rid === rid ? { ticket: { ...st.ticket, rateless: true }, view: 'register' } : {}));
+      askPartPaid(rid);
       get().showToast(t('ticket.carryStrip'), 'error');
       return;
     }
@@ -1378,6 +1454,8 @@ export const usePos = create<PosState>()((set, get) => {
     cardPayBusy: false,
     cardPayWords: null,
     cardSaleOpen: false,
+    cardPrints: cardPrints(),
+    addOnTables: {},
     cardMove: { open: false, later: false, figures: null, busy: false, moved: 0, of: 0, outcome: null, failed: false },
     stock: {},
 
@@ -1524,6 +1602,7 @@ export const usePos = create<PosState>()((set, get) => {
     toggleCoursing: () => set((s) => ({ coursing: !s.coursing })),
     emptyTicket: () => {
       get().ticket.items.filter((x) => !x.sent).forEach(removeLine);
+      forgetPrints(get().ticket.items);
       setItems([]);
     },
     // The demo dock's "Reset ticket": the flag folds, so a real till carries no seed ticket.
@@ -1600,6 +1679,7 @@ export const usePos = create<PosState>()((set, get) => {
         return;
       }
       removeLine(it);
+      forgetPrints([it]);
       setItems(get().ticket.items.filter((x) => x.key !== k));
     },
     send: () => {
@@ -1790,6 +1870,7 @@ export const usePos = create<PosState>()((set, get) => {
       } else if (li !== undefined) {
         removeLine(li);
       }
+      if (li !== undefined) forgetPrints([li]);
       setItems(s.ticket.items.filter((x) => x.key !== k));
       set({ voidOpen: false, voidKey: null, voidOne: false, voidText: '' });
       get().showToast(t('toast.itemVoided'));
@@ -1887,6 +1968,11 @@ export const usePos = create<PosState>()((set, get) => {
       const tk = s.ticket;
       const old = tk.rid;
       if (old === undefined || tk.rateless !== true) return;
+      // Money already taken on it cannot move with the items: a manager finishes that ticket from the dashboard.
+      if (partPaidBefore(s)) {
+        get().showToast(`${t('ticket.partPaid')} · ${t('ticket.partPaidHint')}`, 'error');
+        return;
+      }
       /*
        * A new ticket takes today's tax rate. Each line moves with its quantity
        * and price sent again — a line that only changed hands would leave the
@@ -1917,7 +2003,7 @@ export const usePos = create<PosState>()((set, get) => {
         void outbox().update(rid, 'tickets', rid, { discount_kind: DISCOUNT_KIND[s.discount.kind], discount_value: s.discount.value, discount_reason: s.discount.label }, { onRefused: refused });
       }
       void outbox().update(rid, 'tickets', old, { status: 'void', merged_into_id: rid, held: false }, { onRefused: refused });
-      const { server: _figures, rateless: _was, codes: _codes, card: _card, ...rest } = tk;
+      const { server: _figures, rateless: _was, partPaid: _paid, codes: _codes, card: _card, ...rest } = tk;
       set((st) => ({
         ticket: { ...rest, rid },
         discount: offers ? null : st.discount,
@@ -1953,7 +2039,7 @@ export const usePos = create<PosState>()((set, get) => {
         if (fig === null) return { ok: false, words: t('toast.notSaved') };
         return { ok: true, discount: fig.discount, tax: fig.tax, total: fig.total, applied };
       } catch (raw) {
-        return { ok: false, words: discountRefusal(asSinkError(raw)) };
+        return { ok: false, words: discountRefusal(asSinkError(raw), kind) };
       }
     },
     giveDiscount: async (kind, value, label, reasonId) => {
@@ -1966,7 +2052,7 @@ export const usePos = create<PosState>()((set, get) => {
         get().showToast(t(kind === 'comp' ? 'toast.comped' : 'toast.discounted', { label }), 'success');
         return null;
       } catch (raw) {
-        return discountRefusal(asSinkError(raw));
+        return discountRefusal(asSinkError(raw), kind);
       }
     },
     applyCode: async (raw) => {
@@ -2102,33 +2188,18 @@ export const usePos = create<PosState>()((set, get) => {
         return false;
       }
       try {
-        // The card is made by Offers; its whole code comes back this once.
+        // The card is made by Offers. Its whole code is in the reply once, and is dropped where the reply is read:
+        // what the till keeps is the ticket that prints the card, once, after the sale is paid.
         const reply = await d.create('offers:gift_cards', { kind: 'card' });
         const id = String(reply.data['id'] ?? '');
-        const code = (reply.once ?? []).find((one) => one.column === 'code')?.value ?? '';
         if (id === '') throw new Error('no card');
-        if (code !== '') onceCodes.set(id, code);
-        const li: LineItem = {
-          key: `gift:${id}`,
-          rid: outbox().temp(),
-          id: '',
-          qty: 1,
-          selection: {},
-          note: '',
-          seat: 0,
-          sent: false,
-          giftCard: { cardId: id, code: code.slice(-4), amount: round2(amount), offers: true },
-        };
-        set((st) => ({ ticket: { ...st.ticket, items: [...st.ticket.items, li] }, cardSaleOpen: false }));
-        const ticketRid = ensureTicket();
-        void outbox().insert(ticketRid, 'ticket_items', lineValues(ticketRid, li), {
-          temp: li.rid,
-          onRefused: (error) => {
-            dropLine(li.rid);
-            onceCodes.delete(id);
-            refused(error);
-          },
-        });
+        const last4 = String(reply.data['label'] ?? '');
+        const print = (reply.once ?? []).find((one) => one.column === 'code')?.print;
+        if (print !== undefined) {
+          keepCardPrint({ cardId: id, print, last4, amount: round2(amount) });
+          set({ cardPrints: cardPrints() });
+        }
+        addCardLine(id, last4, amount);
         get().showToast(t('cards.sold', { amount: money(amount) }), 'success');
         return true;
       } catch (raw) {
@@ -2136,6 +2207,64 @@ export const usePos = create<PosState>()((set, get) => {
         // Making a card is Offers' desk role's: a cashier is told who can.
         get().showToast(error.status === 403 ? t('cards.sellWho') : error.reason === 'add-on-unavailable' ? unavailableWords() : t('toast.notSaved'), 'error');
         return false;
+      }
+    },
+    findCardToTopUp: async (raw) => {
+      const code = raw.trim();
+      const d = desk();
+      if (code === '') return { words: t('cards.notValid') };
+      if (d === null || offline()) return { words: t('cards.offline') };
+      try {
+        const found = await d.lookUp(code);
+        if (!found.found || found.kind !== 'gift-card' || found.key === undefined) return { words: t('cards.notValid') };
+        const status = String(found.record?.['status'] ?? '');
+        if (status === 'void') return { words: t('cards.void') };
+        if (status === 'expired') return { words: t('cards.expired') };
+        const balance = found.record?.['balance'];
+        return { cardId: found.key, last4: found.last4 ?? code.slice(-4), balance: blank(balance) ? null : num(balance) };
+      } catch (raw2) {
+        return { words: cardRefusal(asSinkError(raw2)) };
+      }
+    },
+    topUpCard: (card, amount) => {
+      if (!(amount > 0)) return false;
+      if (get().ticket.items.some((x) => x.giftCard?.cardId === card.cardId)) {
+        get().showToast(t('cards.onTicket'), 'error');
+        return false;
+      }
+      addCardLine(card.cardId, card.last4, amount);
+      get().showToast(t('cards.toppedUp', { amount: money(amount) }), 'success');
+      return true;
+    },
+    cardPrintUrl: async (cardId) => {
+      const d = desk();
+      const entry = cardPrints().find((one) => one.cardId === cardId);
+      if (entry === undefined) {
+        set({ cardPrints: cardPrints() });
+        get().showToast(t('cards.printGone'), 'error');
+        return null;
+      }
+      if (d === null || offline()) {
+        get().showToast(t('cards.printOffline'), 'error');
+        return null;
+      }
+      try {
+        const url = await d.cardPrintUrl(cardId, entry.print);
+        // The ticket is spent: the address prints the card this once.
+        dropCardPrint(cardId);
+        set({ cardPrints: cardPrints() });
+        return url;
+      } catch (raw) {
+        const error = asSinkError(raw);
+        if (error.kind === 'offline') {
+          get().showToast(t('cards.printOffline'), 'error');
+          return null;
+        }
+        // Refused: the ticket is spent, too old, or not this person's. It will not print from here again.
+        dropCardPrint(cardId);
+        set({ cardPrints: cardPrints() });
+        get().showToast(t('cards.printGone'), 'error');
+        return null;
       }
     },
     loadCardMove: async () => {

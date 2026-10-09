@@ -164,6 +164,12 @@ export interface Ticket {
   server?: ServerFigures;
   /** Opened before tickets kept a tax rate of their own: it can never be paid, only moved to a new ticket. */
   rateless?: boolean;
+  /**
+   * Such a ticket already holds payments (Adminium was asked). Its items can
+   * move to a new ticket; money cannot — so there is no button, and a manager
+   * finishes it from the dashboard. Undefined until the answer is in.
+   */
+  partPaid?: boolean;
   /** The codes typed on it (Offers). */
   codes?: TicketCode[];
   /** A gift card looked up for it, used at Pay. */
@@ -266,10 +272,10 @@ export interface Sale {
   /** What each gift card that paid has left. */
   cardBalances?: { last4: string; left: number }[];
   /**
-   * Cards sold on this ticket, with their whole code: shown and printed this
-   * once. Adminium never reads a code back, and the till keeps it nowhere else.
+   * Cards sold on this ticket, by their last four. A card's whole code is
+   * never the till's to hold: it is printed by Offers, once (`cardPrints.ts`).
    */
-  newCards?: { code: string; amount: number }[];
+  newCards?: { cardId: string; last4: string; amount: number }[];
 }
 
 export type KdsStatus = 'new' | 'cooking' | 'ready';

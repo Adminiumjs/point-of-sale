@@ -39,8 +39,12 @@ export interface DeskReply {
   told?: { note: string; name?: unknown }[];
   /** A gift card payment: what the card covers, and what is then left to pay. */
   payment?: { amount: number | string; due: number | string };
-  /** Values shown this once and never read back: a new card's whole code. */
-  once?: { column: string; value: string; print?: unknown }[];
+  /**
+   * What a save hands its maker once: for a new gift card, the ticket that
+   * prints it. The reply also carries the card's whole code; this door drops
+   * it as it reads the reply, so no screen and no store ever holds one.
+   */
+  once?: { table?: string; key?: string; column: string; print?: string }[];
   /** A refund's limits: what each payment took and can still give back. */
   refund?: {
     refundable?: number | string;
@@ -53,6 +57,9 @@ export interface DeskReply {
 export interface LookUp {
   found: boolean;
   kind?: 'gift-card' | 'voucher' | 'pack' | 'code';
+  /** Which of Offers' tables the row is in, by its short name (`gift_cards`), and the row's key. */
+  table?: string;
+  key?: string;
   last4?: string;
   record?: Record<string, unknown>;
 }
@@ -87,6 +94,12 @@ export interface Desk {
   lookUp(value: string): Promise<LookUp>;
   /** Inventory's stock words for menu items, at most 60 a call. */
   stockWords(ids: string[]): Promise<StockWord[]>;
+  /**
+   * Where a new gift card prints, once: Offers draws it for the person who
+   * made the card, on the ticket their save was handed. The address answers
+   * one time, within a minute.
+   */
+  cardPrintUrl(cardId: RowId, ticket: string): Promise<string>;
 }
 
 let current: Desk | null = null;
@@ -107,6 +120,25 @@ export function addOnTables(addOns: Readonly<Record<string, { tables?: Readonly<
 
 const PAGE = 200;
 const WORDS_MAX = 60;
+
+/** `once` as the till keeps it: which row and its print ticket — never the value (a card's whole code). */
+export function onceOf(raw: unknown): Pick<DeskReply, 'once'> {
+  if (!Array.isArray(raw)) return {};
+  return {
+    once: raw.flatMap((one) => {
+      const e = (one ?? {}) as Record<string, unknown>;
+      if (typeof e['column'] !== 'string') return [];
+      return [
+        {
+          column: e['column'],
+          ...(e['table'] === undefined ? {} : { table: String(e['table']) }),
+          ...(e['key'] === undefined ? {} : { key: String(e['key']) }),
+          ...(typeof e['print'] === 'string' && e['print'] !== '' ? { print: e['print'] } : {}),
+        },
+      ];
+    }),
+  };
+}
 
 export function sessionDesk(transport: SessionTransport, tableOfRef: Readonly<Record<string, string>>): Desk {
   const tableOf = (ref: string): string => {
@@ -145,7 +177,7 @@ export function sessionDesk(transport: SessionTransport, tableOfRef: Readonly<Re
     for (const child of children) linked[await transport.relation(tableOf(child.ref), child.via)] = child.rows.map((row) => ({ values: row }));
     return { values, children: linked };
   };
-  const reply = (body: Partial<DeskReply> | null | undefined): DeskReply => ({ ...(body ?? {}), data: body?.data ?? {} });
+  const reply = (body: Partial<DeskReply> | null | undefined): DeskReply => ({ ...(body ?? {}), data: body?.data ?? {}, ...onceOf(body?.once) });
 
   return {
     async one(ref, id) {
@@ -180,7 +212,19 @@ export function sessionDesk(transport: SessionTransport, tableOfRef: Readonly<Re
     async lookUp(value) {
       const answer = await send<Partial<LookUp> & { data?: Partial<LookUp> }>('/api/v1/add-ons/offers/look-up', 'POST', { value });
       const found = answer.data ?? answer;
-      return { ...found, found: found.found === true };
+      return { ...found, found: found.found === true, ...(found.key === undefined || found.key === null ? {} : { key: String(found.key) }) };
+    },
+    async cardPrintUrl(cardId, ticket) {
+      const answer = await send<{ printUrl?: unknown }>('/api/v1/add-ons/offers/documents/render', 'POST', {
+        kind: 'gift-card',
+        table: 'gift_cards',
+        key: dbKey(cardId),
+        once: ticket,
+        // The print made when the card is sold: it shows what the card was loaded with.
+        values: { first: '1' },
+      });
+      if (typeof answer.printUrl !== 'string' || answer.printUrl === '') throw new SinkError('no address came back', 'refused', 502, 'NO_PRINT_URL');
+      return answer.printUrl;
     },
     async stockWords(ids) {
       const out: StockWord[] = [];

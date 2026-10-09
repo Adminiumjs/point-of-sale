@@ -14,13 +14,27 @@ const has = (value: unknown): boolean => value !== null && value !== undefined &
 /** Offers is attached and cannot answer: nothing that needs it is saved. */
 export const unavailableWords = (): string => `${t('offers.unavailable')} ${t('offers.askOwner')}`;
 
-/** A staff discount Offers would not give, or take off. */
-export function discountRefusal(error: SinkError): string {
+/**
+ * A staff discount Offers would not give, or take off.
+ *
+ * `over-ceiling` carries the most this person may give — a percent for a
+ * percent, money for an amount. A most of nothing is a different thing to say:
+ * the owner has set no limit for this person's role in Offers at all (or, for
+ * a comp, has not given the role leave to comp), and no smaller discount
+ * would go through either.
+ */
+export function discountRefusal(error: SinkError, kind: 'pct' | 'amt' | 'comp' | null = null): string {
   if (error.kind === 'offline') return t('offers.discountOffline');
   switch (error.reason) {
-    case 'over-ceiling':
-      return has(error.details['max']) ? `${t('offers.overCeiling', { max: Number(error.details['max']) })} · ${t('offers.askManager')}` : `${t('offers.overCeilingPlain')} · ${t('offers.askManager')}`;
+    case 'over-ceiling': {
+      const max = error.details['max'];
+      if (!has(max)) return `${t('offers.overCeilingPlain')} · ${t('offers.askManager')}`;
+      if (kind === 'comp') return `${t('offers.noComp')} · ${t('offers.askManager')}`;
+      if (!(Number(max) > 0)) return `${t('offers.noCeiling')} · ${t('offers.askTheOwner')}`;
+      return `${kind === 'amt' ? t('offers.overCeilingAmount', { amount: money(Number(max)) }) : t('offers.overCeiling', { max: Number(max) })} · ${t('offers.askManager')}`;
+    }
     case 'not-allowed':
+      // Somebody else's discount, larger than this person could have given: theirs to change, or a manager's.
       return t('offers.notAllowed');
     case 'add-on-unavailable':
       return unavailableWords();

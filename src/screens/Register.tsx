@@ -9,6 +9,7 @@ import { MenuThumb } from '../components/MenuThumb';
 import { css } from '../components/css';
 import { TicketPane } from '../components/TicketPane';
 import { CardMoveBanner } from '../components/CardMoveBanner';
+import { CardPrints } from '../components/CardPrints';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
 
@@ -65,6 +66,8 @@ export function Register() {
       {/* LEFT: menu */}
       <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg);')}>
         <CardMoveBanner />
+        {/* A card sold a moment ago and not printed yet — still here after a reload. */}
+        <CardPrints compact />
         {/* Quick add favourites */}
         <div className="pos-scroll" style={css('flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px 18px 2px;overflow-x:auto;')}>
           <span style={css('display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);flex-shrink:0;')}>

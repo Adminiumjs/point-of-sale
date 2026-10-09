@@ -1,21 +1,22 @@
 import { useEffect } from 'react';
-import { canManage, cardState, usePos } from '../state/store';
+import { cardState, seesCardMove, usePos } from '../state/store';
 import { money } from '../state/calc';
 import { useT } from '../i18n';
 import { Icon } from './Icon';
 import { css } from './css';
 
 /**
- * "Bring your gift cards into Offers" — shown to whoever runs the shop while
- * Offers & gift cards is connected and the till's own cards have not moved
- * yet. The figures are a count of the till's cards that hold money and what
+ * "Bring your gift cards into Offers" — shown to the till's managers and to
+ * whoever may change Offers' settings (the session says who: `state/may.ts`)
+ * while Offers & gift cards is connected and the till's own cards have not
+ * moved yet. The figures are a count of the till's cards that hold money and what
  * they hold in all; Later puts it away for this session, Open goes to the
  * move.
  */
 export function CardMoveBanner() {
   const s = usePos();
   const t = useT();
-  const shown = cardState(s) === 2 && canManage(s) && s.connected && !s.cardMove.later && !s.cardMove.open;
+  const shown = cardState(s) === 2 && seesCardMove(s) && s.connected && !s.cardMove.later && !s.cardMove.open;
   const load = s.loadCardMove;
   useEffect(() => {
     if (shown) void load();

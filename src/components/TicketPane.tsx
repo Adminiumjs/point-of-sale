@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { cardState, isOffline, showsEstimate, usePos } from '../state/store';
+import { cardState, isOffline, partPaidBefore, showsEstimate, usePos } from '../state/store';
 import type { LineItem } from '../data/types';
 import { discountAmt, itemById, lineName, lineTotal, modLabel, money, regTotal, subtotal, tableName, tax, taxLabel } from '../state/calc';
 import { useI18n, useT, type MessageKey } from '../i18n';
@@ -122,17 +122,7 @@ export function TicketPane() {
         </div>
       </div>
 
-      {rateless && (
-        <div role="alert" style={css('flex-shrink:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 12px 0;padding:10px 12px;border-radius:13px;background:var(--warn-soft);color:var(--warn);font-size:13.5px;font-weight:700;')}>
-          <Icon name="alert-triangle" size={17} />
-          <span style={css('flex:1;min-width:140px;')}>
-            {t('ticket.carryStrip')} · {t('ticket.carryHint')}
-          </span>
-          <button className="pos-press" onClick={s.carryOver} style={css('height:38px;padding:0 14px;border-radius:11px;border:none;background:var(--warn);color:var(--surface);font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;')}>
-            {t('ticket.carryButton')}
-          </button>
-        </div>
-      )}
+      {rateless && <CarryStrip partPaid={s.ticket.partPaid === true || s.splits.length > 0} known={!partPaidBefore(s)} onCarry={s.carryOver} />}
       {/* A code that is for a named customer: asked for here, and tried again once the ticket names one. */}
       {s.codeAsk !== null && (
         <div role="alert" style={css('flex-shrink:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 12px 0;padding:10px 12px;border-radius:13px;background:var(--accent-soft);color:var(--accent);font-size:13.5px;font-weight:700;')}>
@@ -216,6 +206,13 @@ export function TicketPane() {
                       )}
                     </div>
                     {!!ml && <div style={css('font-size:12.5px;color:var(--fg-muted);margin-top:3px;')}>{ml}</div>}
+                    {/* Money for one of Offers' cards: on the card when this ticket is paid, not before. */}
+                    {li.giftCard?.offers === true && (
+                      <div data-card-line="" style={css('display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:3px 9px;border-radius:8px;margin-top:6px;')}>
+                        <Icon name="gift" size={12} />
+                        {t('cards.activeWhenPaid')}
+                      </div>
+                    )}
                     {!!li.note && (
                       <div style={css('display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--warn);background:var(--warn-soft);padding:3px 9px;border-radius:8px;margin-top:6px;')}>
                         <Icon name="message-square-text" size={12} />
@@ -308,7 +305,7 @@ export function TicketPane() {
                 {t(s.codeBusy ? 'offers.checking' : 'offers.apply')}
               </button>
               {cardState(s) === 3 && (
-                <button type="button" className="pos-press" onClick={() => s.setCardSale(true)} title={t('cards.sell')} aria-label={t('cards.sell')} style={css('width:44px;height:44px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;')}>
+                <button type="button" className="pos-press" onClick={() => s.setCardSale(true)} title={t('cards.title')} aria-label={t('cards.title')} style={css('width:44px;height:44px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;')}>
                   <Icon name="gift" size={18} />
                 </button>
               )}
@@ -353,5 +350,36 @@ export function TicketPane() {
         </button>
       </div>
     </aside>
+  );
+}
+
+/**
+ * The strip on a ticket opened before the update, which can never be paid.
+ * With nothing paid on it (and only once Adminium has said so) its items move
+ * to a new ticket at a tap; money already taken cannot follow them, so a
+ * part-paid one has no button and says who finishes it.
+ */
+export function CarryStrip({ partPaid, known, onCarry }: { partPaid: boolean; known: boolean; onCarry: () => void }) {
+  const t = useT();
+  return (
+    <div role="alert" style={css('flex-shrink:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 12px 0;padding:10px 12px;border-radius:13px;background:var(--warn-soft);color:var(--warn);font-size:13.5px;font-weight:700;')}>
+      <Icon name="alert-triangle" size={17} />
+      {partPaid ? (
+        <span data-part-paid="" style={css('flex:1;min-width:140px;')}>
+          {t('ticket.partPaid')} · {t('ticket.partPaidHint')}
+        </span>
+      ) : (
+        <>
+          <span style={css('flex:1;min-width:140px;')}>
+            {t('ticket.carryStrip')} · {t('ticket.carryHint')}
+          </span>
+          {known && (
+            <button className="pos-press" onClick={onCarry} style={css('height:38px;padding:0 14px;border-radius:11px;border:none;background:var(--warn);color:var(--surface);font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;')}>
+              {t('ticket.carryButton')}
+            </button>
+          )}
+        </>
+      )}
+    </div>
   );
 }

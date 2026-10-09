@@ -63,13 +63,14 @@ describe('the reductions', () => {
 });
 
 describe('gift cards on the receipt', () => {
-  it('prints what a card that paid has left, and a new card’s code this once', () => {
-    const shown = html(<ReceiptCards sale={{ cardBalances: [{ last4: 'Q4XP', left: 31.4 }], newCards: [{ code: 'GC-NEWCARD9ZZ', amount: 50 }] }} />);
+  it('prints what a card that paid has left, and a new card by its last four — never a code', () => {
+    const shown = html(<ReceiptCards sale={{ cardBalances: [{ last4: 'Q4XP', left: 31.4 }], newCards: [{ cardId: '13', last4: 'B1B7', amount: 50 }] }} />);
     expect(shown).toContain('Gift card balance left');
     expect(shown).toContain('Gift card ···· Q4XP');
     expect(shown).toContain('$31.40');
-    expect(shown).toContain('GC-NEWCARD9ZZ');
-    expect(shown).toContain('This code is shown once');
+    expect(shown).toContain('New gift card · Gift card ···· B1B7');
+    expect(shown).toContain('$50.00');
+    expect(shown).toContain('Its code is printed once and shown nowhere else');
   });
   it('prints nothing for a sale no card touched', () => {
     expect(html(<ReceiptCards sale={{}} />)).toBe('');

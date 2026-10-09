@@ -14,7 +14,8 @@ import { SinkError, memorySink, type DataSink, type MemorySink, type SinkRow } f
 import { NO_FEATURES } from '../features';
 import type { PastSale } from '../data/types';
 import { isEstimate, regTotal, remaining, tipFor } from './calc';
-import { cardState, isOffline, showsEstimate, usePos } from './store';
+import { cardPrints, dropCardPrint } from './cardPrints';
+import { cardState, isOffline, partPaidBefore, showsEstimate, usePos } from './store';
 import { outbox, setSink } from './writes';
 
 const INITIAL = usePos.getState();
@@ -72,6 +73,7 @@ function standIn(over: Partial<Desk> = {}, ticket: () => SinkRow = () => TICKET)
     oneByOne: async () => ({ results: [], notRun: 0 }),
     lookUp: async () => ({ found: false }),
     stockWords: async () => [],
+    cardPrintUrl: async () => '/api/v1/documents/print-once/a-ticket',
     ...over,
   };
   // Recorded even when a test answers the call itself.
@@ -97,8 +99,9 @@ beforeEach(() => {
   sink = memorySink({ firstNumber: 2001 });
   setSink(sink);
   setDesk(null);
+  for (const one of cardPrints()) dropCardPrint(one.cardId);
   usePos.setState(INITIAL, true);
-  usePos.setState({ ticket: { number: 1, table: null, seats: 2, openedAt: 0, items: [] }, held: [], kds: [], discount: null, view: 'register' });
+  usePos.setState({ ticket: { number: 1, table: null, seats: 2, openedAt: 0, items: [] }, held: [], kds: [], discount: null, view: 'register', cardPrints: [] });
 });
 
 afterEach(() => setDesk(null));
@@ -228,6 +231,28 @@ describe('a ticket opened before the update', () => {
     expect(calls[2]).toMatchObject({ id: 1, values: { status: 'void', merged_into_id: 2 } });
     expect(s().ticket.rid).not.toBe(old);
     expect(s().ticket.items).toHaveLength(1);
+  });
+
+  it('one that already holds payments has no button: its money cannot move, and nothing is written', async () => {
+    const desk = standIn({ rows: async (ref) => (ref === 'payments' ? [{ id: 'p1', ticket_id: 1, method: 'cash', amount: '5.00' }] : []) }, () => ({ ...TICKET, tax_rate_bp: null }));
+    connect(desk);
+    s().tapTile('croissant');
+    await settled();
+    expect([s().ticket.rateless, s().ticket.partPaid, partPaidBefore(s())]).toEqual([true, true, true]);
+    const before = sink.calls.length;
+    s().carryOver();
+    await settled();
+    expect(sink.calls.length).toBe(before);
+    expect(s().toast?.msg).toBe('This ticket was part-paid before the update · A manager finishes it from the dashboard');
+  });
+
+  it('one with nothing paid on it is known as such only once Adminium has answered', async () => {
+    connect(standIn({}, () => ({ ...TICKET, tax_rate_bp: null })));
+    s().tapTile('croissant');
+    await settled();
+    expect([s().ticket.partPaid, partPaidBefore(s())]).toEqual([false, false]);
+    // Until the answer is in, the button is not offered.
+    expect(partPaidBefore({ ticket: { ...s().ticket, partPaid: undefined }, splits: [] })).toBe(true);
   });
 
   it('a close refused for want of a rate marks the ticket rather than printing a receipt', async () => {
@@ -491,24 +516,64 @@ describe('gift cards kept by Offers', () => {
     expect(desk.calls.some((c) => c.op === 'create')).toBe(false);
   });
 
-  it('sells a new card as a line that names it; its whole code is shown once, on the receipt', async () => {
-    const desk = standIn({ create: async (ref, values) => (ref === 'offers:gift_cards' ? { data: { id: 41, kind: 'card' }, once: [{ column: 'code', value: 'GC-NEWCARD9ZZ' }] } : { data: values }) });
+  it('sells a new card as a line that names it by its last four; the receipt lists it, and it waits to be printed', async () => {
+    const desk = standIn({ create: async (ref, values) => (ref === 'offers:gift_cards' ? { data: { id: 41, kind: 'card', label: 'D9ZZ' }, once: [{ column: 'code', key: '41', print: 'ticket-that-prints-card-41' }] } : { data: values }) });
     connect(desk, MOVED, { cardsMoved: true });
     expect(await s().sellCard(50)).toBe(true);
     await settled();
     const line = sink.calls.find((c) => c.ref === 'ticket_items')!;
     expect(line.values).toMatchObject({ name: 'Gift card ···· D9ZZ', qty: 1, unit_price: 50, card_id: 41, menu_item_id: null });
     expect(Object.keys(line.values!)).not.toContain('gift_card_id');
-    // The code is in no row the till wrote, and nowhere in the ticket on screen.
-    expect(JSON.stringify(sink.calls)).not.toContain('GC-NEWCARD9ZZ');
-    expect(JSON.stringify(s().ticket)).not.toContain('GC-NEWCARD9ZZ');
+    // Not paid yet: nothing is on the card, so there is nothing to print.
+    expect(s().cardPrints.map((one) => [one.cardId, one.paid])).toEqual([['41', false]]);
     s().openPay();
     usePos.setState({ payMethod: 'cash', cash: '200', tip: 0 });
     s().onCharge();
     await settled();
-    expect(s().lastSale!.newCards).toEqual([{ code: 'GC-NEWCARD9ZZ', amount: 50 }]);
+    expect(s().lastSale!.newCards).toEqual([{ cardId: '41', last4: 'D9ZZ', amount: 50 }]);
+    expect(s().cardPrints.map((one) => [one.cardId, one.paid])).toEqual([['41', true]]);
     // Adminium loads the card when the ticket is paid: the till writes no ledger row.
     expect(sink.calls.some((c) => c.ref === 'gift_card_ledger')).toBe(false);
+  });
+
+  it('a new card whose line is taken off the ticket has nothing left to print', async () => {
+    const desk = standIn({ create: async (ref, values) => (ref === 'offers:gift_cards' ? { data: { id: 42, label: 'K7QP' }, once: [{ column: 'code', print: 'ticket-42' }] } : { data: values }) });
+    connect(desk, MOVED, { cardsMoved: true });
+    expect(await s().sellCard(25)).toBe(true);
+    await settled();
+    expect(s().cardPrints).toHaveLength(1);
+    s().removeKey('gift:42');
+    expect(s().cardPrints).toEqual([]);
+  });
+
+  it('tops up a card the customer holds: looked up by its code, sold as a line that names the card', async () => {
+    const desk = standIn({ lookUp: async () => ({ found: true, kind: 'gift-card', table: 'gift_cards', key: '2', last4: '2HVT', record: { status: 'active', balance: 35.75 } }) });
+    connect(desk, MOVED, { cardsMoved: true });
+    const found = await s().findCardToTopUp(' GC-M9RD5PTC2HVT ');
+    expect(found).toEqual({ cardId: '2', last4: '2HVT', balance: 35.75 });
+    if ('words' in found) throw new Error('not found');
+    expect(s().topUpCard(found, 25)).toBe(true);
+    await settled();
+    const line = sink.calls.find((c) => c.ref === 'ticket_items')!;
+    expect(line.values).toMatchObject({ name: 'Gift card ···· 2HVT', qty: 1, unit_price: 25, card_id: 2, menu_item_id: null });
+    // A top-up makes no card: nothing waits to be printed, and the typed code is kept nowhere.
+    expect(desk.calls.some((c) => c.op === 'create')).toBe(false);
+    expect(s().cardPrints).toEqual([]);
+    expect(JSON.stringify([s().ticket, sink.calls])).not.toContain('GC-M9RD5PTC2HVT');
+    // The same card is not put on the ticket twice.
+    expect(s().topUpCard(found, 10)).toBe(false);
+    expect(s().toast?.msg).toBe('This card is already on the ticket');
+  });
+
+  it('a top-up needs a card Offers knows, one that is still good, and a connection', async () => {
+    connect(standIn({ lookUp: async () => ({ found: false }) }), MOVED, { cardsMoved: true });
+    expect(await s().findCardToTopUp('GC-NOPE')).toEqual({ words: 'No gift card has that code' });
+    connect(standIn({ lookUp: async () => ({ found: true, kind: 'code', key: '2' }) }), MOVED, { cardsMoved: true });
+    expect(await s().findCardToTopUp('AUTUMN5')).toEqual({ words: 'No gift card has that code' });
+    connect(standIn({ lookUp: async () => ({ found: true, kind: 'gift-card', key: '9', last4: 'AAAA', record: { status: 'void', balance: 0 } }) }), MOVED, { cardsMoved: true });
+    expect(await s().findCardToTopUp('GC-GONE')).toEqual({ words: 'This card was cancelled' });
+    usePos.setState({ online: false });
+    expect(await s().findCardToTopUp('GC-7K2MW3HNQ4XP')).toEqual({ words: 'A gift card needs a connection' });
   });
 
   it('a cashier who may not make a card is told who can', async () => {
