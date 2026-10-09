@@ -11,6 +11,13 @@
  *   shelf-labels       a sheet of shelf labels from an item's barcode, drawn
  *                      by Barcode labels (retail).
  *
+ *   stock              how many are left on a tile, and where a returned item
+ *                      goes (Inventory);
+ *   offers             codes, vouchers and staff discounts on the ticket,
+ *                      worked out by Offers & gift cards;
+ *   gift-cards         gift cards kept by Offers & gift cards, once the shop
+ *                      has brought the till's own cards in.
+ *
  * A feature is ON when every add-on it needs is attached to this app and
  * switched on for it — which is exactly what the staff config's `addOns`
  * lists. Off, its buttons are not there at all: a button whose request the
@@ -39,7 +46,9 @@ export const NO_FEATURES: Features = { 'emailed-receipts': false, 'shelf-labels'
  * The demo's: it stands for a shop that attached Invoices & Receipts, so the
  * email is asked for and queued (in memory, like every demo write). It has no
  * Adminium to draw a label sheet, so shelf labels stay off rather than offer a
- * button that could only pretend.
+ * button that could only pretend. Stock, offers and Offers' gift cards are
+ * off for the same reason: every figure of theirs is a server's answer, and
+ * the demo has no server to ask — it keeps the till's own gift cards.
  */
 export const DEMO_FEATURES: Features = { 'emailed-receipts': true, 'shelf-labels': false, stock: false, offers: false, 'gift-cards': false };
 

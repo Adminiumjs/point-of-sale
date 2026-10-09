@@ -187,7 +187,7 @@ function Pick({ sale }: { sale: PastSale }) {
   const quote = asked ? s.refundQuote : null;
   const due = quote === null ? sums.total : quote.amount;
   const can = s.refundSel.length > 0 && !s.refunding && (asked ? quote !== null && !s.refundQuoting : sums.total > 0);
-  const pays = payOrder(sale);
+  const pays = asked ? payOrder(sale) : [];
   // Where a returned thing goes is asked in retail, with Inventory attached.
   const stockChoice = s.features.stock && s.mode === 'retail';
   return (

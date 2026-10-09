@@ -283,7 +283,7 @@ export function CardMovePanel({
           <div style={css('font-weight:600;')}>{t('cards.figures', { sum: money(outcome.cents / 100) }, outcome.cards)}</div>
         </div>
       )}
-      {done && (
+      {outcome?.state === 'done' && (
         <button className="pos-press" onClick={onReload} style={css('width:100%;height:58px;margin-top:18px;border-radius:15px;border:none;background:var(--accent);color:var(--accent-fg);font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;')}>
           {t('cards.reload')}
         </button>

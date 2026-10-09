@@ -171,6 +171,8 @@ export interface PosState {
   connected: boolean;
   /** A change to the ticket on the register is not saved yet: its figures are the till's estimate. */
   ticketBusy: boolean;
+  /** This Adminium answers a ticket with no figures of its own (it predates them): the till's are all there are. */
+  figureless: boolean;
   /** What the signed-in person may do, as the staff config says (null when it does not say). */
   access: StaffAccess | null;
   /** The till's gift cards have been brought into Offers & gift cards (`settings.cards_moved`). */
@@ -602,7 +604,7 @@ export const cardState = (s: Pick<PosState, 'features' | 'cardsMoved'>): 1 | 2 |
 export const isOffline = (s: Pick<PosState, 'online' | 'sync'>): boolean => !s.online || s.sync.retrying;
 
 /** The figures on screen are the till's estimate, and a server will say otherwise soon. */
-export const showsEstimate = (s: Pick<PosState, 'connected' | 'ticket'>): boolean => s.connected && s.ticket.server === undefined;
+export const showsEstimate = (s: Pick<PosState, 'connected' | 'ticket' | 'figureless'>): boolean => s.connected && !s.figureless && s.ticket.server === undefined;
 
 /** Whether this person runs the shop: the staff config says so, or says nothing (then the server decides). */
 export const canManage = (s: Pick<PosState, 'access'>): boolean =>
@@ -787,6 +789,8 @@ export const usePos = create<PosState>()((set, get) => {
     set((st) => {
       if (st.ticket.rid !== rid) return {};
       const fig = figuresOfRow(row, applied, st.features.offers);
+      // An Adminium that answers a ticket with no figures of its own has none to wait for.
+      if (fig === null && !st.figureless) return { figureless: true };
       const open = row['status'] === undefined || row['status'] === 'open' || row['status'] === 'sent';
       // A ticket from before tickets kept their own rate: it can never be paid. A row that does not say keeps what was known.
       const rateless = 'tax_rate_bp' in row ? open && blank(row['tax_rate_bp']) : st.ticket.rateless === true;
@@ -811,10 +815,13 @@ export const usePos = create<PosState>()((set, get) => {
       const offers = get().features.offers;
       const [row, appliedRows, codeRows] = await Promise.all([
         d.one('tickets', id),
+        // The lines and the codes are for showing; the figures do not wait on them, nor fail with them.
         offers
-          ? d.rows('offers:applied', { and: [{ column: 'source_table', op: 'eq', value: 'pos:tickets' }, { column: 'source_row', op: 'eq', value: String(id) }] }, 400)
+          ? d.rows('offers:applied', { and: [{ column: 'source_table', op: 'eq', value: 'pos:tickets' }, { column: 'source_row', op: 'eq', value: String(id) }] }, 400).catch(() => [] as SinkRow[])
           : Promise.resolve([] as SinkRow[]),
-        offers ? d.rows('ticket_codes', { and: [{ column: 'ticket_id', op: 'eq', value: dbKey(id) }, { column: 'removed_at', op: 'is_null' }] }, 200) : Promise.resolve([] as SinkRow[]),
+        offers
+          ? d.rows('ticket_codes', { and: [{ column: 'ticket_id', op: 'eq', value: dbKey(id) }, { column: 'removed_at', op: 'is_null' }] }, 200).catch(() => [] as SinkRow[])
+          : Promise.resolve([] as SinkRow[]),
       ]);
       // Changed again while it was being read: the next read is the one that counts.
       if (seq !== figureSeq || outbox().pendingIn(target) > 0) return;
@@ -836,6 +843,8 @@ export const usePos = create<PosState>()((set, get) => {
   const awaitingTotal = (): boolean => {
     if (!showsEstimate(get())) return false;
     get().showToast(t('toast.totalComing'));
+    // A read that got no answer is asked again, rather than waited for.
+    if (!get().ticketBusy) void refreshTicket();
     return true;
   };
   /** The server's number for a ticket that just saved, everywhere it is shown. */
@@ -1355,6 +1364,7 @@ export const usePos = create<PosState>()((set, get) => {
 
     connected: false,
     ticketBusy: false,
+    figureless: false,
     access: null,
     cardsMoved: false,
     mustReload: false,
@@ -2452,8 +2462,8 @@ export const usePos = create<PosState>()((set, get) => {
     openRefund: () =>
       set({ view: 'refund', refundSale: null, refundSel: [], refundDone: null, refunding: false, refundQuote: null, refundWords: null, refundGoes: {}, refundPayment: null }),
     pickRefundSale: (sale) => {
-      // The payments it can go back to, a card's first.
-      const first = payOrder(sale)[0];
+      // The payments it can go back to, a card's first (the demo, with no server, keeps its three ways).
+      const first = get().connected ? payOrder(sale)[0] : undefined;
       set({
         refundSale: sale,
         // Everything not already given back starts chosen, as the comp does for the last sale.
