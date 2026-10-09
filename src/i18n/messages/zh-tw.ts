@@ -964,6 +964,5 @@ export const zhTw: Translated<typeof enUS> = {
   'stock.left': '僅剩 {n}',
   'stock.out': '缺貨',
   'stock.countThis': '帳面已無庫存 · 請清點此商品',
-  'stock.willShow': '庫存將顯示 {n} · 請清點此商品',
   'stock.toastOut': '{name} 的庫存顯示為零，但仍可繼續銷售',
 };

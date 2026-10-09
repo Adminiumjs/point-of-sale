@@ -188,7 +188,7 @@ export function Complete() {
               </div>
             )}
             <div style={css('height:1px;background:var(--border);margin:6px 0;')} />
-            <button className="pos-press" onClick={s.newOrder} style={css('height:66px;border-radius:16px;border:1.5px solid var(--accent);background:var(--accent-soft);color:var(--accent);font-size:17px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:11px;')}>
+            <button data-new-order="" className="pos-press" onClick={s.newOrder} style={css('height:66px;border-radius:16px;border:1.5px solid var(--accent);background:var(--accent-soft);color:var(--accent);font-size:17px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:11px;')}>
               <Icon name="plus" size={21} />
               {t('complete.newOrder')}
             </button>

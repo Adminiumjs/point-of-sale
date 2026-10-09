@@ -969,6 +969,5 @@ export const cs: Translated<typeof enUS> = {
   'stock.left': 'Zbývá jen {n}',
   'stock.out': 'Není',
   'stock.countThis': 'Podle evidence vyprodáno · tuto položku přepočítejte',
-  'stock.willShow': 'Sklad ukáže {n} · tuto položku přepočítejte',
   'stock.toastOut': '{name} má na skladě nulu a prodej přesto proběhne',
 };

@@ -973,6 +973,5 @@ export const enUS = {
   'stock.left': 'Only {n} left',
   'stock.out': 'Out',
   'stock.countThis': 'Out on the books · count this item',
-  'stock.willShow': 'Stock will show {n} · count this item',
   'stock.toastOut': '{name} shows none in stock, and the sale still goes through',
 } as const;

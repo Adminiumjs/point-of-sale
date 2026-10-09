@@ -100,7 +100,7 @@ export function TillNav() {
   };
 
   const item = (x: { v: View; label: MessageKey; icon: string }, cls = '') => (
-    <button key={x.v} role="menuitem" className={'pos-press nav-menu-item ' + cls} onClick={() => go(x.v)} style={css('display:flex;align-items:center;gap:11px;width:100%;height:46px;padding:0 14px;border:none;border-radius:11px;background:transparent;color:var(--fg);font-size:14.5px;font-weight:700;cursor:pointer;text-align:start;font-family:inherit;')}>
+    <button key={x.v} role="menuitem" data-nav={x.v} className={'pos-press nav-menu-item ' + cls} onClick={() => go(x.v)} style={css('display:flex;align-items:center;gap:11px;width:100%;height:46px;padding:0 14px;border:none;border-radius:11px;background:transparent;color:var(--fg);font-size:14.5px;font-weight:700;cursor:pointer;text-align:start;font-family:inherit;')}>
       <Icon name={x.icon} size={18} color="var(--fg-muted)" />
       {t(x.label)}
     </button>

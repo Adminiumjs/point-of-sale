@@ -158,6 +158,7 @@ function TodaysTickets() {
                   <button
                     className="pos-press"
                     disabled={left <= 0.005}
+                    data-refund-sale={String(x.number)}
                     onClick={() => s.pickRefundSale(x)}
                     style={css('height:48px;padding:0 20px;border-radius:13px;border:none;font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px;flex-shrink:0;cursor:' + (left > 0.005 ? 'pointer' : 'not-allowed') + ';background:' + (left > 0.005 ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (left > 0.005 ? 'var(--accent-fg)' : 'var(--fg-subtle)') + ';')}
                   >
@@ -224,7 +225,7 @@ function Pick({ sale }: { sale: PastSale }) {
                 {on && stockChoice && (
                   <div role="radiogroup" aria-label={l.name} style={css('display:flex;gap:6px;padding-inline-start:38px;')}>
                     {BACK.map((b) => (
-                      <button key={b.to} role="radio" aria-checked={goes === b.to} className="pos-press" onClick={() => s.setRefundGoes(i, b.to)} style={css('flex:1;height:38px;border-radius:10px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;border:1.5px solid ' + (goes === b.to ? 'var(--accent)' : 'var(--border)') + ';background:' + (goes === b.to ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (goes === b.to ? 'var(--accent)' : 'var(--fg-muted)') + ';')}>
+                      <button key={b.to} role="radio" data-back-to={b.to} aria-checked={goes === b.to} className="pos-press" onClick={() => s.setRefundGoes(i, b.to)} style={css('flex:1;height:38px;border-radius:10px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;border:1.5px solid ' + (goes === b.to ? 'var(--accent)' : 'var(--border)') + ';background:' + (goes === b.to ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (goes === b.to ? 'var(--accent)' : 'var(--fg-muted)') + ';')}>
                         {t(b.label)}
                       </button>
                     ))}
@@ -249,7 +250,7 @@ function Pick({ sale }: { sale: PastSale }) {
                   <button key={x.id} role="radio" aria-checked={on} className="pos-press" onClick={() => s.setRefundPayment(x.id)} style={css('display:flex;align-items:center;gap:10px;height:56px;padding:0 14px;border-radius:14px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;text-align:start;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border-strong)') + ';background:' + (on ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (on ? 'var(--accent)' : 'var(--fg)') + ';')}>
                     <Icon name={m.icon} size={18} />
                     <span style={css('flex:1;')}>{x.method === 'gift_card' && x.last4 !== undefined ? t('cards.kept', { last4: x.last4 }) : t(m.label)}</span>
-                    {max !== undefined && <span style={css('font-size:12.5px;font-weight:700;opacity:.8;' + MONO)}>{t('refund.canTake', { amount: money(max) })}</span>}
+                    {max !== undefined && <span style={css('font-size:12.5px;font-weight:700;' + MONO)}>{t('refund.canTake', { amount: money(max) })}</span>}
                   </button>
                 );
               })}
@@ -278,7 +279,7 @@ function Pick({ sale }: { sale: PastSale }) {
           )}
         </div>
         <div style={css('flex-shrink:0;padding:16px 22px;border-top:1px solid var(--border);background:var(--surface);')}>
-          <button className="pos-press" disabled={!can} onClick={() => void s.processRefund()} style={css('width:100%;height:66px;border-radius:16px;border:none;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;cursor:' + (can ? 'pointer' : 'not-allowed') + ';background:' + (can ? 'var(--danger)' : 'var(--surface-3)') + ';color:' + (can ? 'var(--danger-fg)' : 'var(--fg-subtle)') + ';')}>
+          <button data-refund-issue="" className="pos-press" disabled={!can} onClick={() => void s.processRefund()} style={css('width:100%;height:66px;border-radius:16px;border:none;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;cursor:' + (can ? 'pointer' : 'not-allowed') + ';background:' + (can ? 'var(--danger)' : 'var(--surface-3)') + ';color:' + (can ? 'var(--danger-fg)' : 'var(--fg-subtle)') + ';')}>
             <Icon name="undo-2" size={20} />
             {t(s.refunding ? 'refund.issuing' : 'refund.issue', { amount: money(due) })}
           </button>

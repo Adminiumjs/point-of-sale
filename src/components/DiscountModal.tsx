@@ -204,7 +204,7 @@ function OffersDiscount() {
           {SEGMENTS.map((seg) => {
             const on = kind === seg.kind;
             return (
-              <button key={seg.kind} role="radio" aria-checked={on} className="pos-press" onClick={() => ask(seg.kind, null, reason)} style={css('flex:1;height:44px;border-radius:11px;border:none;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer;background:' + (on ? 'var(--surface)' : 'transparent') + ';color:' + (on ? 'var(--fg)' : 'var(--fg-muted)') + ';' + (on ? 'box-shadow:0 1px 3px rgba(10,10,20,.14);' : ''))}>
+              <button key={seg.kind} role="radio" data-discount-kind={seg.kind} aria-checked={on} className="pos-press" onClick={() => ask(seg.kind, null, reason)} style={css('flex:1;height:44px;border-radius:11px;border:none;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer;background:' + (on ? 'var(--surface)' : 'transparent') + ';color:' + (on ? 'var(--fg)' : 'var(--fg-muted)') + ';' + (on ? 'box-shadow:0 1px 3px rgba(10,10,20,.14);' : ''))}>
                 {t(seg.label)}
               </button>
             );
@@ -222,7 +222,7 @@ function OffersDiscount() {
             {PRESETS[kind].map((one) => {
               const on = value === one;
               return (
-                <button key={one} role="radio" aria-checked={on} className="pos-press" onClick={() => ask(kind, one, reason)} style={css(chip(on) + MONO)}>
+                <button key={one} role="radio" data-discount-preset={String(one)} aria-checked={on} className="pos-press" onClick={() => ask(kind, one, reason)} style={css(chip(on) + MONO)}>
                   {kind === 'pct' ? `${String(one)} %` : money(one)}
                 </button>
               );
@@ -254,10 +254,10 @@ function OffersDiscount() {
         {chosen !== null && reason === null && <WhyOff>{t('offers.chooseReason')}</WhyOff>}
 
         <div style={css('display:flex;gap:10px;margin-top:12px;')}>
-          <button className="pos-press" onClick={s.closeDiscount} style={css('flex:0 0 auto;height:56px;padding:0 20px;border-radius:15px;border:1.5px solid var(--border-strong);background:var(--surface);color:var(--fg);font-family:inherit;font-size:15.5px;font-weight:800;cursor:pointer;')}>
+          <button data-discount-cancel="" className="pos-press" onClick={s.closeDiscount} style={css('flex:0 0 auto;height:56px;padding:0 20px;border-radius:15px;border:1.5px solid var(--border-strong);background:var(--surface);color:var(--fg);font-family:inherit;font-size:15.5px;font-weight:800;cursor:pointer;')}>
             {t('common.cancel')}
           </button>
-          <button className="pos-press" disabled={!ready} onClick={apply} style={css('flex:1;height:56px;border-radius:15px;border:none;font-family:inherit;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:12px;background:' + (ready ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (ready ? 'var(--accent-fg)' : 'var(--fg-subtle)') + ';cursor:' + (ready ? 'pointer' : 'not-allowed') + ';')}>
+          <button data-discount-add="" className="pos-press" disabled={!ready} onClick={apply} style={css('flex:1;height:56px;border-radius:15px;border:none;font-family:inherit;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:12px;background:' + (ready ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (ready ? 'var(--accent-fg)' : 'var(--fg-subtle)') + ';cursor:' + (ready ? 'pointer' : 'not-allowed') + ';')}>
             <span>{t(busy ? 'offers.checking' : 'offers.addDiscount')}</span>
             {/* Adminium's figure for it, from the dry run. */}
             {takes !== null && !busy && (

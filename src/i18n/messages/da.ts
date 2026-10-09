@@ -968,6 +968,5 @@ export const da: Translated<typeof enUS> = {
   'stock.left': 'Kun {n} tilbage',
   'stock.out': 'Udsolgt',
   'stock.countThis': 'Udsolgt i bøgerne · tæl denne vare',
-  'stock.willShow': 'Lageret vil vise {n} · tæl denne vare',
   'stock.toastOut': '{name} står til nul på lager, og salget går stadig igennem',
 };

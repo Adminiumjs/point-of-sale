@@ -969,6 +969,5 @@ export const fr: Translated<typeof enUS> = {
   'stock.left': 'Plus que {n}',
   'stock.out': 'Épuisé',
   'stock.countThis': 'Épuisé dans les comptes · comptez cet article',
-  'stock.willShow': 'Le stock affichera {n} · comptez cet article',
   'stock.toastOut': 'Le stock de {name} est à zéro, et la vente passe quand même',
 };

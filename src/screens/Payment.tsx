@@ -336,7 +336,7 @@ export function Payment() {
               // The gift card tab is off without a connection: the card's money is never the till's to guess.
               const dead = x.m === 'gift_card' && off;
               return (
-                <button key={x.m} className="pos-press" disabled={dead} onClick={() => s.setMethod(x.m)} style={css(methodStyle(s.payMethod === x.m) + (dead ? 'opacity:.5;cursor:not-allowed;' : ''))}>
+                <button key={x.m} data-method={x.m} className="pos-press" disabled={dead} onClick={() => s.setMethod(x.m)} style={css(methodStyle(s.payMethod === x.m) + (dead ? 'opacity:.5;cursor:not-allowed;' : ''))}>
                   <Icon name={x.ic} size={20} />
                   {t(x.l)}
                 </button>
@@ -365,7 +365,7 @@ export function Payment() {
                   </div>
                   <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
                     {cashPresets.map((cp) => (
-                      <button key={cp.label} className="pos-press" onClick={() => s.cashPreset(cp.v)} style={css('flex:1;min-width:86px;height:50px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--fg);font-size:14px;font-weight:700;' + MONO + 'cursor:pointer;')}>
+                      <button key={cp.label} data-cash-preset={String(cp.v)} className="pos-press" onClick={() => s.cashPreset(cp.v)} style={css('flex:1;min-width:86px;height:50px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--fg);font-size:14px;font-weight:700;' + MONO + 'cursor:pointer;')}>
                         {cp.label}
                       </button>
                     ))}
@@ -403,6 +403,7 @@ export function Payment() {
             {isGift && (
               <div style={css('max-width:460px;margin:8px auto;')}>
                 <form
+                  data-card-form=""
                   onSubmit={(e) => {
                     e.preventDefault();
                     void s.quoteCard(cardCode);
@@ -426,7 +427,7 @@ export function Payment() {
                   </button>
                 </form>
                 {s.cardPay !== null && (
-                  <div role="status" style={css('margin-top:16px;padding:22px;border-radius:18px;border:1.5px solid color-mix(in srgb, var(--pos) 45%, transparent);background:var(--surface);text-align:center;')}>
+                  <div role="status" data-card-covers="" style={css('margin-top:16px;padding:22px;border-radius:18px;border:1.5px solid color-mix(in srgb, var(--pos) 45%, transparent);background:var(--surface);text-align:center;')}>
                     <Icon name="gift" size={34} color="var(--pos)" />
                     <div style={css('font-size:13.5px;font-weight:700;color:var(--fg-muted);margin-top:8px;')}>{t('cards.kept', { last4: s.cardPay.code.trim().slice(-4) })}</div>
                     <div style={css('font-size:20px;font-weight:800;margin-top:4px;')}>{t('cards.covers', { amount: money(s.cardPay.covers) })}</div>
@@ -460,6 +461,7 @@ export function Payment() {
 
           <div style={css('flex-shrink:0;padding:16px 22px;border-top:1px solid var(--border);background:var(--surface);')}>
             <button
+              data-charge=""
               className="pos-press"
               onClick={isGift && s.cardPay === null ? () => void s.quoteCard(cardCode) : s.onCharge}
               style={css('width:100%;height:68px;border-radius:17px;border:none;background:' + (chargeEnabled ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (chargeEnabled ? 'var(--accent-fg)' : 'var(--fg-subtle)') + ';font-size:19px;font-weight:800;cursor:' + (chargeEnabled ? 'pointer' : 'not-allowed') + ';display:flex;align-items:center;justify-content:center;gap:11px;')}

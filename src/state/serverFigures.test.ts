@@ -704,11 +704,10 @@ describe('a refund', () => {
 
 describe('stock words', () => {
   it('reads them for the tiles shown, and a sale of something out still goes through with a word of warning', async () => {
-    const desk = standIn({ stockWords: async (ids) => ids.map((id) => ({ id, state: id === 'croissant' ? ('out' as const) : ('low' as const), exact: id === 'croissant' ? '0' : '3', ...(id === 'croissant' ? { after: '-1' } : {}) })) });
+    const desk = standIn({ stockWords: async (ids) => ids.map((id) => ({ id, state: id === 'croissant' ? ('out' as const) : ('low' as const), exact: id === 'croissant' ? '0' : '3' })) });
     connect(desk, { stock: true });
     await s().loadStock(['croissant', 'muffin']);
-    // `after` is Inventory's own figure for the level one more sale leaves: the ticket's note quotes it, the till subtracts nothing.
-    expect(s().stock).toEqual({ croissant: { state: 'out', exact: 0, after: -1 }, muffin: { state: 'low', exact: 3, after: null } });
+    expect(s().stock).toEqual({ croissant: { state: 'out', exact: 0 }, muffin: { state: 'low', exact: 3 } });
     s().tapTile('croissant');
     expect(s().ticket.items).toHaveLength(1);
     expect(s().toast?.msg).toBe('Croissant shows none in stock, and the sale still goes through');

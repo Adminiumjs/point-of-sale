@@ -971,6 +971,5 @@ export const ar: Translated<typeof enUS> = {
   'stock.left': 'بقي {n} فقط',
   'stock.out': 'نفد',
   'stock.countThis': 'نفد في الدفاتر · عُدَّ هذا الصنف',
-  'stock.willShow': 'سيُظهر المخزون {n} · عُدَّ هذا الصنف',
   'stock.toastOut': 'مخزون {name} صفر، والبيع يتم مع ذلك',
 };

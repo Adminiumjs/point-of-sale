@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { isOffline, kindWord, partPaidBefore, showsEstimate, usePos } from '../state/store';
 import type { LineItem } from '../data/types';
 import { discountAmt, itemById, lineName, lineTotal, modLabel, money, payDue, regTotal, subtotal, tableName, tax, taxLabel } from '../state/calc';
@@ -45,6 +45,12 @@ export function TicketPane() {
   const onTicket = s.ticket.rid;
   useEffect(() => clearSaid, [onTicket, clearSaid]);
   const said = s.codeSaid;
+  // What came off the ticket sits under the items: it is brought into view when it changes.
+  const reductions = useRef<HTMLDivElement | null>(null);
+  const reduced = (s.ticket.server?.applied.length ?? 0) + (s.ticket.codes ?? []).length;
+  useEffect(() => {
+    if (reduced > 0 && typeof reductions.current?.scrollIntoView === 'function') reductions.current.scrollIntoView({ block: 'nearest' });
+  }, [reduced]);
   const stockOf = (li: LineItem) => (s.features.stock && s.connected && li.giftCard === undefined ? s.stock[li.id] : undefined);
   // A gift card load never goes to the kitchen, so Send does not count it.
   const unsent = items.filter((x) => !x.sent && x.giftCard === undefined).reduce((a, x) => a + x.qty, 0);
@@ -124,7 +130,7 @@ export function TicketPane() {
           <button className="pos-press" onClick={s.openMove} title={t('ticket.moveMerge')} aria-label={t('ticket.moveMerge')} style={css(hdrBtn)}>
             <Icon name="arrow-left-right" size={18} />
           </button>
-          <button className="pos-press" onClick={s.openDiscount} title={t('ticket.discountComp')} aria-label={t('ticket.discountComp')} style={css(hdrBtn)}>
+          <button data-open-discount="" className="pos-press" onClick={s.openDiscount} title={t('ticket.discountComp')} aria-label={t('ticket.discountComp')} style={css(hdrBtn)}>
             <Icon name="percent" size={18} />
           </button>
         </div>
@@ -225,7 +231,8 @@ export function TicketPane() {
                     {stockOf(li)?.state === 'out' && (
                       <div data-stock-note="" style={css('display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--fg-muted);margin-top:5px;')}>
                         <Icon name="info" size={12} />
-                        {typeof stockOf(li)!.after === 'number' && li.qty === 1 ? t('stock.willShow', { n: number(stockOf(li)!.after!) }) : t('stock.countThis')}
+                        {/* Inventory's word for the level after a sale stops at nothing, so no figure is quoted — and none is worked out here. */}
+                        {t('stock.countThis')}
                       </div>
                     )}
                     {/* Money for one of Offers' cards: on the card when this ticket is paid, not before. */}
@@ -256,7 +263,7 @@ export function TicketPane() {
 
         {/* With Offers, what came off the ticket is Adminium's own lines — a code, an offer, the staff discount — under the items. */}
         {offers && ((server?.applied.length ?? 0) > 0 || (s.ticket.codes ?? []).length > 0) && (
-          <div data-reductions="" style={css('margin-top:6px;padding:8px 10px 2px;border-top:1px dashed var(--border-strong);')}>
+          <div ref={reductions} data-reductions="" style={css('margin-top:6px;padding:8px 10px 2px;border-top:1px dashed var(--border-strong);')}>
             {(server?.applied ?? []).map((line, i) => (
               <div key={line.kind + line.name + String(i)} style={css('display:flex;align-items:center;gap:10px;padding:6px 0;color:var(--pos);')}>
                 <span style={css('flex:1;min-width:0;')}>
@@ -325,6 +332,7 @@ export function TicketPane() {
         {/* A code, a voucher or a gift card, typed or scanned: Offers answers, so it needs a connection. */}
         {offers && (
           <form
+            data-code-form=""
             onSubmit={(e) => {
               e.preventDefault();
               void s.applyCode(code).then(() => {
@@ -390,6 +398,7 @@ export function TicketPane() {
           </button>
         </div>
         <button
+          data-pay=""
           className="pos-press"
           onClick={s.openPay}
           disabled={rateless}

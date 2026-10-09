@@ -971,6 +971,5 @@ export const de: Translated<typeof enUS> = {
   'stock.left': 'Nur noch {n}',
   'stock.out': 'Aus',
   'stock.countThis': 'Laut Bestand aus · diesen Artikel zählen',
-  'stock.willShow': 'Bestand zeigt dann {n} · diesen Artikel zählen',
   'stock.toastOut': 'Für {name} ist kein Bestand mehr gezählt, der Verkauf geht trotzdem durch',
 };
