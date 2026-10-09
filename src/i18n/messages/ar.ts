@@ -936,7 +936,7 @@ export const ar: Translated<typeof enUS> = {
   'cards.refused': 'لا يمكن لهذه البطاقة دفع هذه التذكرة',
   'cards.balanceLeft': 'الرصيد المتبقي في بطاقة الهدية',
   'cards.sellAmount': 'المبلغ على البطاقة',
-  'cards.sellWho': 'لا يبيع بطاقة جديدة إلا من لديه دور المكتب في Offers',
+  'cards.sellWho': 'البطاقة الجديدة يبيعها ويطبعها من لديه أيضًا دور المكتب في Offers · اسأل المالك',
   'cards.sellOffline': 'بيع البطاقة يحتاج إلى اتصال',
   'cards.sold': 'أضيفت بطاقة هدية بقيمة {amount}',
   'cards.newCode': 'بطاقة هدية جديدة',

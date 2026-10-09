@@ -938,7 +938,7 @@ export const enUS = {
   'cards.refused': 'This card can’t pay this ticket',
   'cards.balanceLeft': 'Gift card balance left',
   'cards.sellAmount': 'Amount on the card',
-  'cards.sellWho': 'Only someone with the Offers desk role can sell a new card',
+  'cards.sellWho': 'A new card is sold, and printed, by someone who also holds the Offers desk role · Ask the owner',
   'cards.sellOffline': 'Selling a card needs a connection',
   'cards.sold': 'Gift card for {amount} added',
   'cards.newCode': 'New gift card',

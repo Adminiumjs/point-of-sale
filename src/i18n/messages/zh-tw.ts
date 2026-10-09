@@ -929,7 +929,7 @@ export const zhTw: Translated<typeof enUS> = {
   'cards.refused': '此卡無法支付這張帳單',
   'cards.balanceLeft': '禮物卡剩餘餘額',
   'cards.sellAmount': '卡內金額',
-  'cards.sellWho': '只有具備 Offers 櫃檯角色的人才能販售新卡',
+  'cards.sellWho': '新卡由同時具備 Offers 櫃檯角色的人販售並列印 · 請洽詢店主',
   'cards.sellOffline': '販售禮物卡需要連線',
   'cards.sold': '已新增面額 {amount} 的禮物卡',
   'cards.newCode': '新禮物卡',

@@ -934,7 +934,7 @@ export const fr: Translated<typeof enUS> = {
   'cards.refused': 'Cette carte ne peut pas payer ce ticket',
   'cards.balanceLeft': 'Solde restant de la carte cadeau',
   'cards.sellAmount': 'Montant sur la carte',
-  'cards.sellWho': 'Seule une personne ayant le rôle de guichet d’Offers peut vendre une nouvelle carte',
+  'cards.sellWho': 'Une nouvelle carte est vendue, et imprimée, par une personne qui a aussi le rôle de guichet d’Offers · Demandez au propriétaire',
   'cards.sellOffline': 'La vente d’une carte nécessite une connexion',
   'cards.sold': 'Carte cadeau de {amount} ajoutée',
   'cards.newCode': 'Nouvelle carte cadeau',

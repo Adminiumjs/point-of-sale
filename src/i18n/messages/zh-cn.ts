@@ -931,7 +931,7 @@ export const zhCn: Translated<typeof enUS> = {
   'cards.refused': '此卡无法支付这张小票',
   'cards.balanceLeft': '礼品卡剩余余额',
   'cards.sellAmount': '卡内金额',
-  'cards.sellWho': '只有拥有 Offers 柜台角色的人才能出售新卡',
+  'cards.sellWho': '新卡由同时拥有 Offers 柜台角色的人出售并打印 · 请联系店主',
   'cards.sellOffline': '出售礼品卡需要联网',
   'cards.sold': '已添加面值 {amount} 的礼品卡',
   'cards.newCode': '新礼品卡',

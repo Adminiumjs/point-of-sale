@@ -61,7 +61,7 @@ const usd = (value: unknown): string => `$${(Math.round(Number(value) * 100) / 1
  */
 const ALLOWED = 300;
 const WINDOW_MS = 60_000;
-const spent: Record<Who, number[]> = { cashier: [], manager: [], admin: [] };
+const spent: Record<Who, number[]> = { cashier: [], manager: [], admin: [], seller: [] };
 const whoIs = new WeakMap<BrowserContext, Who>();
 const count = (context: BrowserContext): void => {
   const who = whoIs.get(context);
@@ -229,7 +229,7 @@ test.describe('the staff screens on a built Adminium', () => {
       await new Promise((resolve) => setTimeout(resolve, 1_000));
     }
     stand = JSON.parse(readFileSync(out, 'utf8')) as LiveStand;
-    for (const who of ['cashier', 'manager', 'admin'] as const) contexts[who] = await signedIn(browser, who);
+    for (const who of ['cashier', 'manager', 'admin', 'seller'] as const) contexts[who] = await signedIn(browser, who);
     // The names the till's tables are stored under, as the staff config says them.
     const config = (await (await contexts.cashier!.request.get(`${stand.base}${TILL}surface-config.json`)).json()) as { tables: Record<string, string>; addOns: Record<string, { tables?: Record<string, string> }> };
     Object.assign(tables, config.tables);
@@ -521,11 +521,17 @@ test.describe('the staff screens on a built Adminium', () => {
     await page.close();
   });
 
-  test('a new card is sold by someone Offers lets, reloaded past, and printed once — its code never on the till', async ({}, testInfo) => {
+  /*
+   * WHO SELLS AND PRINTS A NEW CARD. The print ticket Offers hands over is its
+   * maker's alone, and making a card is Offers' desk role's — so the card is
+   * sold and printed by a cashier the owner ALSO gave that role. A plain
+   * cashier is offered neither (the next test).
+   */
+  test('a new card is sold by a cashier who also holds Offers’ desk role, reloaded past, and printed by them once — its code never on the till', async ({}, testInfo) => {
     test.setTimeout(240_000);
-    await roomFor('manager', 120);
+    await roomFor('seller', 120);
     const tally: Sweep = { states: 0, failures: [] };
-    const context = contexts.manager!;
+    const context = contexts.seller!;
     const page = await openTill(context);
     await page.locator('[data-gift-tile]').click();
     const sheet = page.getByRole('dialog');
@@ -589,7 +595,7 @@ test.describe('the staff screens on a built Adminium', () => {
     await page.locator('[data-gift-tile]').click();
     const sheet = page.getByRole('dialog');
     await expect(sheet.locator('[data-card-mode]')).toHaveCount(0);
-    await expect(sheet.locator('[data-sell-who]')).toHaveText('Only someone with the Offers desk role can sell a new card');
+    await expect(sheet.locator('[data-sell-who]')).toHaveText('A new card is sold, and printed, by someone who also holds the Offers desk role · Ask the owner');
     await sheet.locator('[data-card-code]').fill('GC-NOSUCHCARD00');
     await sheet.locator('form button[type="submit"]').click();
     await expect(sheet.getByRole('alert')).toHaveText('No gift card has that code');

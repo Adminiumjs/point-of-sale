@@ -22,7 +22,7 @@ describe('the gift card sheet', () => {
     expect(forCashier).not.toContain('Sell a card');
     expect(forCashier).not.toContain('Add card to ticket');
     expect(forCashier).toContain('data-sell-who');
-    expect(forCashier).toContain('Only someone with the Offers desk role can sell a new card');
+    expect(forCashier).toContain('A new card is sold, and printed, by someone who also holds the Offers desk role · Ask the owner');
     expect(forCashier).toContain('Scan or type the card’s code');
     expect(forCashier).toContain('Add top-up to ticket');
 

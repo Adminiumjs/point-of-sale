@@ -24,8 +24,9 @@ export interface LiveStand {
   pid: number;
   connectionId: string;
   /** Each person's session, as the `cookie` header a browser would send. */
-  cookies: { cashier: string; manager: string; admin: string };
-  names: { cashier: string; manager: string };
+  /** `seller`: a cashier the owner also gave Offers' desk role — who may sell a new gift card, and print it. */
+  cookies: { cashier: string; manager: string; admin: string; seller: string };
+  names: { cashier: string; manager: string; seller: string };
   items: Record<string, string>;
   /** How many of the counted item the books hold. */
   mugsLeft: number;
@@ -91,9 +92,10 @@ async function main(): Promise<void> {
     await s.insert('offers_offer_targets', { offer_id: offer['id'], kind: 'item', source_table: 'pos:menu_items', source_row: String(items['Croissant']!['id']), label: 'Croissant' });
     await s.update('offers_offers', offer['id'], { status: 'active' });
 
-    const names = { cashier: 'Sam Okafor', manager: 'Priya Nair' };
+    const names = { cashier: 'Sam Okafor', manager: 'Priya Nair', seller: 'Lena Fischer' };
     const cashier = await s.member('cashier', names.cashier);
     const manager = await s.member('manager', names.manager);
+    const seller = await s.member('cashier', names.seller);
     // The manager also sits at Offers' desk: whoever sells a new gift card holds that role.
     const roles = ok(await s.staff.get<{ roles: { id: string; name: string }[] }>('/api/v1/roles')).roles;
     const users = ok(await s.staff.get<{ users: { id: string; name: string }[] }>('/api/v1/users')).users;
@@ -101,6 +103,11 @@ async function main(): Promise<void> {
     const wanted = ['POS manager', 'Offers desk'].map((name) => roles.find((role) => role.name === name)?.id);
     if (priya === undefined || wanted.some((id) => id === undefined)) throw new Error(`no manager or no desk role: ${roles.map((role) => role.name).join(', ')}`);
     ok(await s.staff.put(`/api/v1/users/${priya.id}/roles`, { roleIds: wanted }));
+    // And one cashier is given it beside the till's own role: a plain cashier sells no new card, and prints none.
+    const lena = users.find((one) => one.name === names.seller);
+    const both = ['POS cashier', 'Offers desk'].map((name) => roles.find((role) => role.name === name)?.id);
+    if (lena === undefined || both.some((id) => id === undefined)) throw new Error('no second cashier, or no desk role');
+    ok(await s.staff.put(`/api/v1/users/${lena.id}/roles`, { roleIds: both }));
 
     // The pin's shelf, sold down to nothing if the sample left something on it.
     const pinLeft = Number((await s.rows('inventory_stock_points')).find((one) => one['id'] === none!['id'])!['available']);
@@ -115,7 +122,7 @@ async function main(): Promise<void> {
       base: s.server.base,
       pid: process.pid,
       connectionId: s.connectionId,
-      cookies: { cashier: cashier.session, manager: manager.session, admin: s.staff.session },
+      cookies: { cashier: cashier.session, manager: manager.session, admin: s.staff.session, seller: seller.session },
       names,
       items: Object.fromEntries(Object.entries(items).map(([name, row]) => [name, String(row['id'])])),
       mugsLeft: Number(some['available']),

@@ -607,7 +607,7 @@ describe('gift cards kept by Offers', () => {
   it('a cashier who may not make a card is told who can', async () => {
     connect(standIn({ create: () => Promise.reject(refusal('FORBIDDEN', {}, 403)) }), MOVED, { cardsMoved: true });
     expect(await s().sellCard(25)).toBe(false);
-    expect(s().toast?.msg).toBe('Only someone with the Offers desk role can sell a new card');
+    expect(s().toast?.msg).toBe('A new card is sold, and printed, by someone who also holds the Offers desk role · Ask the owner');
     expect(s().ticket.items).toHaveLength(0);
   });
 

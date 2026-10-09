@@ -936,7 +936,7 @@ export const de: Translated<typeof enUS> = {
   'cards.refused': 'Diese Karte kann diesen Bon nicht bezahlen',
   'cards.balanceLeft': 'Restguthaben der Geschenkkarte',
   'cards.sellAmount': 'Betrag auf der Karte',
-  'cards.sellWho': 'Nur wer die Schalterrolle von Offers hat, kann eine neue Karte verkaufen',
+  'cards.sellWho': 'Eine neue Karte verkauft und druckt, wer zusätzlich die Schalterrolle von Offers hat · Bitte den Inhaber fragen',
   'cards.sellOffline': 'Der Kartenverkauf braucht eine Verbindung',
   'cards.sold': 'Geschenkkarte über {amount} hinzugefügt',
   'cards.newCode': 'Neue Geschenkkarte',

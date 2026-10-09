@@ -934,7 +934,7 @@ export const cs: Translated<typeof enUS> = {
   'cards.refused': 'Touto kartou nelze tuto účtenku zaplatit',
   'cards.balanceLeft': 'Zůstatek dárkové karty',
   'cards.sellAmount': 'Částka na kartě',
-  'cards.sellWho': 'Novou kartu může prodat jen osoba s rolí přepážky v Offers',
+  'cards.sellWho': 'Novou kartu prodá a vytiskne ten, kdo má i roli přepážky v Offers · Zeptejte se majitele',
   'cards.sellOffline': 'Prodej karty potřebuje připojení',
   'cards.sold': 'Dárková karta na {amount} přidána',
   'cards.newCode': 'Nová dárková karta',

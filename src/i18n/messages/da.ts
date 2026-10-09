@@ -933,7 +933,7 @@ export const da: Translated<typeof enUS> = {
   'cards.refused': 'Dette kort kan ikke betale denne bon',
   'cards.balanceLeft': 'Restsaldo på gavekort',
   'cards.sellAmount': 'Beløb på kortet',
-  'cards.sellWho': 'Kun en person med Offers’ skranke-rolle kan sælge et nyt kort',
+  'cards.sellWho': 'Et nyt kort sælges og udskrives af en person, der også har Offers’ skranke-rolle · Spørg ejeren',
   'cards.sellOffline': 'Salg af et kort kræver forbindelse',
   'cards.sold': 'Gavekort på {amount} tilføjet',
   'cards.newCode': 'Nyt gavekort',
