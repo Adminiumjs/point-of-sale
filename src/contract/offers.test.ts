@@ -38,7 +38,7 @@ describe.skipIf(why !== null)(`codes, offers and staff discounts on a built Admi
       let croissantVoucher = '';
 
       beforeAll(async () => {
-        s = await standUp(engine as Engine, PORT, `pos_offers_${engine}`, { addOns: ['offers'], addOnSamples: ['offers'] });
+        s = await standUp(engine as Engine, PORT, `pos_offers_${engine}`, { addOns: ['offers', 'invoices'], addOnSamples: ['offers'] });
         await s.insert('settings', { venue_name: 'Daybreak Coffee', tax_rate_bp: 825 });
         person = await s.insert('staff', { name: 'Mira Costa' });
         const food = await s.insert('menu_categories', { name: 'Food' });
@@ -108,6 +108,20 @@ describe.skipIf(why !== null)(`codes, offers and staff discounts on a built Admi
         const closed = await cashier.patch('tickets', worked, { status: 'paid', closed_at: new Date().toISOString(), tip: 0 });
         expect(closed.status, JSON.stringify(closed.body).slice(0, 600)).toBe(200);
         expect(figures(closed.body.data)).toEqual([5360, 878, 4482, 370, 4852]);
+        // The receipt Invoices & Receipts draws: the lines, then what came off — one row each, taken off — and Adminium's total.
+        const drawn = await s.staff.post<{ printUrl: string; document: { subject: { fields: Record<string, number>; collections: { items: { desc: string; qty?: number; rate: number }[] } } } }>('/api/v1/apps/pos/documents/render', { kind: 'receipt', ref: 'tickets', pk: { id: worked } });
+        expect([200, 201], JSON.stringify(drawn.body).slice(0, 400)).toContain(drawn.status);
+        const subject = drawn.body.document.subject;
+        expect(subject.collections.items.map((line) => [line.desc, line.qty ?? null, line.rate])).toEqual([
+          ['Breakfast Bowl', 3, 1200],
+          ['Flat White', 2, 500],
+          ['Croissant', 2, 380],
+          ['Voucher · One croissant', null, -380],
+          ['Staff · Goodwill', null, -498],
+        ]);
+        expect([subject.fields['subtotal'], subject.fields['tax'], subject.fields['total']]).toEqual([5360, 370, 4852]);
+        const page = (await s.staff.get(drawn.body.printUrl)).bytes.toString('utf8');
+        for (const words of ['Breakfast Bowl', 'One croissant', 'Goodwill', '48.52']) expect(page, words).toContain(words);
         const again = await cashier.post('ticket_codes', { ticket_id: await ticketOf(cashier), typed: croissantVoucher });
         expect([again.status, again.code, again.details['reason']]).toEqual([409, 'ADJUST_REFUSED', 'used-up']);
       }, 120_000);

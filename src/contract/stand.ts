@@ -122,6 +122,17 @@ export async function readIds(staff: Caller, connectionId: string, into: Record<
 export async function standUp(engine: Engine, port: number, database: string, options: StandOptions = {}): Promise<Stand> {
   const { addOns = [], addOnSamples = [], sample = false, uploadOnly = [], ...bootOptions } = options;
   const server = await boot(engine, port, database, bootOptions);
+  try {
+    return await standOn(server, engine, { addOns, addOnSamples, sample, uploadOnly });
+  } catch (error) {
+    // A stand that never came up leaves no server behind on its ports.
+    await server.stop();
+    throw error;
+  }
+}
+
+async function standOn(server: Server, engine: Engine, options: Required<Pick<StandOptions, 'addOns' | 'addOnSamples' | 'sample' | 'uploadOnly'>>): Promise<Stand> {
+  const { addOns, addOnSamples, sample, uploadOnly } = options;
   const staff = new Caller(server.base, { origin: server.base });
   await staff.signIn(ADMIN.email, ADMIN.password);
   const connectionId = ok(await staff.get<{ connections: { id: string; name: string }[] }>('/api/v1/connections')).connections.find((c) => c.name === 'northwind')!.id;

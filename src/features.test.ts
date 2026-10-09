@@ -56,7 +56,13 @@ describe('the manifest and the till name the same features', () => {
     // The amount taken, tip included — a stored figure, never one the add-on works out again.
     // The sale line by line, the voided lines left out; the stored figures; the amount taken, tip included.
     expect(receipt.mapping).toMatchObject({
-      items: { collection: { table: 'ticket_items', via: 'ticket_id', unless: 'voided_at', columns: { desc: 'name', qty: 'qty', rate: 'unit_price' } } },
+      // …and after them what Offers & gift cards took off, each printed as taken off (nothing while it is away).
+      items: {
+        collections: [
+          { table: 'ticket_items', via: 'ticket_id', unless: 'voided_at', columns: { desc: 'name', qty: 'qty', rate: 'unit_price' } },
+          { addOn: 'offers', table: 'applied', match: { table: 'source_table', row: 'source_row' }, columns: { desc: 'name', rate: 'amount' }, takenOff: ['rate'] },
+        ],
+      },
       subtotal: { column: 'subtotal' },
       tax: { column: 'tax' },
       total: { column: 'total' },

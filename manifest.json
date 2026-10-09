@@ -1524,7 +1524,8 @@
           },
           {
             "ref": "goods",
-            "type": "money",
+            "type": "decimal",
+            "scale": "currency",
             "nullable": true,
             "rules": {
               "rollup": {
@@ -1705,7 +1706,8 @@
           },
           {
             "ref": "net",
-            "type": "money",
+            "type": "decimal",
+            "scale": "currency",
             "nullable": true,
             "rules": {
               "formula": {
@@ -2819,7 +2821,8 @@
           },
           {
             "ref": "goods_amount",
-            "type": "money",
+            "type": "decimal",
+            "scale": "currency",
             "nullable": true,
             "rules": {
               "formula": {
@@ -3464,7 +3467,8 @@
           },
           {
             "ref": "card_amount",
-            "type": "money",
+            "type": "decimal",
+            "scale": "currency",
             "nullable": true,
             "label": {
               "en-US": "Paid by the card",
@@ -3512,7 +3516,8 @@
           },
           {
             "ref": "card_balance_after",
-            "type": "money",
+            "type": "decimal",
+            "scale": "currency",
             "nullable": true,
             "label": {
               "en-US": "Left on the card",
@@ -3987,7 +3992,8 @@
           },
           {
             "ref": "t_goods",
-            "type": "money",
+            "type": "decimal",
+            "scale": "currency",
             "nullable": true,
             "rules": {
               "copy": {
@@ -4009,7 +4015,8 @@
           },
           {
             "ref": "t_net",
-            "type": "money",
+            "type": "decimal",
+            "scale": "currency",
             "nullable": true,
             "rules": {
               "copy": {
@@ -9686,17 +9693,35 @@
       },
       "mapping": {
         "items": {
-          "collection": {
-            "table": "ticket_items",
-            "via": "ticket_id",
-            "orderBy": "id",
-            "unless": "voided_at",
-            "columns": {
-              "desc": "name",
-              "qty": "qty",
-              "rate": "unit_price"
+          "collections": [
+            {
+              "table": "ticket_items",
+              "via": "ticket_id",
+              "orderBy": "id",
+              "unless": "voided_at",
+              "columns": {
+                "desc": "name",
+                "qty": "qty",
+                "rate": "unit_price"
+              }
+            },
+            {
+              "addOn": "offers",
+              "table": "applied",
+              "match": {
+                "table": "source_table",
+                "row": "source_row"
+              },
+              "orderBy": "id",
+              "columns": {
+                "desc": "name",
+                "rate": "amount"
+              },
+              "takenOff": [
+                "rate"
+              ]
             }
-          }
+          ]
         },
         "subtotal": {
           "column": "subtotal"
