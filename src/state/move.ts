@@ -182,15 +182,29 @@ export async function runCardMove(door: MoveDoor, options: MoveOptions): Promise
     }
   }
 
-  // 4. COMPARE — every old card that has a history, against the card Offers now keeps for it.
+  // 4. COMPARE — read again, now: a till that spent an old card while the rows went over has written a row
+  // that is not moved yet, and a balance read before the run is not the balance now.
+  const cardsNow = (await door.rows('gift_cards')).filter((card) => card['status'] !== 'moved');
+  const ledgerNow = await door.rows('gift_card_ledger');
+  const late = ledgerNow.filter((row) => empty(row['moved_at']));
+  const codeOf = (card: MoveRow | undefined, id: unknown): string => String(card?.['code'] ?? id);
+  if (late.length > 0) {
+    // Pressing again moves them; until then the latch stays on and nothing is closed.
+    const behind = [...new Set(late.map((row) => String(row['card_id'])))];
+    return { state: 'mismatch', cards: behind.map((id) => ({ code: codeOf(cardsNow.find((card) => same(card['id'], id)), id), here: cents(cardsNow.find((card) => same(card['id'], id))?.['balance']), inOffers: null })) };
+  }
+  // Every old card that has a history OR holds anything at all, against the card Offers now keeps for it.
   const inOffers = (await door.rows('offers:gift_cards')).filter((card) => card['moved_table'] === OLD_TABLE);
-  const withHistory = cards.filter((card) => ledger.some((row) => same(row['card_id'], card['id'])));
+  const withHistory = cardsNow.filter((card) => ledgerNow.some((row) => same(row['card_id'], card['id'])));
+  const counted = cardsNow.filter((card) => withHistory.includes(card) || cents(card['balance']) !== 0);
   const differing: { code: string; here: number; inOffers: number | null }[] = [];
-  for (const card of withHistory) {
+  for (const card of counted) {
     const twin = inOffers.find((one) => same(one['moved_from'], card['id']));
     const here = cents(card['balance']);
     const there = twin === undefined ? null : cents(twin['balance']);
-    if (there !== here) differing.push({ code: String(card['code'] ?? card['id']), here, inOffers: there });
+    // A card cancelled at the till holds nothing a customer can spend once it is cancelled in Offers too.
+    const settled = twin !== undefined && card['status'] === 'void' && twin['status'] === 'void' && there === 0;
+    if (there !== here && !settled) differing.push({ code: codeOf(card, card['id']), here, inOffers: there });
   }
   if (differing.length > 0) return { state: 'mismatch', cards: differing };
 
@@ -200,7 +214,7 @@ export async function runCardMove(door: MoveDoor, options: MoveOptions): Promise
     if (card['status'] === 'void' && twin['status'] !== 'void') await door.patch('offers:gift_cards', twin['id'], { status: 'void', void_reason: options.voidReason });
     if (yes(twin['moving'])) await door.patch('offers:gift_cards', twin['id'], { moving: false });
   }
-  const open = cards.map((card) => card['id']);
+  const open = cardsNow.map((card) => card['id']);
   for (let at = 0; at < open.length; at += CHUNK) {
     const reply = await door.oneByOne('gift_cards', open.slice(at, at + CHUNK), { status: 'moved' });
     const refused = reply.results.find((result) => !result.ok);

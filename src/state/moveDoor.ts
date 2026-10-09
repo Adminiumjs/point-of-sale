@@ -16,7 +16,8 @@ const refusal = (raw: unknown): never => {
 
 export function moveDoorOf(d: Desk): MoveDoor {
   return {
-    rows: (table) => d.rows(table).catch(refusal),
+    // Every row, however many: a card left out of the count would be a card's money lost.
+    rows: (table) => d.rows(table, undefined, Number.MAX_SAFE_INTEGER).catch(refusal),
     patch: async (table, id, values) => {
       await d.patch(table, id as RowId, values).catch(refusal);
     },
