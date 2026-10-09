@@ -2,6 +2,7 @@ import { usePos } from '../state/store';
 import { useT } from '../i18n';
 import { Icon } from './Icon';
 import { css } from './css';
+import { useDialog } from './useDialog';
 
 /**
  * "Reload the till" — over everything, and not to be dismissed.
@@ -13,10 +14,16 @@ import { css } from './css';
  */
 export function ReloadTill() {
   const must = usePos((s) => s.mustReload);
-  const t = useT();
   if (!must) return null;
+  return <ReloadDialog />;
+}
+
+function ReloadDialog() {
+  const t = useT();
+  // Focus moves in and stays in: nothing behind it can be reached, and there is no way out but the reload.
+  const dialog = useDialog<HTMLDivElement>();
   return (
-    <div role="alertdialog" aria-modal="true" aria-label={t('cards.reload')} style={css('position:absolute;inset:0;z-index:400;background:var(--scrim);display:flex;align-items:center;justify-content:center;padding:26px;')}>
+    <div ref={dialog} tabIndex={-1} role="alertdialog" aria-modal="true" aria-label={t('cards.reload')} style={css('position:absolute;inset:0;z-index:400;background:var(--scrim);display:flex;align-items:center;justify-content:center;padding:26px;')}>
       <div style={css('width:100%;max-width:420px;background:var(--surface);border-radius:22px;padding:28px;text-align:center;box-shadow:0 24px 60px rgba(10,10,20,.32);')}>
         <Icon name="rotate-ccw" size={34} color="var(--accent)" />
         <div style={css('font-size:20px;font-weight:800;margin-top:12px;')}>{t('cards.reload')}</div>

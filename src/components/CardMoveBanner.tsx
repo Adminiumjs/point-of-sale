@@ -47,10 +47,10 @@ export function CardMoveStrip({
         {/* The figures of the cards that hold money; a shop with none is told nothing about nothing. */}
         {figures !== null && figures.count > 0 && <div style={css('font-size:12.5px;font-weight:600;margin-top:2px;')}>{t('cards.figures', { sum: fmt(figures.cents / 100) }, figures.count)}</div>}
       </div>
-      <button className="pos-press" onClick={onLater} style={css('height:40px;padding:0 14px;border-radius:11px;border:1px solid color-mix(in srgb, var(--accent) 45%, transparent);background:transparent;color:inherit;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;')}>
+      <button className="pos-press" onClick={onLater} style={css('height:44px;padding:0 14px;border-radius:11px;border:1px solid color-mix(in srgb, var(--accent) 45%, transparent);background:transparent;color:inherit;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;')}>
         {t('cards.later')}
       </button>
-      <button className="pos-press" onClick={onOpen} style={css('height:40px;padding:0 16px;border-radius:11px;border:none;background:var(--accent);color:var(--accent-fg);font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;')}>
+      <button className="pos-press" onClick={onOpen} style={css('height:44px;padding:0 16px;border-radius:11px;border:none;background:var(--accent);color:var(--accent-fg);font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;')}>
         {t('cards.open')}
       </button>
     </div>

@@ -10,7 +10,7 @@ import { css } from './css';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
 /** The × on a reduction: a 44 px target around a small mark. */
-const removeBtn = 'width:44px;height:36px;border-radius:9px;border:none;background:transparent;color:var(--fg-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;';
+const removeBtn = 'width:44px;height:44px;border-radius:9px;border:none;background:transparent;color:var(--fg-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;';
 
 interface Group {
   header: boolean;
@@ -152,10 +152,10 @@ export function TicketPane() {
       {s.codeAsk !== null && (
         <div role="alert" style={css('flex-shrink:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 12px 0;padding:10px 12px;border-radius:13px;background:var(--accent-soft);color:var(--accent);font-size:13.5px;font-weight:700;')}>
           <span style={css('flex:1;min-width:140px;')}>{s.codeAsk.noEmail ? t('code.needsEmail') : t('code.needsCustomer', { code: s.codeAsk.typed })}</span>
-          <button className="pos-press" onClick={s.openLoyalty} style={css('height:38px;padding:0 14px;border-radius:11px;border:none;background:var(--accent);color:var(--accent-fg);font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;')}>
+          <button className="pos-press" onClick={s.openLoyalty} style={css('height:44px;padding:0 14px;border-radius:11px;border:none;background:var(--accent);color:var(--accent-fg);font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;')}>
             {t('code.addCustomer')}
           </button>
-          <button className="pos-press" onClick={s.dismissCodeAsk} aria-label={t('common.close')} style={css('width:30px;height:30px;border-radius:9px;border:none;background:transparent;color:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer;')}>
+          <button className="pos-press" onClick={s.dismissCodeAsk} aria-label={t('common.close')} style={css('width:44px;height:44px;border-radius:9px;border:none;background:transparent;color:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer;')}>
             <Icon name="x" size={16} />
           </button>
         </div>
@@ -315,7 +315,7 @@ export function TicketPane() {
               <Icon name="gift" size={14} />
               {[t('cards.kept', { last4: kept.last4 }), ...(kept.balance === null ? [] : [t('cards.keptBalance', { balance: money(kept.balance) })]), t('cards.keptAtPay')].join(' · ')}
             </span>
-            <button className="pos-press" onClick={s.forgetCard} aria-label={t('offers.removeLine', { name: t('cards.kept', { last4: kept.last4 }) })} style={css('width:22px;height:22px;border-radius:6px;border:none;background:transparent;color:var(--fg-subtle);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;')}>
+            <button className="pos-press" onClick={s.forgetCard} aria-label={t('offers.removeLine', { name: t('cards.kept', { last4: kept.last4 }) })} style={css('width:44px;height:44px;border-radius:11px;border:none;background:transparent;color:var(--fg-subtle);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;')}>
               <Icon name="x" size={13} />
             </button>
           </div>

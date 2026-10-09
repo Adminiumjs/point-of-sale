@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { isOffline, sellsNewCards, usePos, type TopUpCard } from '../state/store';
 import { money } from '../state/calc';
 import { useT } from '../i18n';
 import { Icon } from './Icon';
 import { WhyOff } from './Figures';
+import { useDialog } from './useDialog';
 import { css } from './css';
 
 /** The amounts a card is most often sold or topped up for, in the venue's own money. */
@@ -55,16 +56,8 @@ export function CardSheet({
   const [card, setCard] = useState<TopUpCard | null>(null);
   const [words, setWords] = useState<string | null>(null);
 
-  // Escape closes it. Listened for once, for as long as the sheet is up: a listener swapped while a key is being handled never hears that key.
-  const closing = useRef(onClose);
-  closing.current = onClose;
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closing.current();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  // Focus moves in and stays in; Escape closes it.
+  const sheet = useDialog<HTMLDivElement>(onClose);
 
   const selling = mode === 'sell' && maySell;
   const ready = !busy && !off && amount !== null && (selling || card !== null);
@@ -114,7 +107,7 @@ export function CardSheet({
   return (
     <>
       <div onClick={onClose} style={css('position:absolute;inset:0;z-index:213;background:var(--scrim);animation:pos-scrim .2s ease;')} />
-      <div role="dialog" aria-modal="true" aria-labelledby="card-sheet-title" className="pos-scroll" style={css('position:absolute;inset-inline:0;bottom:0;z-index:214;background:var(--surface);border-radius:26px 26px 0 0;max-height:92%;overflow-y:auto;box-shadow:0 -12px 40px rgba(10,10,20,.24);animation:pos-sheet .3s cubic-bezier(.2,.8,.2,1);')}>
+      <div ref={sheet} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="card-sheet-title" className="pos-scroll" style={css('position:absolute;inset-inline:0;bottom:0;z-index:214;background:var(--surface);border-radius:26px 26px 0 0;max-height:92%;overflow-y:auto;box-shadow:0 -12px 40px rgba(10,10,20,.24);animation:pos-sheet .3s cubic-bezier(.2,.8,.2,1);')}>
         <div style={css('max-width:560px;margin:0 auto;padding:10px 20px 22px;')}>
           <div aria-hidden="true" style={css('width:44px;height:5px;border-radius:3px;background:var(--border-strong);margin:0 auto 14px;')} />
           <div style={css('display:flex;align-items:center;gap:12px;margin-bottom:16px;')}>
@@ -177,7 +170,7 @@ export function CardSheet({
                     <div style={css('font-size:15px;font-weight:800;')}>{t('cards.kept', { last4: card.last4 })}</div>
                     {card.balance !== null && (
                       <div style={css('font-size:13px;color:var(--fg-muted);margin-top:2px;')}>
-                        {t('cards.onCardNow')} <span style={css(MONO + 'font-weight:700;color:var(--fg);')}>{money(card.balance)}</span>
+                        {t('cards.onCardNow', { amount: money(card.balance) })}
                       </div>
                     )}
                   </div>
@@ -212,6 +205,10 @@ export function CardSheet({
             <Icon name="info" size={15} />
             {selling || amount === null ? t('cards.activeWhenPaid') : t('cards.loadWhenPaid', { amount: money(amount) })}
           </div>
+          {/* A new card is printed by Offers on a ticket that lives ten minutes from the moment the card is made. */}
+          {selling && (
+            <div data-print-window="" style={css('font-size:12.5px;font-weight:600;color:var(--fg-muted);margin:-4px 0 12px;padding-inline-start:23px;')}>{t('cards.printWindow')}</div>
+          )}
           <button data-card-add="" className="pos-press" disabled={!ready} onClick={add} style={css('width:100%;height:58px;border-radius:16px;border:none;font-family:inherit;font-size:16.5px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:12px;background:' + (ready ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (ready ? 'var(--accent-fg)' : 'var(--fg-subtle)') + ';cursor:' + (ready ? 'pointer' : 'not-allowed') + ';')}>
             <span>{t(selling ? 'cards.addCard' : 'cards.addTopUp')}</span>
             {amount !== null && <span style={css(MONO)}>{money(amount)}</span>}

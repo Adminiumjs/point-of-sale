@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { isOffline, usePos, type DiscountPreview } from '../state/store';
 import type { DiscountKind } from '../data/types';
 import { money, tableName } from '../state/calc';
-import { useT, type MessageKey } from '../i18n';
+import { useI18n, useT, type MessageKey } from '../i18n';
+import { answered, latest, type Latest } from '../state/latest';
+import { useDialog } from './useDialog';
 import { Icon } from './Icon';
 import { WhyOff } from './Figures';
 import { css } from './css';
@@ -145,6 +147,11 @@ function OffersDiscount() {
   const [words, setWords] = useState<string | null>(null);
   const off = isOffline(s);
   const reasons = s.reasons ?? [];
+  const asked = useRef<Latest>(latest());
+  const { number } = useI18n();
+  const dialog = useDialog<HTMLDivElement>(s.closeDiscount);
+  /** A percent as this language writes it ("10 %", "10%", "١٠٪"). */
+  const pct = (n: number) => number(n / 100, { style: 'percent', maximumFractionDigits: 2 });
   const chosen: Opt | null = kind === 'comp' ? { kind, value: 0 } : value === null ? null : { kind, value };
 
   const ask = (nextKind: DiscountKind, nextValue: number | null, why: string | null) => {
@@ -153,11 +160,18 @@ function OffersDiscount() {
     setReason(why);
     setWords(null);
     setPreview(null);
-    if ((nextKind !== 'comp' && nextValue === null) || why === null || off) return;
-    setBusy(true);
-    void s.previewDiscount(nextKind, nextKind === 'comp' ? 0 : (nextValue ?? 0), why).then((answer) => {
+    if ((nextKind !== 'comp' && nextValue === null) || why === null || off) {
+      // Nothing to ask: whatever is still on its way is for a choice no longer made.
+      asked.current.ask();
       setBusy(false);
-      setPreview(answer);
+      return;
+    }
+    setBusy(true);
+    // Only the answer for what is chosen NOW is shown: an earlier one, arriving late, is dropped.
+    void answered(asked.current, () => s.previewDiscount(nextKind, nextKind === 'comp' ? 0 : (nextValue ?? 0), why)).then((got) => {
+      if (got === undefined) return;
+      setBusy(false);
+      setPreview(got.answer);
     });
   };
   const apply = () => {
@@ -172,7 +186,7 @@ function OffersDiscount() {
   const ready = chosen !== null && reason !== null && preview !== null && preview.ok && !busy && !off;
   // What it would take off: the staff line of Adminium's answer.
   const takes = preview !== null && preview.ok ? (preview.applied.find((line) => line.kind === 'staff')?.amount ?? null) : null;
-  const shown = kind === 'comp' ? '100 %' : value === null ? '—' : kind === 'pct' ? `${String(value)} %` : money(value);
+  const shown = kind === 'comp' ? pct(100) : value === null ? '—' : kind === 'pct' ? pct(value) : money(value);
   const chip = (on: boolean) =>
     'flex:1;min-width:72px;height:52px;border-radius:13px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;border:1.5px solid ' +
     (on ? 'var(--accent)' : 'var(--border-strong)') +
@@ -185,7 +199,7 @@ function OffersDiscount() {
 
   return (
     <div onClick={s.closeDiscount} style={css('position:absolute;inset:0;z-index:214;background:var(--scrim);display:flex;align-items:center;justify-content:center;padding:14px;animation:pos-scrim .18s ease;')}>
-      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="staff-discount-title" className="pos-scroll" style={css('width:100%;max-width:520px;max-height:94%;overflow-y:auto;background:var(--surface);border-radius:22px;padding:22px;box-shadow:0 24px 60px rgba(10,10,20,.32);animation:pos-pop .22s cubic-bezier(.2,.8,.2,1);')}>
+      <div ref={dialog} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="staff-discount-title" className="pos-scroll" style={css('width:100%;max-width:520px;max-height:94%;overflow-y:auto;background:var(--surface);border-radius:22px;padding:22px;box-shadow:0 24px 60px rgba(10,10,20,.32);animation:pos-pop .22s cubic-bezier(.2,.8,.2,1);')}>
         <div style={css('display:flex;align-items:center;gap:12px;margin-bottom:16px;')}>
           <div style={css('flex:1;min-width:0;')}>
             <div id="staff-discount-title" style={css('font-size:20px;font-weight:800;letter-spacing:-.02em;')}>
@@ -223,7 +237,7 @@ function OffersDiscount() {
               const on = value === one;
               return (
                 <button key={one} role="radio" data-discount-preset={String(one)} aria-checked={on} className="pos-press" onClick={() => ask(kind, one, reason)} style={css(chip(on) + MONO)}>
-                  {kind === 'pct' ? `${String(one)} %` : money(one)}
+                  {kind === 'pct' ? pct(one) : money(one)}
                 </button>
               );
             })}
