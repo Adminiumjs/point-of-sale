@@ -6,7 +6,9 @@ import { demoSale, money, tableName } from '../state/calc';
 import { useI18n } from '../i18n';
 import { DEMO } from '../surface';
 import { Icon } from '../components/Icon';
+import { TotalLabel } from '../components/Figures';
 import { css } from '../components/css';
+import type { Sale } from '../data/types';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
 
@@ -91,13 +93,11 @@ export function Complete() {
               {/* A discounted sale used to print Subtotal / Tax / Tip over a
                   Total that had the discount removed — a receipt whose own rows
                   contradicted its total. */}
-              {sale.discount > 0 && (
-                <ReceiptRow label={sale.discountLabel || t('common.discount')} value={'−' + money(sale.discount)} />
-              )}
+              <ReceiptReductions sale={sale} />
               <ReceiptRow label={t('common.tax')} value={money(sale.tax)} />
               <ReceiptRow label={t('common.tip')} value={money(sale.tip)} />
               <div style={css('display:flex;justify-content:space-between;font-size:15px;font-weight:800;padding-top:9px;border-top:1px solid var(--border);margin-top:4px;')}>
-                <span>{t('common.total')}</span>
+                <TotalLabel estimate={sale.estimate === true} style="font-size:15px;font-weight:800;" />
                 <span style={css(MONO)}>{money(sale.total)}</span>
               </div>
               <div style={css('border-top:1px dashed var(--border-strong);margin:13px 0;')} />
@@ -105,6 +105,7 @@ export function Complete() {
                 <span style={css('color:var(--fg-muted);')}>{t('complete.paidWith', { methods: methods.join(' + ') })}</span>
                 <span style={css(MONO)}>{money(sale.total)}</span>
               </div>
+              <ReceiptCards sale={sale} />
               {/* What the guest asked for on the customer display (nothing sends it yet). */}
               {sale.receipt !== undefined && sale.receipt.via !== 'none' && (
                 <div className="no-print" role="note" style={css('margin-top:9px;font-size:11.5px;color:var(--fg-muted);')}>
@@ -277,6 +278,60 @@ function NoSale() {
       <button className="pos-press" onClick={s.newOrder} style={css('height:56px;padding:0 24px;border-radius:15px;border:none;background:var(--accent);color:var(--accent-fg);font-size:16px;font-weight:800;cursor:pointer;')}>
         {t('complete.newOrder')}
       </button>
+    </div>
+  );
+}
+
+/**
+ * What came off the sale. With Offers these are Adminium's own lines — a
+ * code, an offer, the staff discount, a row each; without, the till's one
+ * discount row.
+ */
+export function ReceiptReductions({ sale }: { sale: Pick<Sale, 'discount' | 'discountLabel' | 'reductions'> }) {
+  const { t } = useI18n();
+  if (sale.reductions !== undefined && sale.reductions.length > 0) {
+    return (
+      <>
+        {sale.reductions.map((line, i) => (
+          <ReceiptRow key={line.kind + line.name + String(i)} label={line.name} value={'−' + money(line.amount)} />
+        ))}
+      </>
+    );
+  }
+  if (!(sale.discount > 0)) return null;
+  return <ReceiptRow label={sale.discountLabel || t('common.discount')} value={'−' + money(sale.discount)} />;
+}
+
+/**
+ * Gift cards on the receipt: what each card that paid has left (Adminium's
+ * answer when it paid), and the whole code of a card sold on this ticket —
+ * printed this once, because nothing reads it back afterwards.
+ */
+export function ReceiptCards({ sale }: { sale: Pick<Sale, 'cardBalances' | 'newCards'> }) {
+  const { t } = useI18n();
+  const balances = sale.cardBalances ?? [];
+  const cards = sale.newCards ?? [];
+  if (balances.length === 0 && cards.length === 0) return null;
+  return (
+    <div className="receipt-cards" style={css('margin-top:9px;')}>
+      {balances.map((one, i) => (
+        <div key={'left' + String(i)} style={css('display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:4px;')}>
+          <span style={css('color:var(--fg-muted);')}>
+            {t('cards.balanceLeft')} · {t('cards.kept', { last4: one.last4 })}
+          </span>
+          <span style={css(MONO)}>{money(one.left)}</span>
+        </div>
+      ))}
+      {cards.map((one, i) => (
+        <div key={'new' + String(i)} style={css('margin-top:8px;padding-top:8px;border-top:1px dashed var(--border-strong);')}>
+          <div style={css('display:flex;justify-content:space-between;gap:10px;font-size:12px;')}>
+            <span style={css('font-weight:700;')}>{t('cards.newCode')}</span>
+            <span style={css(MONO)}>{money(one.amount)}</span>
+          </div>
+          <div style={css('font-size:15px;font-weight:800;letter-spacing:.06em;margin-top:4px;' + MONO)}>{one.code}</div>
+          <div style={css('font-size:11px;color:var(--fg-muted);margin-top:2px;')}>{t('cards.newCodeOnce')}</div>
+        </div>
+      ))}
     </div>
   );
 }

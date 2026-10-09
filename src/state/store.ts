@@ -2168,6 +2168,11 @@ export const usePos = create<PosState>()((set, get) => {
         get().showToast(t('toast.addItemsFirst'));
         return;
       }
+      // Opened before tickets kept a tax rate: Adminium will never close it. Its items move to a new one.
+      if (cur.ticket.rateless === true) {
+        get().showToast(t('ticket.carryStrip'), 'error');
+        return;
+      }
       /*
        * Resume a part-paid ticket instead of restarting it.
        *
@@ -2224,6 +2229,8 @@ export const usePos = create<PosState>()((set, get) => {
       const m = get().payMethod;
       if (m === 'cash') applyCash();
       else if (m === 'card') runCard();
+      // A gift card kept by Offers pays what Adminium says it covers, never an amount the till names.
+      else if (m === 'gift_card') void get().payCard();
       else applyQr();
     },
     newOrder: () => {

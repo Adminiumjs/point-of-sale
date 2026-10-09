@@ -1,9 +1,11 @@
-import { usePos } from '../state/store';
+import { useState } from 'react';
+import { cardState, isOffline, showsEstimate, usePos } from '../state/store';
 import type { LineItem } from '../data/types';
 import { discountAmt, itemById, lineName, lineTotal, modLabel, money, regTotal, subtotal, tableName, tax, taxLabel } from '../state/calc';
 import { useI18n, useT, type MessageKey } from '../i18n';
 import { pointsLeft } from '../state/points';
 import { Icon } from './Icon';
+import { ReductionRows, TotalLabel, WhyOff } from './Figures';
 import { css } from './css';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
@@ -26,6 +28,16 @@ export function TicketPane() {
   const empty = items.length === 0;
   const canAct = !empty;
   const hasDisc = !!s.discount;
+  // Adminium's figures, or the till's estimate until they are in — then the total says so.
+  const estimate = showsEstimate(s);
+  const server = s.ticket.server;
+  const offers = s.features.offers && s.connected;
+  const off = isOffline(s);
+  // A ticket from before tickets kept their own tax rate can never be paid: its items move to a new one.
+  const rateless = s.ticket.rateless === true;
+  const canPay = canAct && !rateless;
+  const [code, setCode] = useState('');
+  const kept = s.ticket.card;
   // A gift card load never goes to the kitchen, so Send does not count it.
   const unsent = items.filter((x) => !x.sent && x.giftCard === undefined).reduce((a, x) => a + x.qty, 0);
 
@@ -110,6 +122,29 @@ export function TicketPane() {
         </div>
       </div>
 
+      {rateless && (
+        <div role="alert" style={css('flex-shrink:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 12px 0;padding:10px 12px;border-radius:13px;background:var(--warn-soft);color:var(--warn);font-size:13.5px;font-weight:700;')}>
+          <Icon name="alert-triangle" size={17} />
+          <span style={css('flex:1;min-width:140px;')}>
+            {t('ticket.carryStrip')} · {t('ticket.carryHint')}
+          </span>
+          <button className="pos-press" onClick={s.carryOver} style={css('height:38px;padding:0 14px;border-radius:11px;border:none;background:var(--warn);color:var(--surface);font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;')}>
+            {t('ticket.carryButton')}
+          </button>
+        </div>
+      )}
+      {/* A code that is for a named customer: asked for here, and tried again once the ticket names one. */}
+      {s.codeAsk !== null && (
+        <div role="alert" style={css('flex-shrink:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 12px 0;padding:10px 12px;border-radius:13px;background:var(--accent-soft);color:var(--accent);font-size:13.5px;font-weight:700;')}>
+          <span style={css('flex:1;min-width:140px;')}>{s.codeAsk.noEmail ? t('code.needsEmail') : t('code.needsCustomer', { code: s.codeAsk.typed })}</span>
+          <button className="pos-press" onClick={s.openLoyalty} style={css('height:38px;padding:0 14px;border-radius:11px;border:none;background:var(--accent);color:var(--accent-fg);font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;')}>
+            {t('code.addCustomer')}
+          </button>
+          <button className="pos-press" onClick={s.dismissCodeAsk} aria-label={t('common.close')} style={css('width:30px;height:30px;border-radius:9px;border:none;background:transparent;color:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer;')}>
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+      )}
       {/* A pickup order (wave 2): who collects it, and where it stands. */}
       {pickup !== undefined && (
         <button className="pos-press" onClick={() => s.go('pickup')} style={css('flex-shrink:0;display:flex;align-items:center;gap:9px;margin:10px 12px 0;padding:10px 12px;border-radius:13px;border:none;background:var(--warn-soft);color:var(--warn);font-family:inherit;font-size:13.5px;font-weight:800;text-align:start;cursor:pointer;')}>
@@ -206,7 +241,31 @@ export function TicketPane() {
           <span style={css('color:var(--fg-muted);font-weight:600;')}>{t('common.subtotal')}</span>
           <span style={css(MONO + 'font-weight:600;')}>{money(subtotal(s))}</span>
         </div>
-        {hasDisc && (
+        {/* With Offers, the reductions are Adminium's lines: a code, an offer, the staff discount. */}
+        {offers && server !== undefined && (
+          <ReductionRows lines={server.applied} onRemove={(line) => (line.kind === 'staff' ? s.clearDiscount : undefined)} />
+        )}
+        {offers &&
+          (s.ticket.codes ?? []).map((one) => (
+            <div key={one.id} style={css('display:flex;align-items:center;justify-content:space-between;font-size:13px;margin-bottom:8px;color:var(--fg-muted);')}>
+              <span style={css('font-weight:600;' + MONO)}>{t('code.typed', { code: one.typed })}</span>
+              <button className="pos-press" onClick={() => void s.removeCode(one.id)} aria-label={t('offers.removeLine', { name: one.typed })} style={css('width:22px;height:22px;border-radius:6px;border:none;background:transparent;color:var(--fg-subtle);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;')}>
+                <Icon name="x" size={13} />
+              </button>
+            </div>
+          ))}
+        {kept !== undefined && (
+          <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:8px;color:var(--accent);font-weight:700;')}>
+            <span style={css('display:inline-flex;align-items:center;gap:6px;min-width:0;')}>
+              <Icon name="gift" size={14} />
+              {[t('cards.kept', { last4: kept.last4 }), ...(kept.balance === null ? [] : [t('cards.keptBalance', { balance: money(kept.balance) })]), t('cards.keptAtPay')].join(' · ')}
+            </span>
+            <button className="pos-press" onClick={s.forgetCard} aria-label={t('offers.removeLine', { name: t('cards.kept', { last4: kept.last4 }) })} style={css('width:22px;height:22px;border-radius:6px;border:none;background:transparent;color:var(--fg-subtle);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;')}>
+              <Icon name="x" size={13} />
+            </button>
+          </div>
+        )}
+        {hasDisc && !(offers && server !== undefined) && (
           <div style={css('display:flex;align-items:center;justify-content:space-between;font-size:14px;margin-bottom:8px;color:var(--pos);')}>
             <span style={css('display:inline-flex;align-items:center;gap:6px;font-weight:700;')}>
               <Icon name="tag" size={14} />
@@ -223,9 +282,40 @@ export function TicketPane() {
           <span style={css(MONO + 'font-weight:600;')}>{money(tax(s))}</span>
         </div>
         <div style={css('display:flex;align-items:baseline;justify-content:space-between;padding-top:12px;border-top:1px dashed var(--border-strong);')}>
-          <span style={css('font-size:15px;font-weight:800;')}>{t('common.total')}</span>
+          <TotalLabel estimate={estimate} />
           <span style={css('font-size:32px;font-weight:800;' + MONO + 'letter-spacing:-.02em;')}>{money(regTotal(s))}</span>
         </div>
+        {/* A code, a voucher or a gift card, typed or scanned: Offers answers, so it needs a connection. */}
+        {offers && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void s.applyCode(code).then(() => setCode(''));
+            }}
+            style={css('margin-top:12px;')}
+          >
+            <div style={css('display:flex;gap:8px;')}>
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder={t('offers.codeLabel')}
+                aria-label={t('offers.codeLabel')}
+                autoComplete="off"
+                disabled={off}
+                style={css('flex:1;min-width:0;height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--fg);font-size:14px;font-weight:600;outline:none;' + MONO)}
+              />
+              <button type="submit" className="pos-press" disabled={off || s.codeBusy || code.trim() === ''} style={css('height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface);color:' + (off || code.trim() === '' ? 'var(--fg-subtle)' : 'var(--fg)') + ';font-family:inherit;font-size:14px;font-weight:800;cursor:' + (off ? 'not-allowed' : 'pointer') + ';')}>
+                {t(s.codeBusy ? 'offers.checking' : 'offers.apply')}
+              </button>
+              {cardState(s) === 3 && (
+                <button type="button" className="pos-press" onClick={() => s.setCardSale(true)} title={t('cards.sell')} aria-label={t('cards.sell')} style={css('width:44px;height:44px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;')}>
+                  <Icon name="gift" size={18} />
+                </button>
+              )}
+            </div>
+            {off && <WhyOff>{t('offers.applyOffline')}</WhyOff>}
+          </form>
+        )}
         <div style={css('display:flex;gap:10px;margin-top:16px;')}>
           <button className="pos-press" onClick={s.hold} style={css('flex:0 0 auto;width:104px;height:60px;border-radius:15px;border:1.5px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
             <Icon name="pause" size={18} />
@@ -255,7 +345,8 @@ export function TicketPane() {
         <button
           className="pos-press"
           onClick={s.openPay}
-          style={css('width:100%;height:66px;margin-top:10px;border-radius:16px;border:none;background:' + (canAct ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (canAct ? 'var(--accent-fg)' : 'var(--fg-subtle)') + ';font-size:19px;font-weight:800;cursor:' + (canAct ? 'pointer' : 'not-allowed') + ';display:flex;align-items:center;justify-content:center;gap:14px;')}
+          disabled={rateless}
+          style={css('width:100%;height:66px;margin-top:10px;border-radius:16px;border:none;background:' + (canPay ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (canPay ? 'var(--accent-fg)' : 'var(--fg-subtle)') + ';font-size:19px;font-weight:800;cursor:' + (canPay ? 'pointer' : 'not-allowed') + ';display:flex;align-items:center;justify-content:center;gap:14px;')}
         >
           <span>{t('ticket.pay')}</span>
           <span style={css(MONO + 'font-weight:800;')}>{money(regTotal(s))}</span>

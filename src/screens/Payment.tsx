@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { source } from '../data/source';
-import { usePos } from '../state/store';
+import { cardState, isOffline, showsEstimate, usePos } from '../state/store';
 import type { PayMethod } from '../data/types';
 import {
   chargeTarget,
@@ -18,6 +19,7 @@ import {
 import { DEMO } from '../surface';
 import { useT, type MessageKey } from '../i18n';
 import { Icon } from '../components/Icon';
+import { ReductionRows, TotalLabel, WhyOff } from '../components/Figures';
 import { css } from '../components/css';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
@@ -62,6 +64,18 @@ export function Payment() {
   const isCash = s.payMethod === 'cash';
   const isCard = s.payMethod === 'card';
   const isQr = s.payMethod === 'qr';
+  /*
+   * A gift card kept by Offers & gift cards (the till's cards, once moved):
+   * the card pays what ADMINIUM says it covers. The till asks first (a dry
+   * run), shows the answer, and then takes exactly that — never from its own
+   * memory of a balance, and never without a connection.
+   */
+  const giftTab = cardState(s) === 3;
+  const isGift = s.payMethod === 'gift_card' && giftTab;
+  const off = isOffline(s);
+  const estimate = showsEstimate(s);
+  const server = s.ticket.server;
+  const [cardCode, setCardCode] = useState(s.ticket.card?.code ?? '');
 
   const tend = parseFloat(s.cash || '0') || 0;
   const target = chargeTarget(s);
@@ -117,10 +131,21 @@ export function Payment() {
   const cardIconCol = s.card === 'approved' ? 'var(--pos)' : s.card === 'declined' ? 'var(--danger)' : 'var(--accent)';
 
   // charge button
-  const chargeEnabled = isCash ? (s.splitMode !== 'none' ? tend >= target - 0.005 : tend > 0) : isCard ? s.card === 'waiting' || s.card === 'declined' : true;
+  const chargeEnabled = isGift
+    ? !off && !s.paying && !s.cardPayBusy && (s.cardPay !== null || cardCode.trim() !== '')
+    : isCash
+      ? s.splitMode !== 'none'
+        ? tend >= target - 0.005
+        : tend > 0
+      : isCard
+        ? s.card === 'waiting' || s.card === 'declined'
+        : true;
   let chargeLabel: string;
   let chargeIcon: string;
-  if (isCard) {
+  if (isGift) {
+    chargeIcon = 'gift';
+    chargeLabel = s.cardPay === null ? t('cards.check') : t('cards.use', { amount: money(s.cardPay.covers) });
+  } else if (isCard) {
     chargeIcon = s.card === 'declined' ? 'rotate-ccw' : 'credit-card';
     chargeLabel =
       s.card === 'reading'
@@ -192,7 +217,11 @@ export function Payment() {
                 <div key={i} style={css('display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:13px;background:var(--surface);border:1px solid var(--border);')}>
                   <Icon name={sp.method === 'cash' ? 'banknote' : sp.method === 'card' ? 'credit-card' : sp.method === 'gift_card' ? 'gift' : 'qr-code'} size={17} color="var(--pos)" />
                   <span style={css('font-size:14px;font-weight:700;')}>
-                    {sp.method === 'gift_card' ? t('gift.paidFrom', { code: sp.reference ?? '' }) : t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : 'payment.qrPay')}
+                    {sp.method === 'gift_card'
+                      ? sp.cardLeft === undefined
+                        ? t('gift.paidFrom', { code: sp.reference ?? '' })
+                        : t('cards.kept', { last4: sp.reference ?? '' })
+                      : t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : 'payment.qrPay')}
                   </span>
                   <span style={css('margin-inline-start:auto;' + MONO + 'font-weight:700;')}>{money(sp.amount)}</span>
                   <Icon name="check" size={16} color="var(--pos)" />
@@ -277,11 +306,15 @@ export function Payment() {
             {/* Without this row the summary printed Subtotal + Tax + Tip beside
                 a Total that had the discount taken off — four numbers that did
                 not add up. The register pane has always shown it. */}
-            {!!s.discount && <Row label={s.discount.label} value={'−' + money(discountAmt(s))} />}
+            {server !== undefined && server.applied.length > 0 ? (
+              <ReductionRows lines={server.applied} />
+            ) : (
+              !!s.discount && <Row label={s.discount.label} value={'−' + money(discountAmt(s))} />
+            )}
             <Row label={taxLabel()} value={money(tax(s))} />
             <Row label={t('common.tip')} value={money(tipAmt(s))} />
             <div style={css('display:flex;justify-content:space-between;font-size:16px;padding-top:9px;border-top:1px solid var(--border);')}>
-              <span style={css('font-weight:800;')}>{t('common.total')}</span>
+              <TotalLabel estimate={estimate} style="font-size:16px;font-weight:800;" />
               <span style={css(MONO + 'font-weight:800;')}>{money(total_)}</span>
             </div>
           </div>
@@ -294,13 +327,23 @@ export function Payment() {
               { m: 'cash', l: 'common.cash', ic: 'banknote' },
               { m: 'card', l: 'common.card', ic: 'credit-card' },
               { m: 'qr', l: 'payment.qr', ic: 'qr-code' },
-            ] as { m: PayMethod; l: MessageKey; ic: string }[]).map((x) => (
-              <button key={x.m} className="pos-press" onClick={() => s.setMethod(x.m)} style={css(methodStyle(s.payMethod === x.m))}>
-                <Icon name={x.ic} size={20} />
-                {t(x.l)}
-              </button>
-            ))}
+              ...(giftTab ? [{ m: 'gift_card', l: 'gift.method', ic: 'gift' }] : []),
+            ] as { m: PayMethod; l: MessageKey; ic: string }[]).map((x) => {
+              // The gift card tab is off without a connection: the card's money is never the till's to guess.
+              const dead = x.m === 'gift_card' && off;
+              return (
+                <button key={x.m} className="pos-press" disabled={dead} onClick={() => s.setMethod(x.m)} style={css(methodStyle(s.payMethod === x.m) + (dead ? 'opacity:.5;cursor:not-allowed;' : ''))}>
+                  <Icon name={x.ic} size={20} />
+                  {t(x.l)}
+                </button>
+              );
+            })}
           </div>
+          {giftTab && off && (
+            <div style={css('padding:0 22px;')}>
+              <WhyOff>{t('cards.offline')}</WhyOff>
+            </div>
+          )}
 
           <div className="pos-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:20px 22px;')}>
             {isCash && (
@@ -353,6 +396,46 @@ export function Payment() {
               </div>
             )}
 
+            {isGift && (
+              <div style={css('max-width:460px;margin:8px auto;')}>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void s.quoteCard(cardCode);
+                  }}
+                  style={css('display:flex;gap:10px;')}
+                >
+                  <input
+                    value={cardCode}
+                    onChange={(e) => {
+                      setCardCode(e.target.value);
+                      if (s.cardPay !== null || s.cardPayWords !== null) usePos.setState({ cardPay: null, cardPayWords: null });
+                    }}
+                    placeholder={t('cards.codeLabel')}
+                    aria-label={t('cards.codeLabel')}
+                    autoComplete="off"
+                    disabled={off}
+                    style={css('flex:1;min-width:0;height:56px;padding:0 15px;border-radius:14px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:16px;font-weight:700;letter-spacing:.04em;outline:none;' + MONO)}
+                  />
+                  <button type="submit" className="pos-press" disabled={off || s.cardPayBusy || cardCode.trim() === ''} style={css('height:56px;padding:0 18px;border-radius:14px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;')}>
+                    {t(s.cardPayBusy ? 'offers.checking' : 'cards.check')}
+                  </button>
+                </form>
+                {s.cardPay !== null && (
+                  <div role="status" style={css('margin-top:16px;padding:22px;border-radius:18px;border:1.5px solid color-mix(in srgb, var(--pos) 45%, transparent);background:var(--surface);text-align:center;')}>
+                    <Icon name="gift" size={34} color="var(--pos)" />
+                    <div style={css('font-size:20px;font-weight:800;margin-top:10px;')}>{t('cards.covers', { amount: money(s.cardPay.covers) })}</div>
+                  </div>
+                )}
+                {s.cardPayWords !== null && (
+                  <div role="alert" style={css('margin-top:16px;padding:14px 16px;border-radius:14px;background:var(--danger-soft);color:var(--danger);font-size:14.5px;font-weight:700;')}>
+                    {s.cardPayWords}
+                  </div>
+                )}
+                <div style={css('margin-top:14px;font-size:12.5px;color:var(--fg-subtle);text-align:center;')}>{t('cards.notTip')}</div>
+              </div>
+            )}
+
             {isQr && (
               <div style={css('max-width:420px;margin:8px auto;text-align:center;')}>
                 <div style={css('width:224px;height:224px;margin:0 auto;border-radius:22px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);')}>
@@ -367,7 +450,7 @@ export function Payment() {
           <div style={css('flex-shrink:0;padding:16px 22px;border-top:1px solid var(--border);background:var(--surface);')}>
             <button
               className="pos-press"
-              onClick={s.onCharge}
+              onClick={isGift && s.cardPay === null ? () => void s.quoteCard(cardCode) : s.onCharge}
               style={css('width:100%;height:68px;border-radius:17px;border:none;background:' + (chargeEnabled ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (chargeEnabled ? 'var(--accent-fg)' : 'var(--fg-subtle)') + ';font-size:19px;font-weight:800;cursor:' + (chargeEnabled ? 'pointer' : 'not-allowed') + ';display:flex;align-items:center;justify-content:center;gap:11px;')}
             >
               <Icon name={chargeIcon} size={22} />
