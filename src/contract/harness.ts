@@ -367,6 +367,16 @@ export class Caller {
     this.csrf = ok(await this.get<{ csrfToken: string }>('/apps/pos/staff/surface-config.json')).csrfToken;
   }
 
+  /** A `fetch` that carries this caller's session, for the till's own data doors. */
+  fetchAs(): typeof fetch {
+    return (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      if (this.cookie !== '') headers.set('cookie', this.cookie);
+      headers.set('origin', this.base);
+      return fetch(new URL(String(input), this.base), { ...init, headers });
+    }) as typeof fetch;
+  }
+
   get = <T = unknown>(path: string, extra?: Record<string, string>) => this.send<T>('GET', path, undefined, extra);
   post = <T = unknown>(path: string, body?: unknown, extra?: Record<string, string>) => this.send<T>('POST', path, body ?? {}, extra);
   patch = <T = unknown>(path: string, body: unknown, extra?: Record<string, string>) => this.send<T>('PATCH', path, body, extra);
