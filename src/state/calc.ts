@@ -248,6 +248,16 @@ export const tipAmt = (s: PricingState): number => {
 export const regTotal = (s: PricingState): number => figures(s).total;
 
 /**
+ * What the register's Pay button asks for: the ticket's total, until a payment
+ * is saved on it — from then on what Adminium says is still owing. (A ticket
+ * part-paid by a gift card and opened again must not ask for the whole total.)
+ */
+export const payDue = (s: PricingState): number => {
+  const server = s.ticket.server;
+  return server !== undefined && server.due < server.total ? Math.max(0, server.due) : regTotal(s);
+};
+
+/**
  * Goods + tax for a bare list of lines — the held tray and the move sheet,
  * which show parked tickets and have no discount of their own.
  *

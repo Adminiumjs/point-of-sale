@@ -13,7 +13,7 @@ import { setDesk, type Desk, type DeskReply } from '../data/desk';
 import { SinkError, memorySink, type DataSink, type MemorySink, type SinkRow } from '../data/sink';
 import { NO_FEATURES } from '../features';
 import type { PastSale } from '../data/types';
-import { isEstimate, regTotal, remaining, tipFor } from './calc';
+import { isEstimate, payDue, regTotal, remaining, tipFor } from './calc';
 import { cardPrints, dropCardPrint } from './cardPrints';
 import { cardState, foldApplied, isOffline, nameOf, partPaidBefore, showsEstimate, usePos } from './store';
 import { outbox, setSink } from './writes';
@@ -206,6 +206,20 @@ describe('offline', () => {
     expect(s().sync.retrying).toBe(true);
     expect(isOffline(s())).toBe(true);
     expect(showsEstimate(s())).toBe(true);
+  });
+});
+
+describe('the register’s Pay button', () => {
+  it('asks for the total until a payment is saved, then for what Adminium says is still owing', async () => {
+    let row: SinkRow = TICKET;
+    connect(standIn({}, () => row));
+    s().tapTile('croissant');
+    await settled();
+    expect([regTotal(s()), payDue(s())]).toEqual([92.01, 92.01]);
+    // A gift card paid $19.00 of it (on this till, or before a reload): the ticket's own row says what is left.
+    row = { ...TICKET, paid: '19.00', due: '73.01' };
+    await s().refreshTicket();
+    expect([regTotal(s()), payDue(s())]).toEqual([92.01, 73.01]);
   });
 });
 

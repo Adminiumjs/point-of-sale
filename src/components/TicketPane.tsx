@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { cardState, isOffline, partPaidBefore, showsEstimate, usePos } from '../state/store';
 import type { LineItem } from '../data/types';
-import { discountAmt, itemById, lineName, lineTotal, modLabel, money, regTotal, subtotal, tableName, tax, taxLabel } from '../state/calc';
+import { discountAmt, itemById, lineName, lineTotal, modLabel, money, payDue, regTotal, subtotal, tableName, tax, taxLabel } from '../state/calc';
 import { useI18n, useT, type MessageKey } from '../i18n';
 import { pointsLeft } from '../state/points';
 import { Icon } from './Icon';
@@ -29,7 +29,7 @@ export function TicketPane() {
   const canAct = !empty;
   const hasDisc = !!s.discount;
   // Adminium's figures, or the till's estimate until they are in — then the total says so.
-  const estimate = showsEstimate(s);
+  const estimate = showsEstimate(s) && s.ticket.items.length > 0;
   const server = s.ticket.server;
   const offers = s.features.offers && s.connected;
   const off = isOffline(s);
@@ -346,7 +346,7 @@ export function TicketPane() {
           style={css('width:100%;height:66px;margin-top:10px;border-radius:16px;border:none;background:' + (canPay ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (canPay ? 'var(--accent-fg)' : 'var(--fg-subtle)') + ';font-size:19px;font-weight:800;cursor:' + (canPay ? 'pointer' : 'not-allowed') + ';display:flex;align-items:center;justify-content:center;gap:14px;')}
         >
           <span>{t('ticket.pay')}</span>
-          <span style={css(MONO + 'font-weight:800;')}>{money(regTotal(s))}</span>
+          <span style={css(MONO + 'font-weight:800;')}>{money(payDue(s))}</span>
         </button>
       </div>
     </aside>
