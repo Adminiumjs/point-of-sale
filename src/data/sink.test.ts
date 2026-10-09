@@ -80,6 +80,7 @@ describe('the session sink', () => {
       fail(409, 'CAPACITY_BUSY'),
       fail(422, 'VALIDATION_FAILED', { fields: { qty: { code: 'MIN' } } }),
       fail(403, 'COLUMN_FORBIDDEN'),
+      // Too many at once: the change is good, the server is busy — sent again, never dropped.
       fail(429, 'RATE_LIMITED'),
       fail(503, 'UNAVAILABLE'),
       () => {
@@ -90,7 +91,7 @@ describe('the session sink', () => {
       const error = (await sessionSink(t, MAP).insert('tickets', {}).catch((e: unknown) => e)) as SinkError;
       kinds.push(`${error.kind}${error.field === null ? '' : `:${error.field}`}`);
     }
-    expect(kinds).toEqual(['signed-out', 'refused', 'refused', 'refused', 'refused', 'offline', 'offline', 'refused:qty', 'refused', 'refused', 'offline', 'offline']);
+    expect(kinds).toEqual(['signed-out', 'refused', 'refused', 'refused', 'refused', 'offline', 'offline', 'refused:qty', 'refused', 'offline', 'offline', 'offline']);
   });
 
   it('takes "that key is there already" as saved only for a row the till keyed itself', async () => {
@@ -113,11 +114,6 @@ describe('the session sink', () => {
     expect(kindOfStatus(404)).toBe('refused');
     // Refused for the moment only: a queued write is tried again.
     expect(kindOfStatus(429, 'RATE_LIMITED')).toBe('offline');
-  });
-
-  it('a write the server was too busy for (429) is one to send again, not a refusal', async () => {
-    const busy = (await sessionSink(transport([fail(429, 'RATE_LIMITED')]).t, MAP).insert('tickets', { number: '7' }).catch((e: unknown) => e)) as SinkError;
-    expect([busy.kind, busy.status]).toEqual(['offline', 429]);
   });
 
   it('turns the till’s text keys back into numbers', () => {
