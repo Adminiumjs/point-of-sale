@@ -423,6 +423,9 @@ async function boot(): Promise<void> {
     ]);
     onGuestsNavigate((view) => usePos.getState().go(view));
     void useGuests.getState().start(demoGuestsPort());
+    // Codes, offers, staff discounts, gift cards and stock: the demo's own shop answers, from memory. No add-on is called.
+    const { openDemoShop } = await import('./data/demoShop');
+    openDemoShop();
     // The website's demo card drives the demo through its protocol.
     const { startDemoBridge } = await import('./demoBridge');
     startDemoBridge();

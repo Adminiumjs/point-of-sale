@@ -988,4 +988,6 @@ export const enUS = {
   'guest.cardAnother': 'Check another card',
   'guest.notFoundTitle': 'Page not found',
   'guest.notFoundBody': 'There is nothing at this address.',
+  'dock.applyCode': 'Type a discount code',
+  'dock.giftCard': 'Use the gift card',
 } as const;

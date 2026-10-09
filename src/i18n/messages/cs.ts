@@ -984,4 +984,6 @@ export const cs: Translated<typeof enUS> = {
   'guest.cardAnother': 'Zkontrolovat jinou kartu',
   'guest.notFoundTitle': 'Stránka nenalezena',
   'guest.notFoundBody': 'Na této adrese nic není.',
+  'dock.applyCode': 'Zadat slevový kód',
+  'dock.giftCard': 'Použít dárkovou kartu',
 };

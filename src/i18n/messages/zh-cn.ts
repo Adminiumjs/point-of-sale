@@ -981,4 +981,6 @@ export const zhCn: Translated<typeof enUS> = {
   'guest.cardAnother': '查询另一张卡',
   'guest.notFoundTitle': '找不到页面',
   'guest.notFoundBody': '这个地址没有任何内容。',
+  'dock.applyCode': '输入折扣码',
+  'dock.giftCard': '使用礼品卡',
 };

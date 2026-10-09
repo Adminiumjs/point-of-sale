@@ -6,6 +6,8 @@ A complete, open-source **point-of-sale** example for cafes and restaurants — 
 
 The demo card beside it switches screens — the till, its tools and the guest booking pages — flips between **Restaurant** and **Retail** service modes, toggles **online/offline**, and changes the **theme** and the **language**. The app speaks to the card through `src/demoBridge.ts`; what the card offers is declared in `src/demo-card.ts`.
 
+The demo also shows what the till does with **Offers & gift cards** and **Inventory** attached (see [Add-ons](#add-ons)) — an offer that applies by itself, a discount code, a staff discount held to a limit, a gift card paid from at Pay, and how many are left on a shelf. It has no server and calls no add-on: the demo café's own shop answers from memory ([`src/data/demoShop.ts`](src/data/demoShop.ts)) with the café's own figures, worked out by the till's own arithmetic. The card types the café's code and its gift card for you; a card's code is never shown, only its last four.
+
 ---
 
 ## What's inside

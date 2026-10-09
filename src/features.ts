@@ -43,14 +43,16 @@ export type Features = Readonly<Record<FeatureId, boolean>>;
 export const NO_FEATURES: Features = { 'emailed-receipts': false, 'shelf-labels': false, stock: false, offers: false, 'gift-cards': false };
 
 /**
- * The demo's: it stands for a shop that attached Invoices & Receipts, so the
- * email is asked for and queued (in memory, like every demo write). It has no
- * Adminium to draw a label sheet, so shelf labels stay off rather than offer a
- * button that could only pretend. Stock, offers and Offers' gift cards are
- * off for the same reason: every figure of theirs is a server's answer, and
- * the demo has no server to ask — it keeps the till's own gift cards.
+ * The demo's: it stands for a shop that attached Invoices & Receipts, Offers &
+ * gift cards and Inventory. The email is asked for and queued (in memory, like
+ * every demo write). Codes, offers, staff discounts, gift cards and stock
+ * words are on too — answered by the demo's own shop (`data/demoShop.ts`)
+ * from the demo café's own figures, with no add-on called: the demo has no
+ * server, so its figures are its own, and it says so nowhere as an estimate.
+ * It has no Adminium to draw a label sheet, so shelf labels stay off rather
+ * than offer a button that could only pretend.
  */
-export const DEMO_FEATURES: Features = { 'emailed-receipts': true, 'shelf-labels': false, stock: false, offers: false, 'gift-cards': false };
+export const DEMO_FEATURES: Features = { 'emailed-receipts': true, 'shelf-labels': false, stock: true, offers: true, 'gift-cards': true };
 
 /** Which features the attached add-ons switch on. */
 export function featuresOf(addOns: Readonly<Record<string, AttachedAddOn>> | null | undefined): Features {

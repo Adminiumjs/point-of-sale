@@ -979,4 +979,6 @@ export const zhTw: Translated<typeof enUS> = {
   'guest.cardAnother': '查詢另一張卡',
   'guest.notFoundTitle': '找不到頁面',
   'guest.notFoundBody': '這個網址沒有任何內容。',
+  'dock.applyCode': '輸入折扣碼',
+  'dock.giftCard': '使用禮物卡',
 };

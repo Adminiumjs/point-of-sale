@@ -154,7 +154,8 @@ describe('Refund', () => {
     // No money is sent: Adminium works a refund out from its lines.
     expect(Object.keys(call!.values!)).not.toContain('amount');
     expect(Object.keys(call!.values!)).not.toContain('tax');
-    expect(call!.children).toEqual([{ ref: 'refund_items', via: 'refund_id', rows: [{ id: expect.any(String), ticket_item_id: '701', qty: 2 }] }]);
+    // The demo café counts its shelves (Inventory): a restaurant's food goes back on none, and the line says so.
+    expect(call!.children).toEqual([{ ref: 'refund_items', via: 'refund_id', rows: [{ id: expect.any(String), ticket_item_id: '701', qty: 2, back_to: 'none', not_back_at: expect.any(String) }] }]);
     expect(s().refundDone).toEqual({ total: 25.98, count: 1 });
     // The shift's takings and the drawer both know.
     expect(s().shiftTotals.refunds).toBeCloseTo(INITIAL.shiftTotals.refunds + 25.98, 2);

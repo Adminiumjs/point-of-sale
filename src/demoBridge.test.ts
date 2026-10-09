@@ -11,7 +11,12 @@ import { applyDemoMessage, currentScreen, startDemoBridge } from './demoBridge';
 import { demoJsonIssues, type DemoMessage } from './demo-types';
 import { useGuests } from './guests/store';
 import { MESSAGES } from './i18n/messages';
+import { DEMO_CODE, DEMO_GIFT_CARD, seedTicket } from './data/demo';
+import { demoShop, openDemoShop } from './data/demoShop';
+import { setDesk } from './data/desk';
+import { memorySink } from './data/sink';
 import { usePos } from './state/store';
+import { outbox, setSink } from './state/writes';
 
 const POS = usePos.getState();
 const GUESTS = useGuests.getState();
@@ -42,7 +47,10 @@ describe('demo.json', () => {
       'autofill-pin': true,
       'empty-ticket': true,
       'reset-ticket': true,
+      'apply-code': true,
+      'gift-card': true,
       declined: true,
+      'pay-gift-card': true,
       'new-order': true,
       'new-reservation': true,
       'prefill-guest': true,
@@ -99,6 +107,65 @@ describe('what the card asks, the demo does', () => {
     expect(at()).toBe(original);
     applyDemoMessage(msg({ type: 'adminium:demo:do', shortcut: 'prefill-code' }));
     expect([useGuests.getState().view, useGuests.getState().code, useGuests.getState().findMobile]).toEqual(['manage', 'MR-4829', '(415) 555-0166']);
+  });
+});
+
+describe('the demo café’s offers and gift card, through the card', () => {
+  const settled = async () => {
+    for (let i = 0; i < 30; i += 1) {
+      await outbox().idle();
+      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  };
+  let close: () => void = () => {};
+  const open = async () => {
+    usePos.setState({ ticket: seedTicket(), view: 'register' });
+    close = openDemoShop(demoShop(memorySink()));
+    await settled();
+  };
+  afterEach(() => {
+    close();
+    setDesk(null);
+    setSink(memorySink());
+  });
+
+  it('"Gift cards" opens the register’s own sheet — where a card is sold and topped up — and leaving closes it', async () => {
+    await open();
+    applyDemoMessage(msg({ type: 'adminium:demo:go', screen: 'giftcards' }));
+    expect([usePos.getState().view, usePos.getState().cardSaleOpen, currentScreen()]).toEqual(['register', true, 'giftcards']);
+    // Straight to another of the register's overlays: one at a time.
+    applyDemoMessage(msg({ type: 'adminium:demo:go', screen: 'discount' }));
+    expect([usePos.getState().cardSaleOpen, usePos.getState().discountOpen, currentScreen()]).toEqual([false, true, 'discount']);
+    applyDemoMessage(msg({ type: 'adminium:demo:go', screen: 'giftcards' }));
+    applyDemoMessage(msg({ type: 'adminium:demo:go', screen: 'kitchen' }));
+    expect([usePos.getState().view, usePos.getState().cardSaleOpen]).toEqual(['kitchen', false]);
+  });
+
+  it('"Type a discount code" types the café’s own, and it comes off the ticket', async () => {
+    await open();
+    applyDemoMessage(msg({ type: 'adminium:demo:do', shortcut: 'apply-code' }));
+    await settled();
+    expect(usePos.getState().codeSaid?.ok).toBe(true);
+    expect(usePos.getState().ticket.server?.applied.map((line) => line.kind)).toEqual(['offer', 'code']);
+  });
+
+  it('"Use the gift card" keeps the café’s card on the ticket by its last four; at Pay it is asked what it covers', async () => {
+    await open();
+    applyDemoMessage(msg({ type: 'adminium:demo:do', shortcut: 'gift-card' }));
+    await settled();
+    expect(usePos.getState().ticket.card).toMatchObject({ last4: DEMO_GIFT_CARD.last4, balance: DEMO_GIFT_CARD.balance });
+    // The one for Payment does nothing anywhere else.
+    applyDemoMessage(msg({ type: 'adminium:demo:do', shortcut: 'pay-gift-card' }));
+    await settled();
+    expect(usePos.getState().cardPay).toBeNull();
+    applyDemoMessage(msg({ type: 'adminium:demo:go', screen: 'payment' }));
+    applyDemoMessage(msg({ type: 'adminium:demo:do', shortcut: 'pay-gift-card' }));
+    await settled();
+    expect([usePos.getState().payMethod, usePos.getState().cardPay?.covers]).toEqual(['gift_card', DEMO_GIFT_CARD.balance]);
+    // Nothing the card is told carries the code: its state is a screen, a mode and switches.
+    expect(JSON.stringify(doc())).not.toContain(DEMO_GIFT_CARD.code);
+    expect(JSON.stringify(doc())).not.toContain(DEMO_CODE.code);
   });
 });
 

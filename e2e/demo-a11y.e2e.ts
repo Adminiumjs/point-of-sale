@@ -20,6 +20,8 @@ import { DEMO_SCREENS } from '../src/demo-card.ts';
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 const BLOCKING = new Set(['critical', 'serious']);
 const FRAME_PAGE = '/__a11y-frame.html';
+/** Any route a real till would ask a server on: Adminium's API, an add-on's, an app's served config. */
+const SERVER_ROUTE = /^\/(api|apps)\/|\/(add-ons|words|documents|data|public)\/|surface-config\.json$/;
 
 /** The card's two frames. */
 const FRAMES = { tablet: { width: 1180, height: 820 }, phone: { width: 390, height: 844 } } as const;
@@ -90,6 +92,94 @@ const STOPS: Stop[] = [
       await expect(frame.locator('input[type="email"]')).toBeVisible();
     },
   },
+  /*
+   * WHAT THE DEMO SHOWS OF OFFERS & GIFT CARDS AND INVENTORY — answered by the
+   * demo's own shop, from memory (`data/demoShop.ts`). Each is a state of a
+   * screen the real till uses, so each is measured like the others.
+   */
+  // The offer that applies by itself, and the café's code typed by the card: two lines under the items.
+  {
+    label: 'register, an offer and a code on the ticket',
+    frame: 'tablet',
+    screen: 'register',
+    shortcut: 'apply-code',
+    act: async (app) => {
+      await expect(app.locator('[data-code-said="ok"]')).toBeVisible();
+      await expect(app.locator('[data-reductions] > div')).toHaveCount(3);
+    },
+  },
+  // A code nobody issued: refused under the field, in words.
+  {
+    label: 'register, a code refused',
+    frame: 'tablet',
+    screen: 'register',
+    act: async (app) => {
+      await app.locator('[data-code-form] input').fill('NOSUCHCODE');
+      await app.locator('[data-code-form] button[type="submit"]').click();
+      await expect(app.locator('[data-code-said="refused"]')).toBeVisible();
+    },
+  },
+  // What the books say is on the shelf: a tile running low, and one out.
+  {
+    label: 'register, stock words',
+    frame: 'tablet',
+    screen: 'register',
+    mode: 'retail',
+    act: async (app) => {
+      await app.locator('[data-code-form] input').fill('');
+      await expect(app.locator('[data-stock="low"]').first()).toBeVisible();
+      await expect(app.locator('[data-stock="out"]').first()).toBeVisible();
+    },
+  },
+  // The staff discount, over the limit of the person at the till: refused in the dialog, with how far they may go.
+  {
+    label: 'discount, over the limit',
+    frame: 'tablet',
+    screen: 'discount',
+    act: async (app) => {
+      const dialog = app.getByRole('dialog');
+      await dialog.locator('[data-discount-preset]').last().click();
+      await dialog.locator('[aria-labelledby="offers-reason"] [role="radio"]').nth(1).click();
+      await expect(dialog.getByRole('alert')).toBeVisible();
+      await expect(dialog.locator('[data-discount-add]')).toBeDisabled();
+    },
+  },
+  // Within it: Adminium's place is the demo's here — what it would take off is on the button.
+  {
+    label: 'discount, within the limit',
+    frame: 'tablet',
+    screen: 'discount',
+    act: async (app) => {
+      const dialog = app.getByRole('dialog');
+      await dialog.locator('[data-discount-preset]').first().click();
+      await dialog.locator('[aria-labelledby="offers-reason"] [role="radio"]').nth(1).click();
+      await expect(dialog.locator('[data-discount-takes]')).toBeVisible();
+      await expect(dialog.locator('[data-discount-add]')).toBeEnabled();
+    },
+  },
+  // The café's gift card, typed by the card: kept on the ticket by its last four.
+  {
+    label: 'register, the gift card kept for Pay',
+    frame: 'tablet',
+    screen: 'register',
+    shortcut: 'gift-card',
+    act: async (app) => {
+      await expect(app.locator('[data-code-said="ok"]')).toBeVisible();
+      await expect(app.locator('.ticket-aside')).toContainText('7Q4M');
+    },
+  },
+  // At Pay the card is asked what it covers, on a tablet and a phone.
+  ...(['tablet', 'phone'] as const).map(
+    (frame): Stop => ({
+      label: `payment, the gift card asked (${frame})`,
+      frame,
+      screen: 'payment',
+      shortcut: 'pay-gift-card',
+      act: async (app) => {
+        await expect(app.locator('[data-card-covers]')).toBeVisible();
+      },
+    }),
+  ),
 ];
 
 interface Sweep {
@@ -161,6 +251,11 @@ for (const combo of COMBOS) {
     test.setTimeout(300_000);
     const tally: Sweep = { states: 0, minor: 0, failures: [] };
     let current: string | null = null;
+    const called: string[] = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (SERVER_ROUTE.test(url.pathname)) called.push(`${request.method()} ${url.pathname}`);
+    });
 
     for (const stop of STOPS) {
       const label = `${name} · ${stop.label}`;
@@ -197,8 +292,13 @@ for (const combo of COMBOS) {
         dir: el.getAttribute('dir'),
       }));
       expect(probe, `${label}: theme and direction`).toEqual({ theme: combo.theme, dir: combo.dir });
+      // The demo's figures are its own: no screen ever calls one an estimate.
+      await expect(page.frameLocator('#app').locator('[data-estimate]'), `${label}: nothing is labelled an estimate`).toHaveCount(0);
       await sweep(page, label, tally, testInfo);
     }
+
+    // The demo has no server: it asked for no API route at all — none of Adminium's, and none of any add-on's.
+    expect(called, 'the demo called a server').toEqual([]);
 
     testInfo.annotations.push({
       type: 'axe-summary',

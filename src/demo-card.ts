@@ -44,11 +44,23 @@ export const DEMO_SCREENS: DemoCardScreen[] = [
     shortcuts: [
       { id: 'empty-ticket', icon: 'eraser', labelKey: 'dock.emptyTicket' },
       { id: 'reset-ticket', icon: 'rotate-ccw', labelKey: 'dock.resetTicket' },
+      // The demo café's own code and gift card, typed for the visitor: a card's code is never shown.
+      { id: 'apply-code', icon: 'tag', labelKey: 'dock.applyCode' },
+      { id: 'gift-card', icon: 'gift', labelKey: 'dock.giftCard' },
     ],
   },
   { id: 'floor', view: 'floor', icon: 'grid-3x3', labelKey: 'dock.screen.floor' },
   // A switch on the card: `state.toggles.declined` says which way it is.
-  { id: 'payment', view: 'payment', icon: 'credit-card', labelKey: 'dock.screen.payment', shortcuts: [{ id: 'declined', icon: 'x-circle', labelKey: 'dock.cardWillDecline' }] },
+  {
+    id: 'payment',
+    view: 'payment',
+    icon: 'credit-card',
+    labelKey: 'dock.screen.payment',
+    shortcuts: [
+      { id: 'declined', icon: 'x-circle', labelKey: 'dock.cardWillDecline' },
+      { id: 'pay-gift-card', icon: 'gift', labelKey: 'dock.giftCard' },
+    ],
+  },
   { id: 'complete', view: 'complete', icon: 'receipt', labelKey: 'dock.screen.complete', shortcuts: [{ id: 'new-order', icon: 'plus', labelKey: 'dock.newOrder' }] },
   { id: 'kitchen', view: 'kitchen', icon: 'cooking-pot', labelKey: 'dock.screen.kitchen' },
   { id: 'refund', view: 'refund', icon: 'undo-2', labelKey: 'dock.screen.refund' },
@@ -57,7 +69,8 @@ export const DEMO_SCREENS: DemoCardScreen[] = [
   { id: 'discount', view: 'register', icon: 'percent', labelKey: 'dock.screen.discount' },
   { id: 'display', view: 'display', icon: 'monitor', labelKey: 'nav.display' },
   { id: 'loyalty', view: 'loyalty', icon: 'award', labelKey: 'dock.screen.loyalty' },
-  { id: 'giftcards', view: 'giftcards', icon: 'gift', labelKey: 'dock.screen.giftCards' },
+  // Gift cards are sold and topped up from the register's own sheet (they are kept by Offers & gift cards).
+  { id: 'giftcards', view: 'register', icon: 'gift', labelKey: 'dock.screen.giftCards' },
   { id: 'pickup', view: 'pickup', icon: 'bell-ring', labelKey: 'nav.pickup' },
   { id: 'eod', view: 'eod', icon: 'chart-column', labelKey: 'dock.screen.eod' },
   { id: 'staff', view: 'staff', icon: 'users', labelKey: 'dock.screen.staff' },
@@ -110,7 +123,10 @@ export type DemoShortcutId =
   | 'autofill-pin'
   | 'empty-ticket'
   | 'reset-ticket'
+  | 'apply-code'
+  | 'gift-card'
   | 'declined'
+  | 'pay-gift-card'
   | 'new-order'
   | 'new-reservation'
   | 'prefill-guest'

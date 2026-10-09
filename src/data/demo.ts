@@ -450,3 +450,35 @@ export function seedReservations(): Reservation[] {
   ];
 }
 
+
+// ---- the add-ons' features, as the demo café has them (0.3.0) ----
+//
+// The demo stands for a shop that attached Offers & gift cards and Inventory.
+// It has no Adminium to ask, so these are the café's OWN figures — its
+// reasons, its limit, its one offer and code, its one gift card, what is on a
+// few shelves — answered from memory by `demoShop.ts`. Nothing here is the
+// add-ons' sample, and no add-on is ever called.
+
+/** Why the demo café gives a staff discount. The café's own words, like its menu. */
+export const DEMO_REASONS: { id: string; label: string }[] = [
+  { id: '1', label: 'Damaged' },
+  { id: '2', label: 'Goodwill' },
+  { id: '3', label: 'Staff meal' },
+];
+
+/** The most the person at the demo's till may give, in percent; a comp is not theirs to give. */
+export const DEMO_CEILING = 10;
+
+/** The offer that applies by itself: a tenth off every croissant on the ticket. */
+export const DEMO_OFFER = { name: 'Croissant morning · 10 % off', item: 'croissant', percent: 10 } as const;
+
+/** The code a guest can show: five off the order. */
+export const DEMO_CODE = { code: 'DAYBREAK5', off: 5 } as const;
+
+/** The one gift card the demo holds money for. Its code is typed by the demo card's shortcut and never shown: the screens say its last four. */
+export const DEMO_GIFT_CARD = { id: 'demo-card', code: 'GC-DAYB-RK25-7Q4M', last4: '7Q4M', balance: 25 } as const;
+
+/** What the books say is on the shelf, for the few things the café counts: one running low, one out. */
+export const DEMO_STOCK: Readonly<Record<string, number>> = { croissant: 14, banana: 9, muffin: 3, sparkling: 0 };
+/** At or under this many, a tile says how many are left. */
+export const DEMO_STOCK_LOW = 5;

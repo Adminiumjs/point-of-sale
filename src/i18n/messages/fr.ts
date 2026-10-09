@@ -984,4 +984,6 @@ export const fr: Translated<typeof enUS> = {
   'guest.cardAnother': 'Vérifier une autre carte',
   'guest.notFoundTitle': 'Page introuvable',
   'guest.notFoundBody': 'Il n’y a rien à cette adresse.',
+  'dock.applyCode': 'Saisir un code de réduction',
+  'dock.giftCard': 'Utiliser la carte cadeau',
 };

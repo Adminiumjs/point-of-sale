@@ -97,9 +97,9 @@ describe('which features the attached add-ons switch on', () => {
     expect(featuresOf({ inventory: addOn })).toEqual({ ...NO_FEATURES, stock: true });
   });
 
-  it('starts a hosted till with everything off, and the demo with the email only', () => {
+  it('starts a hosted till with everything off, and the demo with everything its own shop can answer', () => {
     expect(Object.values(NO_FEATURES).every((on) => !on)).toBe(true);
-    // The demo has no Adminium to draw a label sheet with.
-    expect(DEMO_FEATURES).toEqual({ ...NO_FEATURES, 'emailed-receipts': true });
+    // The demo's own shop answers codes, offers, gift cards and stock from memory; it has no Adminium to draw a label sheet with.
+    expect(DEMO_FEATURES).toEqual({ 'emailed-receipts': true, 'shelf-labels': false, stock: true, offers: true, 'gift-cards': true });
   });
 });

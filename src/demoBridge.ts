@@ -16,7 +16,7 @@ import { DEMO_PROTOCOL_VERSION, isDemoMessage, type DemoMessage, type DemoTheme 
 import type { View } from './data/types';
 import { venueStamp } from './data/venueTime';
 import { addDays, venueDay } from './data/venueTime';
-import { seedReservations } from './data/demo';
+import { DEMO_CODE as CAFE_CODE, DEMO_GIFT_CARD, seedReservations } from './data/demo';
 import { setHostLocale } from './i18n';
 import { locale as currentLocale } from './i18n/ambient';
 import { usePos } from './state/store';
@@ -35,6 +35,20 @@ const SHORTCUTS: Record<DemoShortcutId, () => void> = {
   'autofill-pin': () => usePos.getState().autofillPin(),
   'empty-ticket': () => usePos.getState().emptyTicket(),
   'reset-ticket': () => usePos.getState().resetTicket(),
+  // The café's own code, typed and applied as a cashier would.
+  'apply-code': () => void usePos.getState().applyCode(CAFE_CODE.code),
+  /*
+   * The café's gift card, typed for the visitor — its code is never shown. On
+   * the ticket it is kept for Payment; at Payment it is asked what it covers.
+   */
+  'gift-card': () => void usePos.getState().applyCode(DEMO_GIFT_CARD.code),
+  'pay-gift-card': () => {
+    const pos = usePos.getState();
+    if (pos.view !== 'payment') return;
+    pos.setMethod('gift_card');
+    pos.setCardDraft(DEMO_GIFT_CARD.code);
+    void pos.quoteCard(DEMO_GIFT_CARD.code);
+  },
   declined: () => usePos.getState().toggleDeclined(),
   'new-order': () => usePos.getState().newOrder(),
   'new-reservation': () => usePos.setState({ view: 'reservations', resvNewOpen: true }),
@@ -80,6 +94,7 @@ export function currentScreen(): string {
   const s = usePos.getState();
   if (s.moveOpen) return 'move';
   if (s.discountOpen) return 'discount';
+  if (s.cardSaleOpen && s.view === 'register') return 'giftcards';
   return DEMO_SCREENS.find((x) => x.view === s.view && x.id === s.view)?.id ?? s.view;
 }
 
@@ -88,15 +103,17 @@ export function goToScreen(id: string): void {
   const screen = DEMO_SCREENS.find((x) => x.id === id);
   if (screen === undefined) return;
   const pos = usePos.getState();
-  if (id === 'move' || id === 'discount') {
+  if (id === 'move' || id === 'discount' || id === 'giftcards') {
     if (pos.view !== 'register') usePos.setState({ view: 'register' });
     // One overlay at a time: the card may jump from one straight to the other.
-    usePos.setState({ moveOpen: false, discountOpen: false });
-    pos.go(id);
+    usePos.setState({ moveOpen: false, discountOpen: false, cardSaleOpen: false });
+    // The gift card sheet is the register's own: where a card is sold and topped up.
+    if (id === 'giftcards') pos.setCardSale(true);
+    else pos.go(id);
     return;
   }
   // Leaving the register closes whatever overlay was open on it.
-  usePos.setState({ moveOpen: false, discountOpen: false, sheetOpen: false, heldOpen: false });
+  usePos.setState({ moveOpen: false, discountOpen: false, cardSaleOpen: false, sheetOpen: false, heldOpen: false });
   pos.go(screen.view as View);
 }
 

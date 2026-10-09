@@ -986,4 +986,6 @@ export const ar: Translated<typeof enUS> = {
   'guest.cardAnother': 'تحقق من بطاقة أخرى',
   'guest.notFoundTitle': 'الصفحة غير موجودة',
   'guest.notFoundBody': 'لا يوجد شيء في هذا العنوان.',
+  'dock.applyCode': 'اكتب كود خصم',
+  'dock.giftCard': 'استخدم بطاقة الهدية',
 };

@@ -986,4 +986,6 @@ export const de: Translated<typeof enUS> = {
   'guest.cardAnother': 'Weitere Karte prüfen',
   'guest.notFoundTitle': 'Seite nicht gefunden',
   'guest.notFoundBody': 'Unter dieser Adresse gibt es nichts.',
+  'dock.applyCode': 'Rabattcode eingeben',
+  'dock.giftCard': 'Gutscheinkarte einlösen',
 };

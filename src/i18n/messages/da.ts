@@ -983,4 +983,6 @@ export const da: Translated<typeof enUS> = {
   'guest.cardAnother': 'Tjek et andet kort',
   'guest.notFoundTitle': 'Siden blev ikke fundet',
   'guest.notFoundBody': 'Der er ikke noget på denne adresse.',
+  'dock.applyCode': 'Skriv en rabatkode',
+  'dock.giftCard': 'Brug gavekortet',
 };
