@@ -83,6 +83,10 @@ export interface ApplyDeps {
 /** Tables this till adds rows to: their frames can outrun the till's own answer. */
 const WRITTEN_HERE = new Set(['tickets', 'ticket_items', 'ticket_item_modifiers', 'reservations']);
 
+/** Frames held back until the till's own writes are answered, in the order they came. */
+let held: Promise<void> = Promise.resolve();
+let holding = 0;
+
 export function applyFrame(frame: LiveFrame, deps: ApplyDeps = {}): void {
   const id = frame.id;
   if (id === null) return;
@@ -94,13 +98,27 @@ export function applyFrame(frame: LiveFrame, deps: ApplyDeps = {}): void {
    * ticket (and in its total), the till's own new ticket on its held tray.
    * While this till has an unanswered insert into the table, the frame waits
    * until everything is answered; then it is matched by key like any other.
+   *
+   * AND FRAMES KEEP THEIR ORDER. While one waits, every later frame for these
+   * tables waits behind it. Two taps on a tile used to end with one on the
+   * ticket: the echo of the line's insert (quantity 1) waited for the answer,
+   * the echo of the change that followed (quantity 2) did not, and the older
+   * one — applied last — was the one that stayed.
    */
-  if (WRITTEN_HERE.has(frame.table) && outbox().unanswered(frame.table)) {
-    void outbox()
-      .idle()
-      .then(() => applyFrame(frame, deps));
+  if (WRITTEN_HERE.has(frame.table) && (holding > 0 || outbox().unanswered(frame.table))) {
+    holding += 1;
+    held = held
+      .then(() => outbox().idle())
+      .then(() => {
+        holding -= 1;
+        applyNow(frame, id, deps);
+      });
     return;
   }
+  applyNow(frame, id, deps);
+}
+
+function applyNow(frame: LiveFrame, id: string, deps: ApplyDeps): void {
   switch (frame.table) {
     case 'tickets':
       applyTicket(frame, id);

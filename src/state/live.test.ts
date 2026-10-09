@@ -93,6 +93,33 @@ describe('what another till changes, this one shows', () => {
     expect(s().held).toEqual([]);
   });
 
+  it('two taps on a tile leave two on the ticket: an echo that waited is never applied after a newer one', async () => {
+    // As a browser on a built Adminium saw it: the insert's echo beats its answer, the change's echo does not.
+    const inner = memorySink();
+    let answer!: () => void;
+    let answerChange!: () => void;
+    const gate = new Promise<void>((resolve) => (answer = resolve));
+    const changeGate = new Promise<void>((resolve) => (answerChange = resolve));
+    setSink({
+      ...inner,
+      insert: async (ref, values, children) => (await gate, inner.insert(ref, values, children)),
+      update: async (ref, id, patch) => (await changeGate, inner.update(ref, id, patch)),
+    });
+    s().tapTile('croissant');
+    await Promise.resolve();
+    applyFrame({ table: 'ticket_items', kind: 'record.create', id: '1', row: { id: 1, ticket_id: 1, menu_item_id: 'croissant', qty: 1 } });
+    s().tapTile('croissant');
+    expect(s().ticket.items[0]!.qty).toBe(2);
+    // The inserts are answered; the change to two is sent, and its echo arrives before its answer — while the older echo still waits.
+    answer();
+    for (let i = 0; i < 20; i += 1) await Promise.resolve();
+    applyFrame({ table: 'ticket_items', kind: 'record.update', id: '1', row: { id: 1, ticket_id: 1, menu_item_id: 'croissant', qty: 2 } });
+    answerChange();
+    await settled();
+    expect(s().ticket.items).toHaveLength(1);
+    expect(s().ticket.items[0]!.qty).toBe(2);
+  });
+
   it('knows its own phone booking when the server announces it before it answers', async () => {
     // The booking showed twice: the till's draft under its temporary key, and the echo under the real one.
     const inner = memorySink();
