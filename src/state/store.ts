@@ -217,7 +217,7 @@ export interface PosState {
   };
 
   /** Inventory's stock words, by menu item. */
-  stock: Record<string, { state: 'in' | 'low' | 'out'; exact: number | null; /** The level one more sale would leave, as Inventory says it. */ after?: number | null }>;
+  stock: Record<string, { state: 'in' | 'low' | 'out'; exact: number | null }>;
 
   /** The floor as it stands: which tables are free, and since when one is not. */
   floor: TableInfo[];
@@ -2330,7 +2330,7 @@ export const usePos = create<PosState>()((set, get) => {
       if (d === null || !get().features.stock || ids.length === 0) return;
       try {
         const words = await d.stockWords(ids.filter((id) => /^[\w-]+$/.test(id)));
-        set((st) => ({ stock: { ...st.stock, ...Object.fromEntries(words.map((word) => [word.id, { state: word.state, exact: blank(word.exact) ? null : num(word.exact), after: blank(word.after) ? null : num(word.after) }])) } }));
+        set((st) => ({ stock: { ...st.stock, ...Object.fromEntries(words.map((word) => [word.id, { state: word.state, exact: blank(word.exact) ? null : num(word.exact) }])) } }));
       } catch {
         /* No words: the tiles show none, and the sale goes through as ever. */
       }
@@ -3301,7 +3301,10 @@ export const usePos = create<PosState>()((set, get) => {
       const v = round2(parseFloat(get().tipPad || '0') || 0);
       set({ tip: 'c', tipCustom: String(v), tipPad: null });
     },
-    closeTipPad: () => set({ tipPad: null }),
+    closeTipPad: () => {
+      // With no pad open there is nothing to close — and nothing is written, so no screen is drawn again for it.
+      if (get().tipPad !== null) set({ tipPad: null });
+    },
     displayContinue: () => {
       if (!get().ticket.items.length) {
         get().showToast(t('display.toastNoItems'));

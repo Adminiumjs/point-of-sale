@@ -50,6 +50,18 @@ describe('the tip', () => {
     expect(tipAmt(s())).toBe(2.5);
   });
 
+  it('closing a pad that is not open writes nothing: Escape with no pad up must not draw every screen again', () => {
+    // Every open sheet listens for Escape; a write here, mid-key, took their listeners away before they ran.
+    expect(s().tipPad).toBeNull();
+    const before = s();
+    let writes = 0;
+    const stop = usePos.subscribe(() => (writes += 1));
+    s().closeTipPad();
+    stop();
+    expect(writes).toBe(0);
+    expect(s()).toBe(before);
+  });
+
   it('is the next guest’s own again once the ticket is paid', async () => {
     s().tapTile('bowl');
     s().displayTip(3);

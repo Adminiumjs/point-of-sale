@@ -293,13 +293,16 @@ function EnrollSheet({ onClose }: { onClose: () => void }) {
     setSaving(false);
     if (ok) onClose();
   };
+  // Listened for once: a listener swapped while a key is being handled never hears that key.
+  const closing = useRef(onClose);
+  closing.current = onClose;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') closing.current();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
   return (
     <>
       <div onClick={onClose} style={css('position:absolute;inset:0;z-index:210;background:var(--scrim);animation:pos-scrim .2s ease;')} />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { isOffline, sellsNewCards, usePos, type TopUpCard } from '../state/store';
 import { money } from '../state/calc';
 import { useT } from '../i18n';
@@ -55,13 +55,16 @@ export function CardSheet({
   const [card, setCard] = useState<TopUpCard | null>(null);
   const [words, setWords] = useState<string | null>(null);
 
+  // Escape closes it. Listened for once, for as long as the sheet is up: a listener swapped while a key is being handled never hears that key.
+  const closing = useRef(onClose);
+  closing.current = onClose;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') closing.current();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
 
   const selling = mode === 'sell' && maySell;
   const ready = !busy && !off && amount !== null && (selling || card !== null);
@@ -93,6 +96,7 @@ export function CardSheet({
     return (
       <button
         key={m}
+        data-card-mode={m}
         role="radio"
         aria-checked={on}
         className="pos-press"
@@ -152,6 +156,7 @@ export function CardSheet({
                   style={css('display:flex;gap:8px;')}
                 >
                   <input
+                    data-card-code=""
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder={t('cards.topUpCode')}
@@ -196,7 +201,7 @@ export function CardSheet({
             {AMOUNTS.map((one) => {
               const on = amount === one;
               return (
-                <button key={one} role="radio" aria-checked={on} className="pos-press" disabled={off} onClick={() => setAmount(one)} style={css('height:56px;border-radius:13px;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border-strong)') + ';background:' + (on ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (off ? 'var(--fg-subtle)' : on ? 'var(--accent)' : 'var(--fg)') + ';font-size:15.5px;font-weight:800;cursor:' + (off ? 'not-allowed' : 'pointer') + ';' + MONO)}>
+                <button key={one} role="radio" data-card-amount={String(one)} aria-checked={on} className="pos-press" disabled={off} onClick={() => setAmount(one)} style={css('height:56px;border-radius:13px;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border-strong)') + ';background:' + (on ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (off ? 'var(--fg-subtle)' : on ? 'var(--accent)' : 'var(--fg)') + ';font-size:15.5px;font-weight:800;cursor:' + (off ? 'not-allowed' : 'pointer') + ';' + MONO)}>
                   {money(one)}
                 </button>
               );
@@ -207,7 +212,7 @@ export function CardSheet({
             <Icon name="info" size={15} />
             {selling || amount === null ? t('cards.activeWhenPaid') : t('cards.loadWhenPaid', { amount: money(amount) })}
           </div>
-          <button className="pos-press" disabled={!ready} onClick={add} style={css('width:100%;height:58px;border-radius:16px;border:none;font-family:inherit;font-size:16.5px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:12px;background:' + (ready ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (ready ? 'var(--accent-fg)' : 'var(--fg-subtle)') + ';cursor:' + (ready ? 'pointer' : 'not-allowed') + ';')}>
+          <button data-card-add="" className="pos-press" disabled={!ready} onClick={add} style={css('width:100%;height:58px;border-radius:16px;border:none;font-family:inherit;font-size:16.5px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:12px;background:' + (ready ? 'var(--accent)' : 'var(--surface-3)') + ';color:' + (ready ? 'var(--accent-fg)' : 'var(--fg-subtle)') + ';cursor:' + (ready ? 'pointer' : 'not-allowed') + ';')}>
             <span>{t(selling ? 'cards.addCard' : 'cards.addTopUp')}</span>
             {amount !== null && <span style={css(MONO)}>{money(amount)}</span>}
           </button>

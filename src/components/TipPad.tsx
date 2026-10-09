@@ -16,13 +16,21 @@ const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'back'] as 
 export function TipPad() {
   const s = usePos();
   const t = useT();
+  /*
+   * Escape closes the pad — and is listened for only while the pad is open.
+   * It used to listen always and write the store on every Escape; that drew
+   * every open sheet again in the middle of the key's own dispatch, which took
+   * the sheet's listener away before it ran: Escape closed nothing.
+   */
+  const open = s.tipPad !== null;
   useEffect(() => {
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') usePos.getState().closeTipPad();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  }, [open]);
   if (s.tipPad === null) return null;
   const value = parseFloat(s.tipPad || '0') || 0;
   return (
