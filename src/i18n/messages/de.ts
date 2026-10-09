@@ -718,6 +718,7 @@ export const de: Translated<typeof enUS> = {
   'gift.kind.refund': 'Erstattung',
   'gift.kind.adjust': 'Korrigiert',
   'gift.method': 'Gutscheinkarte',
+  'gift.methodShort': 'Karte',
   'gift.paidFrom': 'Gutscheinkarte {code}',
   'gift.toastNotFound': 'Keine Gutscheinkarte {code}',
   'gift.toastIssued': 'Neue Karte {code}',

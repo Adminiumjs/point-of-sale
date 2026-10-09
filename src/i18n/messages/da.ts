@@ -715,6 +715,7 @@ export const da: Translated<typeof enUS> = {
   'gift.kind.refund': 'Refusion',
   'gift.kind.adjust': 'Justeret',
   'gift.method': 'Gavekort',
+  'gift.methodShort': 'Gave',
   'gift.paidFrom': 'Gavekort {code}',
   'gift.toastNotFound': 'Intet gavekort {code}',
   'gift.toastIssued': 'Nyt kort {code}',

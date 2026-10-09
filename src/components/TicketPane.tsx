@@ -108,22 +108,25 @@ export function TicketPane() {
           <div style={css('font-size:12.5px;color:var(--fg-muted);margin-top:2px;font-weight:500;')}>{sub}</div>
         </div>
         <div style={css('margin-inline-start:auto;display:flex;gap:8px;')}>
-          <button
-            className="pos-press"
-            onClick={s.toggleCoursing}
-            style={css(
-              'display:flex;align-items:center;gap:7px;height:44px;padding:0 14px;border-radius:12px;border:1px solid ' +
-                (s.coursing ? 'transparent' : 'var(--border)') +
-                ';background:' +
-                (s.coursing ? 'var(--accent)' : 'var(--surface-2)') +
-                ';color:' +
-                (s.coursing ? 'var(--accent-fg)' : 'var(--fg-muted)') +
-                ';font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap;',
-            )}
-          >
-            <Icon name="rows-3" size={17} />
-            {t('ticket.seats')}
-          </button>
+          {/* Seats and courses are a table's; a walk-in sale in a shop has neither. */}
+          {!retail && (
+            <button
+              className="pos-press"
+              onClick={s.toggleCoursing}
+              style={css(
+                'display:flex;align-items:center;gap:7px;height:44px;padding:0 14px;border-radius:12px;border:1px solid ' +
+                  (s.coursing ? 'transparent' : 'var(--border)') +
+                  ';background:' +
+                  (s.coursing ? 'var(--accent)' : 'var(--surface-2)') +
+                  ';color:' +
+                  (s.coursing ? 'var(--accent-fg)' : 'var(--fg-muted)') +
+                  ';font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap;',
+              )}
+            >
+              <Icon name="rows-3" size={17} />
+              {t('ticket.seats')}
+            </button>
+          )}
           <button className="pos-press" onClick={() => s.setPickupSheet(true)} title={t('ticket.forPickup')} aria-label={t('ticket.forPickup')} style={css(hdrBtn + (pickup === undefined ? '' : 'color:var(--accent);border-color:color-mix(in srgb, var(--accent) 45%, transparent);'))}>
             <Icon name="shopping-bag" size={18} />
           </button>

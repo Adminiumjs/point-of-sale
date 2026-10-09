@@ -716,6 +716,7 @@ export const cs: Translated<typeof enUS> = {
   'gift.kind.refund': 'Vrácení',
   'gift.kind.adjust': 'Úprava',
   'gift.method': 'Dárková karta',
+  'gift.methodShort': 'Dárek',
   'gift.paidFrom': 'Dárková karta {code}',
   'gift.toastNotFound': 'Dárková karta {code} neexistuje',
   'gift.toastIssued': 'Nová karta {code}',

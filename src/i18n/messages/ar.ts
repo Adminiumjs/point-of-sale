@@ -718,6 +718,7 @@ export const ar: Translated<typeof enUS> = {
   'gift.kind.refund': 'استرداد',
   'gift.kind.adjust': 'تعديل',
   'gift.method': 'بطاقة هدية',
+  'gift.methodShort': 'هدية',
   'gift.paidFrom': 'بطاقة هدية {code}',
   'gift.toastNotFound': 'لا توجد بطاقة هدية {code}',
   'gift.toastIssued': 'بطاقة جديدة {code}',

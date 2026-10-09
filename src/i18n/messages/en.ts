@@ -720,6 +720,7 @@ export const enUS = {
   'gift.kind.refund': 'Refund',
   'gift.kind.adjust': 'Adjusted',
   'gift.method': 'Gift card',
+  'gift.methodShort': 'Gift',
   'gift.paidFrom': 'Gift card {code}',
   'gift.toastNotFound': 'No gift card {code}',
   'gift.toastIssued': 'New card {code}',

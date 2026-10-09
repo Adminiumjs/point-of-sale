@@ -338,7 +338,15 @@ export function Payment() {
               return (
                 <button key={x.m} data-method={x.m} className="pos-press" disabled={dead} onClick={() => s.setMethod(x.m)} style={css(methodStyle(s.payMethod === x.m) + (dead ? 'opacity:.5;cursor:not-allowed;' : ''))}>
                   <Icon name={x.ic} size={20} />
-                  {t(x.l)}
+                  {/* Four tabs across a phone: the gift card's takes its short name there. */}
+                  {x.m === 'gift_card' ? (
+                    <>
+                      <span className="pay-method-long">{t(x.l)}</span>
+                      <span className="pay-method-short">{t('gift.methodShort')}</span>
+                    </>
+                  ) : (
+                    t(x.l)
+                  )}
                 </button>
               );
             })}

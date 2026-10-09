@@ -462,6 +462,19 @@ a:hover {
   }
 }
 
+/* A payment method's short name (the gift card's "Gift"), for where four tabs share a phone's width. */
+.pay-method-short {
+  display: none;
+}
+@media (max-width: 720px) {
+  .pay-method-long {
+    display: none;
+  }
+  .pay-method-short {
+    display: inline;
+  }
+}
+
 @media (max-width: 860px) {
   .reg-body {
     flex-direction: column;

@@ -103,7 +103,12 @@ export function Complete() {
               </div>
               <div style={css('border-top:1px dashed var(--border-strong);margin:13px 0;')} />
               {/* One row per payment: what each took, and a gift card by its last four. */}
-              {sale.splits.length > 1 ? (
+              {sale.splits.length === 0 ? (
+                <div data-paid-row="" style={css('display:flex;justify-content:space-between;font-size:12px;')}>
+                  <span style={css('color:var(--fg-muted);')}>{t('complete.paidWith', { methods: methods.join(' + ') })}</span>
+                  <span style={css(MONO)}>{money(sale.total)}</span>
+                </div>
+              ) : (
                 sale.splits.map((sp, i) => (
                   <div key={i} data-paid-row="" style={css('display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:4px;')}>
                     <span style={css('color:var(--fg-muted);')}>
@@ -111,14 +116,10 @@ export function Complete() {
                         methods: sp.method === 'gift_card' && sp.cardLeft !== undefined ? t('cards.kept', { last4: sp.reference ?? '' }) : t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : sp.method === 'gift_card' ? 'gift.method' : 'payment.qr'),
                       })}
                     </span>
-                    <span style={css(MONO)}>{money(sp.amount)}</span>
+                    {/* A single payment took the whole sale, tip and all. */}
+                    <span style={css(MONO)}>{money(sale.splits.length === 1 ? sale.total : sp.amount)}</span>
                   </div>
                 ))
-              ) : (
-                <div data-paid-row="" style={css('display:flex;justify-content:space-between;font-size:12px;')}>
-                  <span style={css('color:var(--fg-muted);')}>{t('complete.paidWith', { methods: methods.join(' + ') })}</span>
-                  <span style={css(MONO)}>{money(sale.total)}</span>
-                </div>
               )}
               <ReceiptCards sale={sale} />
               {/* What the guest asked for on the customer display (nothing sends it yet). */}
@@ -334,9 +335,8 @@ export function ReceiptCards({ sale }: { sale: Pick<Sale, 'cardBalances' | 'newC
     <div className="receipt-cards" style={css('margin-top:9px;')}>
       {balances.map((one, i) => (
         <div key={'left' + String(i)} style={css('display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:4px;')}>
-          <span style={css('color:var(--fg-muted);')}>
-            {t('cards.balanceLeft')} · {t('cards.kept', { last4: one.last4 })}
-          </span>
+          {/* The payment's own row names the card; with two cards, each balance says whose it is. */}
+          <span style={css('color:var(--fg-muted);')}>{balances.length > 1 ? `${t('cards.balanceLeft')} · ${t('cards.kept', { last4: one.last4 })}` : t('cards.balanceLeft')}</span>
           <span style={css(MONO)}>{money(one.left)}</span>
         </div>
       ))}

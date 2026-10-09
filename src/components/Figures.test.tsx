@@ -66,8 +66,11 @@ describe('gift cards on the receipt', () => {
   it('prints what a card that paid has left, and a new card by its last four — never a code', () => {
     const shown = html(<ReceiptCards sale={{ cardBalances: [{ last4: 'Q4XP', left: 31.4 }], newCards: [{ cardId: '13', last4: 'B1B7', amount: 50 }] }} />);
     expect(shown).toContain('Gift card balance left');
-    expect(shown).toContain('Gift card ···· Q4XP');
     expect(shown).toContain('$31.40');
+    // Two cards paid: each balance says whose it is.
+    const two = html(<ReceiptCards sale={{ cardBalances: [{ last4: 'Q4XP', left: 0 }, { last4: '2HVT', left: 7.95 }] }} />);
+    expect(two).toContain('Gift card balance left · Gift card ···· Q4XP');
+    expect(two).toContain('Gift card balance left · Gift card ···· 2HVT');
     expect(shown).toContain('New gift card · Gift card ···· B1B7');
     expect(shown).toContain('$50.00');
     expect(shown).toContain('Its code is printed once and shown nowhere else');

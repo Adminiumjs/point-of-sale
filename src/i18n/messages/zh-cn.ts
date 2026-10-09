@@ -713,6 +713,7 @@ export const zhCn: Translated<typeof enUS> = {
   'gift.kind.refund': '退款',
   'gift.kind.adjust': '调整',
   'gift.method': '礼品卡',
+  'gift.methodShort': '礼品',
   'gift.paidFrom': '礼品卡 {code}',
   'gift.toastNotFound': '没有礼品卡 {code}',
   'gift.toastIssued': '新卡 {code}',

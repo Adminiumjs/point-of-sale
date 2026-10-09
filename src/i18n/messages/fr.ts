@@ -716,6 +716,7 @@ export const fr: Translated<typeof enUS> = {
   'gift.kind.refund': 'Remboursement',
   'gift.kind.adjust': 'Ajustement',
   'gift.method': 'Carte cadeau',
+  'gift.methodShort': 'Cadeau',
   'gift.paidFrom': 'Carte cadeau {code}',
   'gift.toastNotFound': 'Aucune carte cadeau {code}',
   'gift.toastIssued': 'Nouvelle carte {code}',

@@ -408,7 +408,7 @@ test.describe('the staff screens on a built Adminium', () => {
     await payCash(page);
     const paper = page.locator('.receipt-paper');
     await expect(paper.locator('[data-paid-row]')).toHaveText(['Paid · Gift card ···· Q4XP$19.00', 'Paid · Cash$13.77']);
-    await expect(paper).toContainText('Gift card balance left · Gift card ···· Q4XP');
+    await expect(paper.locator('.receipt-cards')).toHaveText('Gift card balance left$0.00');
     await expect(paper).toContainText('Croissants, a tenth off');
     await expect(paper).toContainText('Staff · Goodwill');
     await expect(paper).toContainText('$32.77');

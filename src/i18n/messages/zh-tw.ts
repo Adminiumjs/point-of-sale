@@ -711,6 +711,7 @@ export const zhTw: Translated<typeof enUS> = {
   'gift.kind.refund': '退款',
   'gift.kind.adjust': '調整',
   'gift.method': '禮物卡',
+  'gift.methodShort': '禮物',
   'gift.paidFrom': '禮物卡 {code}',
   'gift.toastNotFound': '沒有禮物卡 {code}',
   'gift.toastIssued': '新卡 {code}',
