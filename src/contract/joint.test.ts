@@ -18,7 +18,13 @@ import { gzipSync } from 'node:zlib';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { ENGINES, missing, ok, until, type Engine } from './harness';
+import { adminiumVersion, ENGINES, missing, ok, until, type Engine } from './harness';
+
+const newer = (a: string, b: string) => {
+  const [x, y] = [a, b].map((v) => v.split('.').map(Number));
+  for (let i = 0; i < 3; i += 1) if (x![i] !== y![i]) return x![i]! > y![i]!;
+  return false;
+};
 import { readIds, standUp, type Row, type Stand } from './stand';
 
 const ORDERING_REPO = process.env['ORDERING_REPO'] ?? '';
@@ -34,7 +40,8 @@ function orderingBundle(): { buffer: Buffer; integrity: string; key: string; ver
   const manifest = JSON.parse(readFileSync(join(ORDERING_REPO, 'manifest.json'), 'utf8')) as { key: string; version: string; sampleData?: { file: string }; frontends?: { side: string }[]; compatibility: Record<string, unknown> };
   const files: Record<string, Buffer> = {
     'package.json': Buffer.from(JSON.stringify({ name: `@adminiumjs/app-${manifest.key}`, version: manifest.version })),
-    'manifest.json': Buffer.from(JSON.stringify(manifest)),
+    // As the till's own bundle is packed: a floor that names the release this Adminium checkout is about to be is packed at the checkout's own number.
+    'manifest.json': Buffer.from(JSON.stringify(newer(String(manifest.compatibility['minAdminiumVersion']), adminiumVersion()) ? { ...manifest, compatibility: { ...manifest.compatibility, minAdminiumVersion: adminiumVersion() } } : manifest)),
   };
   for (const side of (manifest.frontends ?? []).map((f) => f.side)) files[`${side}/index.html`] = Buffer.from(`<!doctype html><html><body data-app="ordering-${side}"></body></html>`);
   if (manifest.sampleData !== undefined) files[manifest.sampleData.file] = readFileSync(join(ORDERING_REPO, manifest.sampleData.file));
