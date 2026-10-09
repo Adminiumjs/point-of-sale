@@ -108,7 +108,9 @@ npm run build:demo   # the hosted demo, served inside its card (base "/demo/poin
 npm run preview      # preview a production build locally
 npm run typecheck    # type-check without emitting
 npm test             # unit tests (vitest)
-npm run test:e2e     # every demo screen under axe, light/dark × English/Arabic (Playwright)
+npm run test:e2e     # every demo screen under axe, light/dark × English/Arabic (Playwright); and, with
+                     # ADMINIUM_REPO and ADD_ONS_REPO pointing at built checkouts, the staff screens in a
+                     # browser on a real Adminium (e2e/live.e2e.ts) — skipped, with the reason, without one
 ```
 
 ---
@@ -122,7 +124,7 @@ Point of Sale needs no add-on to sell. Installed from Adminium, it **suggests** 
 | **Invoices & Receipts** | Emailed receipts | The receipt screen's **Email** button asks for the guest's address and queues one message in the app's outbox (`messages`). Adminium sends it with the receipt the add-on draws on an 80 mm roll attached: a PDF, or the print copy in a language a PDF's standard fonts cannot set (Arabic, Chinese). The receipt is the sale line by line (without the lines voided before it was paid), with the figures the till stored — subtotal, a discount as its own row, tax, tip, total — what was taken, tip included (`tickets.charged`, worked out by Adminium), the order number and who served. Without the add-on there is no Email button, and the customer display does not offer an emailed receipt. |
 | **Barcode Labels** | Shelf labels (retail) | **Shelf labels**, in the till's menu in retail mode, lists every item with a barcode and draws labels for one from its own `barcode`, `name` and key, through Adminium's staff document route — as many as you ask for, 1 to 240, 24 to an A4 sheet. The sheet opens as a PDF. |
 | **Offers & gift cards** | Codes, offers and staff discounts · Gift cards | A **code field** on the ticket takes a discount code or a voucher; an offer that applies by itself shows as its own line. The **discount** dialog gives a staff discount with a reason from Offers' own list, held to the ceiling the owner set for the role — refused by Adminium, not by the till. **Gift cards** are Offers': sold and loaded by a line on a ticket, spent at Pay, given back to on a refund. |
-| **Inventory** | Retail stock | A menu item linked to a stock item (on Inventory's own pages) falls when a ticket is **paid** and comes back when a refund says "Back on the shelf". A tile says "3 left" or "Out"; at zero the till still sells and marks the sale. The sold-out switch stays as it is. |
+| **Inventory** | Retail stock | A menu item linked to a stock item (on Inventory's own pages) falls when a ticket is **paid** and comes back when a refund says "Back on the shelf". A tile says "Only 3 left" or "Out"; at zero the till still sells, and the ticket's line says "Out on the books · count this item". The sold-out switch stays as it is. |
 
 What to know:
 
@@ -138,10 +140,12 @@ Adminium does. The reduction, the tax and the total of a ticket are worked out b
 
 With **Offers & gift cards** connected:
 
-- **Staff ceilings are Offers' rows, by role.** Add a row for `pos-cashier` and one for `pos-manager` on Offers' *Ceilings* page (the percent each may give, and whether a comp is allowed). With no row, a till role can give no staff discount at all. A Super Admin is held to none.
+- **Staff ceilings are Offers' rows, by role.** Add a row for `pos-cashier` and one for `pos-manager` on Offers' *Ceilings* page (the percent each may give, and whether a comp is allowed). With no row, a till role can give no staff discount at all — Adminium answers "over the ceiling, the most is 0". A Super Admin is held to none.
 - **A code for a named customer** ("first order", "one each") needs a member on the ticket, and the member needs an email: that is what uses are counted by.
 - **A gift card pays goods and tax, never the tip.** Its code is typed or scanned once and never shown again; the receipt prints the last four and what is left on it. Money a card paid on a ticket nobody finishes goes back to the card twelve hours later, and at once when the ticket is voided.
-- **Selling a new card** needs Offers' own *desk* role beside the till's (the owner gives it); paying with a card and reading its balance do not.
+- **Selling a new card** needs Offers' own *desk* role beside the till's (the owner gives it); topping one up, paying with a card and reading its balance do not. The Gift card tile opens one sheet for both; someone who may not sell a new card is not offered it (the till reads that from their session, it does not try and fail).
+- **A new card's code is never on the till.** Offers hands the save that makes a card its whole code once, and a print ticket beside it. The till drops the code as it reads the reply and keeps only the ticket (in the browser tab, until the card is printed). Once the sale is paid — the card holds nothing before that — **Print the card** opens the page Offers draws, once, for the person who sold it; a reload in between loses nothing. The ticket is good for ten minutes and one use; after that a manager prints the card from Offers.
+- **A staff discount is refused in words.** "You can give up to 10 %", "You can give up to $4.36" for an amount, "Your role can’t give a comp", or "Your role has no discount limit set in Offers · Ask the owner" when no ceiling row covers the role.
 - **Switched off for the till** (not removed), Offers cannot answer: a ticket line is refused by name rather than sold at full price in silence. Switch it on again, or disconnect it — then the till is as it was without it.
 
 With **Inventory** connected: link a menu item to a stock item on Inventory's pages (the link names the till's menu, `pos:menu_items`). Nothing is counted for an item with no link. Switched off for the till, sales go through uncounted.
@@ -158,6 +162,7 @@ With **Inventory** connected: link a menu item to a stock item on Inventory's pa
    - every card comes into Offers under the code it has always had, with its whole history and its balance to the cent; a card that was cancelled at the till is cancelled there too; a card never sold is left behind;
    - the run can be pressed again at any time: what was moved stays moved, and a run that stopped half-way goes on. While it runs, Offers issues and tops up no card;
    - afterwards the till's own card tables are closed, the old Gift cards screen leaves the menu, and cards are sold, loaded and spent through Offers. **Run the move before issuing any card from Offers' own pages.**
+   - **a shop that never sold a card of its own runs it too** — it finds nothing to bring, and takes a moment. Until it has run, the till keeps its own Gift cards screen and the tile that sells Offers' cards is not shown.
 5. **A refund of a ticket paid before the update** comes out at the figure 0.2.x would have given. With Offers connected, a ticket that already holds an old refund cannot be refunded a second time from the till; do that one from the dashboard.
 
 ## Connecting to Adminium
