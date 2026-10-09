@@ -270,7 +270,7 @@ describe('what comes from the rows', () => {
     expect(snap.openTicket).toMatchObject({ number: 1042, rid: '51', table: 'W2', seats: 2 });
     // The voided line is on the record, not on the till.
     expect(snap.openTicket.items.map((i) => [i.rid, i.qty, i.note, i.sent])).toEqual([['61', 2, 'Extra hot', false]]);
-    expect(snap.openSplits).toEqual([{ method: 'cash', amount: 4 }]);
+    expect(snap.openSplits).toEqual([{ id: 'p2', method: 'cash', amount: 4 }]);
     expect(snap.held.map((h) => [h.number, h.rid, h.table])).toEqual([[1041, '52', 'P1']]);
   });
 
@@ -312,6 +312,18 @@ describe('what comes from the rows', () => {
     expect(snap.kitchen).toEqual([
       expect.objectContaining({ number: 1041, rid: '52', table: 'P1', status: 'cooking', items: [{ n: 'Croissant', q: 1, m: '' }] }),
     ]);
+  });
+
+  it('reads back what one of Offers’ gift cards paid on the open ticket: its figure, its last four and what it had left', async () => {
+    // As a built Adminium stores it: `amount` nothing, the card's part in `card_amount`.
+    const card = { id: 'p3', ticket_id: 51, method: 'gift_card', amount: 0, tip: 0, reference: null, card_id: 1, card_last4: 'Q4XP', card_amount: 19, card_balance_after: 0, paid_at: at('09:25') };
+    const { snap } = await load({ ...ROWS, payments: [...ROWS['payments']!, card] });
+    expect(snap.openSplits).toEqual([
+      { id: 'p2', method: 'cash', amount: 4 },
+      { id: 'p3', method: 'gift_card', amount: 19, reference: 'Q4XP', cardLeft: 0 },
+    ]);
+    // And the shift counts it under gift cards, not as nothing.
+    expect(snap.shift.gift).toBe(19);
   });
 
   it('totals the open shift from its own payments, tips and refunds', async () => {

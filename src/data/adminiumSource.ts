@@ -188,7 +188,19 @@ interface WirePayment {
   amount: Num;
   tip: Num | null;
   paid_at: string;
+  /**
+   * A gift card kept by Offers & gift cards (0.3.0): what the card paid is
+   * Adminium's figure, in `card_amount` — `amount` stays nothing — with the
+   * card's last four and what it held afterwards.
+   */
+  card_amount?: Num | null;
+  card_last4?: string | null;
+  card_balance_after?: Num | null;
 }
+
+/** What a payment took: a gift card's part is `card_amount`, every other method's is `amount`. */
+export const tookBy = (row: { method: string; amount?: Num | null; card_amount?: Num | null }): Num =>
+  row.method === 'gift_card' && row.card_amount !== null && row.card_amount !== undefined ? row.card_amount : (row.amount ?? 0);
 interface WireRefund {
   id: Key;
   ticket_id: Key;
@@ -661,10 +673,10 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
     // Added in cents: a float sum of prices drifts (96.24000000000001).
     const cents = (values: Num[]): number => values.reduce<number>((total, v) => total + Math.round(num(v) * 100), 0) / 100;
     const sum = (method: WirePayment['method']): number =>
-      cents(takings.filter((row) => row.method === method).flatMap((row) => [row.amount, row.tip ?? 0]));
+      cents(takings.filter((row) => row.method === method).flatMap((row) => [tookBy(row), row.tip ?? 0]));
     const shift: ShiftTotals = {
       orders: new Set(takings.map((row) => key(row.ticket_id))).size,
-      gross: cents(takings.map((row) => row.amount)),
+      gross: cents(takings.map((row) => tookBy(row))),
       card: sum('card'),
       cash: sum('cash'),
       qr: sum('qr'),
@@ -679,7 +691,18 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
         ? []
         : livePayments
             .filter((row) => key(row.ticket_id) === key(current.id))
-            .map((row) => ({ method: row.method, amount: num(row.amount) + num(row.tip), ...(row.reference === null || row.reference === undefined ? {} : { reference: row.reference }) }));
+            .map((row) => {
+              // One of Offers' cards is known by its last four, and by what it held after it paid.
+              const last4 = row.card_last4 === null || row.card_last4 === undefined || row.card_last4 === '' ? undefined : row.card_last4;
+              const reference = last4 ?? row.reference ?? undefined;
+              return {
+                id: key(row.id),
+                method: row.method,
+                amount: num(tookBy(row)) + num(row.tip),
+                ...(reference === undefined ? {} : { reference }),
+                ...(last4 === undefined || row.card_balance_after === null || row.card_balance_after === undefined ? {} : { cardLeft: num(row.card_balance_after) }),
+              };
+            });
 
     /* The register's first row: the items the operator featured, else what sells. */
     const featured = [...items].filter((row) => yes(row.featured)).sort(byPosition).map((row) => key(row.id));
