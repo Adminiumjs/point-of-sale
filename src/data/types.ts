@@ -29,7 +29,8 @@ export type View =
   | 'display'
   | 'book'
   | 'manage'
-  | 'email';
+  | 'email'
+  | 'balance';
 
 export interface Staff {
   id: string;

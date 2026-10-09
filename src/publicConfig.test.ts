@@ -62,6 +62,29 @@ describe("resolveSurfaceConfig", () => {
     expect(config?.tables).toEqual({ reservations: "pos_reservations", settings: "pos_settings" });
   });
 
+  it("carries each attached add-on with the keys of its own Adminium hands the page, and none where it hands none", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          baseUrl: "",
+          publishableKey: "adm_pub_customer",
+          addOns: { offers: { present: true, keys: { "offers-link": "adm_pub_link", broken: 7 } }, invoices: { present: true }, nothing: null },
+        }),
+        { status: 200 },
+      ),
+    ) as unknown as typeof fetch;
+    const config = await resolveSurfaceConfig({ baked: {}, hostedCustomer: true, base: "/apps/pos/customer/", origin: "https://shop.example", fetchImpl });
+    expect(config?.addOns).toEqual({ offers: { keys: { "offers-link": "adm_pub_link" } }, invoices: { keys: {} } });
+    // An add-on's key is its own: never listed among the app's.
+    expect(config?.publicKeys).toBeUndefined();
+  });
+
+  it("lists no add-ons when the document names none", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ baseUrl: "", publishableKey: "adm_pub_customer" }), { status: 200 })) as unknown as typeof fetch;
+    const config = await resolveSurfaceConfig({ baked: {}, hostedCustomer: true, base: "/apps/pos/customer/", origin: "https://shop.example", fetchImpl });
+    expect(config?.addOns).toBeUndefined();
+  });
+
   it("a served absolute baseUrl passes through untouched", async () => {
     const fetchImpl = vi
       .fn()

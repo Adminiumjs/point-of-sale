@@ -14,9 +14,11 @@ import { create } from 'zustand';
 import type { BookingDay } from '../state/bookings';
 import { bookingDays } from '../state/bookings';
 import { venueDay, venueStamp, venueTime } from '../data/venueTime';
+import type { BalanceDoor } from './balance';
 import { GuestError, type GuestBooking, type GuestErrorKind, type GuestRules, type GuestVenue, type GuestsPort, type Slot } from './api';
 
-export type GuestView = 'book' | 'manage';
+/** `balance` is a gift card's balance (`/gift-card`): Offers & gift cards' page, on this side. */
+export type GuestView = 'book' | 'manage' | 'balance';
 export type BookStep = 'when' | 'details' | 'done';
 export type ManageStep = 'find' | 'booking' | 'when' | 'changed' | 'cancelled';
 
@@ -35,6 +37,10 @@ export interface GuestsState {
   /** The first read failed: the page says so and offers to try again. */
   loadFailed: boolean;
   toast: string | null;
+  /** The door a gift card's balance is read through; null without Offers & gift cards — the page is then not found. */
+  balance: BalanceDoor | null;
+  /** The token of the email's link (`/gift-card#<token>`), in memory until it is read once. */
+  cardToken: string | null;
 
   // shared by Book and Change: the party, the day, the time, and the day's slots
   party: number;
@@ -145,6 +151,8 @@ export const useGuests = create<GuestsState>()((set, get) => {
     rules: null,
     loadFailed: false,
     toast: null,
+    balance: null,
+    cardToken: null,
     ...fresh,
     code: '',
     ...freshManage,

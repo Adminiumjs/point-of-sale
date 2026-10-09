@@ -137,7 +137,19 @@ async function bootGuests(): Promise<void> {
   // Every day and time the pages show is the venue's.
   setTimezoneClaim(port.timeZone() ?? 'UTC', 'operator');
 
-  const [{ useGuests }, { attachUrlSync }, { connectToHost }, { SURFACE_NAV, APP_KEY }, { GuestsApp }] = await Promise.all([
+  /*
+   * A gift card's balance, while Offers & gift cards is attached: its entry
+   * rides this page's own key, and the link in a card's email reads through
+   * Offers' own key, which Adminium hands over with the add-on when the shop
+   * has one. Without Offers there is neither, and the address is the
+   * not-found page.
+   */
+  const { publicBalanceDoor, OFFERS_KEY, OFFERS_LINK_KEY } = await import('./guests/balance');
+  const linkKey = config.addOns?.[OFFERS_KEY]?.keys[OFFERS_LINK_KEY];
+  const linkClient = linkKey === undefined ? null : (await import('@adminiumjs/public-client')).createPublicClient({ baseUrl: config.baseUrl, publishableKey: linkKey });
+  const balance = await publicBalanceDoor(client, linkClient).catch(() => null);
+
+  const [{ useGuests }, { attachUrlSync }, { connectToHost }, { SURFACE_NAV, APP_KEY, GIFT_CARD_PATH }, { GuestsApp }] = await Promise.all([
     import('./guests/store'),
     import('./urlSync'),
     import('./embed'),
@@ -155,6 +167,17 @@ async function bootGuests(): Promise<void> {
     current: () => useGuests.getState().view,
     onPath: (path) => bridge?.navigated(path),
   });
+  useGuests.setState({ balance });
+  if (sync.path() === GIFT_CARD_PATH) {
+    /*
+     * The email's link carries the card's token after the `#`, which no server
+     * is ever sent. It is taken into memory and off the address at once, so it
+     * is in no history entry and no copied link.
+     */
+    const token = window.location.hash.replace(/^#/, '').trim();
+    if (token !== '') window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`);
+    useGuests.setState({ view: 'balance', cardToken: token === '' ? null : token });
+  }
   bridge = await connectToHost(APP_KEY, 'customer', sync.path(), {
     onLocale: setHostLocale,
     onPath: (path) => sync.applyPath(path),

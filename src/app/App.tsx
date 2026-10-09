@@ -89,6 +89,8 @@ const SCREENS = {
   book: DEMO ? Book : Nothing,
   manage: DEMO ? Manage : Nothing,
   email: DEMO ? Email : Nothing,
+  // A gift card's balance is the customer surface's own page (`GuestsApp`); the till has none.
+  balance: Nothing,
 } satisfies Record<View, ComponentType>;
 
 export function App() {

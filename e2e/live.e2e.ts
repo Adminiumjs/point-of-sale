@@ -761,4 +761,88 @@ test.describe('the staff screens on a built Adminium', () => {
       expect(tally.failures.join('\n\n')).toBe('');
     });
   }
+  /*
+   * THE GUESTS SIDE'S ONE NEW PAGE: a gift card's balance, by the code on the
+   * card. A stranger's browser — no session — on the customer surface this
+   * shop serves, in the same four looks, under axe. What it shows is what
+   * Offers holds for the card, read again through the owner's session; and the
+   * code is in a header, never the address, and in nothing the page keeps.
+   */
+  test('the Guests side: a gift card’s balance by the code on it, in the four looks; the code in no address and nothing kept', async ({ browser }, testInfo) => {
+    test.setTimeout(240_000);
+    const tally: Sweep = { states: 0, failures: [] };
+    // The owner switches the public API on, as its page does.
+    const admin = contexts.admin!;
+    const token = ((await (await admin.request.get(`${stand.base}${TILL}surface-config.json`)).json()) as { csrfToken: string }).csrfToken;
+    const on = await admin.request.put(`${stand.base}/api/v1/public-api`, { data: { enabled: true }, headers: { 'x-adminium-csrf': token, origin: stand.base } });
+    expect(on.status(), await on.text()).toBe(200);
+    const cards = await rows(admin, tables['offers:gift_cards']!);
+    const held = cards.find((one) => one['label'] === '2HVT')!;
+    const spent = cards.find((one) => one['label'] === 'Q4XP')!;
+    expect([held['status'], spent['status'], usd(spent['balance'])]).toEqual(['active', 'active', '$0.00']);
+    const PAGE = `${stand.base}/apps/pos/customer/gift-card`;
+
+    for (const look of LOOKS) {
+      const label = (state: string) => `balance · ${look.name} · ${state}`;
+      const context = await browser.newContext({ viewport: TABLET, ...look.options });
+      const page = await context.newPage();
+      const asked: { url: string; code: string | undefined }[] = [];
+      page.on('request', (request) => {
+        if (new URL(request.url()).pathname.startsWith('/api/v1/public/records/offers_gift_cards')) asked.push({ url: request.url(), code: request.headers()['x-adminium-code'] });
+      });
+      await page.goto(PAGE);
+      const form = page.locator('[data-card-balance-form]');
+      await expect(form, look.name).toBeVisible({ timeout: 30_000 });
+      expect(await page.locator('html').evaluate((el) => ({ theme: el.getAttribute('data-theme'), dir: el.getAttribute('dir') ?? 'ltr' })), `${look.name}: theme and direction`).toEqual({ theme: look.theme, dir: look.dir });
+      const field = form.locator('input');
+      await expect(field).toHaveAttribute('placeholder', 'GC-0000-0000-0000');
+      await sweep(page, label('the field'), tally, testInfo);
+
+      // Not twelve characters after the prefix: said at once, and Adminium is never asked.
+      await field.fill('GC-M9RD');
+      await form.locator('button[type="submit"]').click();
+      await expect(page.locator('[data-card-said="invalid"]')).toBeVisible();
+      if (look.dir === 'ltr') await expect(page.locator('[data-card-said="invalid"]')).toHaveText('That code is not valid');
+      expect(asked).toEqual([]);
+      await sweep(page, label('not valid'), tally, testInfo);
+
+      // The code as a guest types it, spaces and all: the balance Offers holds, and one line.
+      await field.fill('gc m9rd-5ptc 2hvt');
+      await form.locator('button[type="submit"]').click();
+      const figure = page.locator('[data-card-figure]');
+      await expect(figure).toBeVisible({ timeout: 20_000 });
+      if (look.dir === 'ltr') {
+        await expect(figure).toHaveText(usd(held['balance']));
+        await expect(page.locator('[data-card-until]')).toHaveText('Does not expire');
+      }
+      // One request, the code in its header and never in an address; and nothing of it left on the page or in what the browser keeps.
+      expect(asked.map((one) => one.code)).toEqual(['GC-M9RD-5PTC-2HVT']);
+      expect(asked[0]!.url.toUpperCase()).not.toContain('M9RD');
+      expect(page.url().toUpperCase()).not.toContain('M9RD');
+      expect((await page.content()).toUpperCase()).not.toContain('M9RD');
+      expect((await page.evaluate(() => JSON.stringify([{ ...localStorage }, { ...sessionStorage }, document.cookie]))).toUpperCase()).not.toContain('M9RD');
+      await sweep(page, label('the balance'), tally, testInfo);
+
+      // Another card: the field is back, and empty.
+      await page.locator('[data-card-balance] + button').click();
+      await expect(field).toHaveValue('');
+
+      if (look.name === 'light') {
+        // A card with nothing left on it is a balance, not a refusal.
+        await field.fill('GC-7K2MW3HNQ4XP');
+        await form.locator('button[type="submit"]').click();
+        await expect(figure).toHaveText('$0.00');
+        // The email's link: the token is taken off the address at once. (This shop's Offers was brought by the
+        // app's install and has no link key, so there is no link to open: the page asks for the code.)
+        const linked = await context.newPage();
+        await linked.goto(`${PAGE}#NOTATOKENANYBODYWASSENT`);
+        await expect(linked.locator('[data-card-balance-form]')).toBeVisible({ timeout: 30_000 });
+        expect(linked.url()).toBe(PAGE);
+        await expect(linked.locator('[data-card-balance-form] input')).toHaveValue('');
+      }
+      await context.close();
+    }
+    expect(tally.states, 'a state was skipped').toBe(12);
+    expect(tally.failures.join('\n\n')).toBe('');
+  });
 });

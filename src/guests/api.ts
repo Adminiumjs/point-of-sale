@@ -242,7 +242,8 @@ export async function publicGuestsPort(client: PublicClient, tables: Readonly<Re
           occasions: list(row?.['occasions']),
         };
       }),
-    availability: (day, party) => guard(() => client.availability(refs.availability, day, party)),
+    // Free, or not: a time the venue paused is as closed to a guest as one that filled up.
+    availability: (day, party) => guard(async () => (await client.availability(refs.availability, day, party)).map((slot) => ({ time: slot.time, state: slot.state === 'free' ? ('free' as const) : ('full' as const) }))),
     book: (b) =>
       guard(async () => {
         const row = await client.create(refs.book, {

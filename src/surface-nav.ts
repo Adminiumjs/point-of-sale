@@ -80,9 +80,20 @@ export const SURFACE_EXTRAS = {
    * shift start from what the till holds now, which a link cannot rebuild.
    */
   staff: ['login', 'payment', 'complete', 'refund', 'shiftclose', 'eod', 'staff', 'menu86', 'labels', 'loyalty', 'giftcards', 'display'],
-  /* The confirmation email's preview: the demo's only — a guest reads the real one in their mail. */
-  customer: ['email'],
+  /*
+   * The confirmation email's preview: the demo's only — a guest reads the real one in their mail.
+   * A gift card's balance: there only while Offers & gift cards is attached, so it is no section
+   * of the sidebar; it is reached by its own address (`GIFT_CARD_PATH`).
+   */
+  customer: ['email', 'balance'],
 } as const satisfies Record<'staff' | 'customer', readonly View[]>;
+
+/**
+ * Where a gift card's balance is read on the customer side — the manifest's
+ * customer route `giftCard`, which is also where the link in the card's email
+ * lands (`gift-card#<token>`). A test holds the two together.
+ */
+export const GIFT_CARD_PATH = 'gift-card';
 
 /** Every view the staff side renders, as a TYPE — nav entries plus extras. */
 export type StaffView =

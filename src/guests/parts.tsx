@@ -52,7 +52,7 @@ export function GuestHeader({ subtitle, steps, current }: { subtitle: string; st
         {name !== '' && <div style={css('font-size:16.5px;font-weight:800;letter-spacing:-.02em;')}>{name}</div>}
         <h1 style={css('margin:0;font-size:12px;font-weight:400;color:var(--fg-muted);')}>{subtitle}</h1>
       </div>
-      <ol style={css('list-style:none;margin:0;margin-inline-start:auto;padding:0;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;')}>
+      {steps.length > 0 && <ol style={css('list-style:none;margin:0;margin-inline-start:auto;padding:0;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;')}>
         {steps.map((label, i) => {
           const on = i === current;
           return (
@@ -65,7 +65,7 @@ export function GuestHeader({ subtitle, steps, current }: { subtitle: string; st
             </li>
           );
         })}
-      </ol>
+      </ol>}
     </header>
   );
 }

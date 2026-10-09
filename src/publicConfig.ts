@@ -50,6 +50,14 @@ export interface SurfaceConfig {
    * app with none and an older server.
    */
   publicKeys?: Record<string, string>;
+  /**
+   * The add-ons attached to this app and switched on for it, by key, each with
+   * the browser keys of its OWN that Adminium hands the app's page by what
+   * they open (Offers & gift cards' `offers-link`: the link in a card's
+   * email). An add-on with no such key is listed with none. Absent for a
+   * baked build, an app with no add-on and an older server.
+   */
+  addOns?: Record<string, { keys: Record<string, string> }>;
 }
 
 /** Test seams only — production call sites pass nothing. */
@@ -115,12 +123,24 @@ export async function resolveSurfaceConfig(
         : (opts.origin ?? window.location.origin);
     const tables = tablesOf((doc as { tables?: unknown }).tables);
     const publicKeys = tablesOf((doc as { publicKeys?: unknown }).publicKeys);
-    return { baseUrl, publishableKey: key, ...(tables === null ? {} : { tables }), ...(publicKeys === null ? {} : { publicKeys }) };
+    const addOns = addOnsOf((doc as { addOns?: unknown }).addOns);
+    return { baseUrl, publishableKey: key, ...(tables === null ? {} : { tables }), ...(publicKeys === null ? {} : { publicKeys }), ...(addOns === null ? {} : { addOns }) };
   } catch {
     // Network failure, or the SPA fallback answered with HTML (an instance
     // whose server predates the config route): both are "not configured".
     return null;
   }
+}
+
+/** The add-ons the document lists, each with its own keys (none when it hands none), or null. */
+function addOnsOf(value: unknown): Record<string, { keys: Record<string, string> }> | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  const out: Record<string, { keys: Record<string, string> }> = {};
+  for (const [key, addOn] of Object.entries(value as Record<string, unknown>)) {
+    if (addOn === null || typeof addOn !== "object") continue;
+    out[key] = { keys: tablesOf((addOn as { keys?: unknown }).keys) ?? {} };
+  }
+  return Object.keys(out).length === 0 ? null : out;
 }
 
 /** A map of strings to strings (`tables`, `publicKeys`), or null — anything else is ignored. */

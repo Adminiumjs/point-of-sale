@@ -4,6 +4,7 @@ import { setAmbient } from '../i18n/ambient';
 import { Icon } from '../components/Icon';
 import { css } from '../components/css';
 import { Book } from './Book';
+import { GiftCardPage, GuestNotFound } from './GiftCardPage';
 import { CancelSheet, ManageBooking } from './ManageBooking';
 import { GuestHeader } from './parts';
 import { useGuests, type GuestView } from './store';
@@ -22,6 +23,8 @@ export function GuestsScreen({ view }: { view?: GuestView }) {
   }, [view]);
   const current = view ?? s.view;
   const book = current === 'book';
+  // A gift card's balance needs neither the booking rules nor a table: it is its own page, there only with Offers & gift cards.
+  const balance = current === 'balance';
   const bookSteps = [t('guest.stepWhen'), t('guest.stepDetails'), t('guest.stepConfirmed')];
   const manageSteps = [t('guest.stepFind'), t('guest.stepBooking'), t('guest.stepDone')];
   const manageAt = s.booking === null || s.manageStep === 'find' ? 0 : s.manageStep === 'booking' || s.manageStep === 'when' ? 1 : 2;
@@ -29,13 +32,19 @@ export function GuestsScreen({ view }: { view?: GuestView }) {
   return (
     <div style={css('flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg);position:relative;')}>
       <GuestHeader
-        subtitle={t(book ? 'guest.bookTitle' : 'guest.manageTitle')}
-        steps={book ? bookSteps : manageSteps}
+        subtitle={t(balance ? (s.balance === null ? 'guest.notFoundTitle' : 'guest.cardTitle') : book ? 'guest.bookTitle' : 'guest.manageTitle')}
+        steps={balance ? [] : book ? bookSteps : manageSteps}
         current={book ? (s.bookStep === 'when' ? 0 : s.bookStep === 'details' ? 1 : 2) : manageAt}
       />
       <main className="pos-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:22px 18px 30px;')}>
         <div className="guest-col">
-          {s.loadFailed ? (
+          {balance ? (
+            s.balance === null ? (
+              <GuestNotFound onBook={() => s.setView('book')} />
+            ) : (
+              <GiftCardPage />
+            )
+          ) : s.loadFailed ? (
             <div role="alert" style={css('display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;padding:30px 0;')}>
               <Icon name="cloud-off" size={34} color="var(--fg-muted)" />
               <div style={css('font-size:15px;font-weight:700;color:var(--fg-muted);')}>{t('guest.errNetwork', { venue: s.venue?.name || t('guest.theVenue') })}</div>
