@@ -444,7 +444,7 @@ export function untar(buffer: Buffer): Record<string, Buffer> {
 /**
  * THE RELEASED APP, as its operator's Adminium was handed it: the published
  * tarball's own bytes (`CONTRACT_FROM_TARBALL`, e.g. `npm pack
- * the 0.2.3 package from downloads.adminium.dev`), refused unless it hashes to the integrity
+ * the 0.3.0 package from downloads.adminium.dev`), refused unless it hashes to the integrity
  * RELEASES.json recorded for its version — so the update is proved from what
  * was really shipped, never from a rebuild of its tag.
  */
@@ -453,14 +453,14 @@ export const FROM_TARBALL = process.env["CONTRACT_FROM_TARBALL"] ?? "";
 /**
  * THE ADMINIUM THE RELEASE WAS INSTALLED UNDER: a built checkout of the
  * Adminium a kitchen ran the released app on (`CONTRACT_FROM_ADMINIUM`, for
- * 0.2.3 Adminium 0.3.9), so the update is proved on the path a kitchen
+ * 0.3.0 Adminium 0.3.20), so the update is proved on the path a kitchen
  * takes: installed there, that Adminium upgraded in place
  * to `ADMINIUM_REPO` on the same data, and only then the app updated.
  */
 export const FROM_ADMINIUM = process.env["CONTRACT_FROM_ADMINIUM"] ?? "";
 
 /** The release an update starts from: the last one published. */
-export const FROM_VERSION = '0.2.3';
+export const FROM_VERSION = '0.3.0';
 
 /** Whether the published tarball itself is here (`CONTRACT_FROM_TARBALL`); without it the release is read from its tag. */
 export const publishedHere = (): boolean => FROM_TARBALL !== '' && existsSync(FROM_TARBALL);
