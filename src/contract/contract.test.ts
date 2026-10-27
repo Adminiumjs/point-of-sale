@@ -11,9 +11,11 @@
  *      two features are on — and nothing opens the guest's address to the
  *      public side;
  *   3. a paid ticket keeps what the guest was charged, tip included;
- *   4. an emailed receipt: the one row the till writes goes out with the
- *      receipt Invoices & Receipts drew attached (a PDF in a Latin language,
- *      the print copy in Arabic), and the row says it was sent;
+ *   4. an emailed receipt: the one row the till writes, in a cashier's
+ *      session, goes out with the receipt Invoices & Receipts drew attached
+ *      (a PDF in a Latin language, the print copy in Arabic), and the row
+ *      says it was sent; to a guest on the do-not-email list too, since a
+ *      receipt is service mail;
  *   5. shelf labels: a label sheet for a menu item through the staff route,
  *      drawn from its own barcode; an accented name, a mistyped barcode and
  *      no barcode each refused in the words the till shows;
@@ -212,12 +214,25 @@ describe.skipIf(why !== null)(`the contract with a built Adminium${why === null 
         await update('tickets', ticketId, { tip: 1.5 });
       }, 60_000);
 
+      /** A cashier holding the till's role and nothing else, signed in: who presses Email at the till. */
+      let cashier: Caller;
+      const asCashier = async (values: Row): Promise<Row> => ok(await cashier.post<{ data: Row }>(data('messages'), { values }), 201).data;
+      it('signs a cashier in with the till’s role alone', async () => {
+        const email = `cashier-${engine}@tillmail.net`;
+        const password = `contract-cashier-${engine}-pass!`;
+        const role = ok(await staff.get<{ roles: { id: string; name: string }[] }>('/api/v1/roles')).roles.find((r) => r.name === 'POS cashier')!;
+        const invited = ok(await staff.post<{ invite: { token: string } }>('/api/v1/users', { email, name: 'Sam Okafor', roleIds: [role.id] }), 201);
+        ok(await new Caller(server.base, { origin: server.base }).post('/api/v1/auth/password/reset', { token: invited.invite.token, newPassword: password }));
+        cashier = new Caller(server.base, { origin: server.base });
+        await cashier.signIn(email, password);
+      }, 60_000);
+
       // Not a reserved domain (`example.com` and the like are never sent to): the sink catches every address.
-      it('sends the receipt the till asked for, with the 80 mm receipt attached', async () => {
+      it('sends the receipt the cashier asked for, with the 80 mm receipt attached', async () => {
         const to = `guest-${engine}@tillmail.net`;
         const id = randomUUID();
-        // Exactly the row the till writes (`emailReceipt` in state/store.ts).
-        await insert('messages', { id, kind: 'receipt', status: 'queued', to_address: to, language: 'en-US', ticket_id: ticketId });
+        // Exactly the row the till writes (`emailReceipt` in state/store.ts), in the cashier's session.
+        await asCashier({ id, kind: 'receipt', status: 'queued', to_address: to, language: 'en-US', ticket_id: ticketId });
         const mail = await until(async () => (await mailbox(server)).find((m) => m.to.includes(to)), `the receipt to ${to}`, 150_000);
         expect(mail.subject).toBe(`Your receipt from ${VENUE}`);
         expect(mail.text).toContain('tip included');
@@ -231,6 +246,21 @@ describe.skipIf(why !== null)(`the contract with a built Adminium${why === null 
         }, 'the message to read sent');
         expect(row['sent_at']).not.toBeNull();
         expect(row['error']).toBeNull();
+      }, 180_000);
+
+      it('sends the receipt to a guest on the do-not-email list: a receipt is service mail, which the list never stops', async () => {
+        const to = `stopped-${engine}@tillmail.net`;
+        const added = ok(await staff.post<{ data: { added: number } }>('/api/v1/consent/stop-list', { addresses: [to] })).data;
+        expect(added.added).toBe(1);
+        const id = randomUUID();
+        await asCashier({ id, kind: 'receipt', status: 'queued', to_address: to, language: 'en-US', ticket_id: ticketId });
+        const mail = await until(async () => (await mailbox(server)).find((m) => m.to.includes(to)), `the receipt to ${to}`, 150_000);
+        expect(mail.subject).toBe(`Your receipt from ${VENUE}`);
+        const row = await until(async () => {
+          const r = await one('messages', id);
+          return r['status'] === 'queued' ? undefined : r;
+        }, 'the message to leave the queue');
+        expect([row['status'], row['error']]).toEqual(['sent', null]);
       }, 180_000);
 
       it('draws that receipt as the sale: its lines, the discount, tip, what was taken and who served', async () => {
