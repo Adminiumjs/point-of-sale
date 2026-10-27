@@ -154,6 +154,16 @@ With **Offers & gift cards** connected:
 
 With **Inventory** connected: link a menu item to a stock item on Inventory's pages (the link names the till's menu, `pos:menu_items`). Nothing is counted for an item with no link. Switched off for the till, sales go through uncounted.
 
+### Moving from 0.3.0
+
+0.3.1 needs Adminium **0.3.38** or later: update Adminium first, then the app. The update changes no table, no column and no row. It tells Adminium three things it reads for e-mail to contacts and for a person's data:
+
+- **Who the shop's people are:** the loyalty members (`customers`), by their email and name; a member counts as a customer once they have visited. A guest's name, email and mobile on a table booking, and the address a guest typed for an emailed receipt (`tickets.receipt_to`), are copies of a person, found and exported with them.
+- **The receipt is service mail.** The do-not-email list never stops it: a guest who said no to news still gets the receipt they asked for at the till.
+- **Tickets, payments, refunds and the gift card ledger are kept for tax.** Erasing a person's data leaves those rows as they are, and says so.
+
+The shop asks nobody for a yes to news, and the update adds nobody to the do-not-email list.
+
 ### Moving from 0.2.x
 
 0.3.0 is a larger step than its number: update on a quiet moment, with every till **synced** (no "offline" chip) and, if you can, the shift closed.
