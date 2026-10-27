@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "key": "pos",
   "name": "Point of Sale",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": {
     "id": "adminium",
     "name": "Adminium",
@@ -17,7 +17,7 @@
     "hospitality"
   ],
   "compatibility": {
-    "minAdminiumVersion": "0.3.20",
+    "minAdminiumVersion": "0.3.38",
     "engines": [
       "sqlite",
       "postgres",
@@ -2523,7 +2523,10 @@
               "reason": "discount_reason_id"
             }
           }
-        ]
+        ],
+        "keep": {
+          "law": "tax"
+        }
       },
       {
         "ref": "ticket_items",
@@ -3666,7 +3669,10 @@
               }
             ]
           }
-        ]
+        ],
+        "keep": {
+          "law": "tax"
+        }
       },
       {
         "ref": "refunds",
@@ -4405,7 +4411,10 @@
               "against_row": "payment_id"
             }
           }
-        ]
+        ],
+        "keep": {
+          "law": "tax"
+        }
       },
       {
         "ref": "refund_items",
@@ -6076,7 +6085,10 @@
               "at": "at"
             }
           }
-        ]
+        ],
+        "keep": {
+          "law": "tax"
+        }
       },
       {
         "ref": "booking_rules",
@@ -9808,8 +9820,44 @@
     },
     "kinds": {
       "receipt": "pos-receipt"
+    },
+    "classes": {
+      "receipt": "service"
     }
   },
+  "people": [
+    {
+      "table": "customers",
+      "kind": "people",
+      "email": "email",
+      "name": "name",
+      "firstName": "firstWordOfName",
+      "customer": "visits",
+      "copies": [
+        {
+          "table": "reservations",
+          "column": "name",
+          "holds": "name"
+        },
+        {
+          "table": "reservations",
+          "column": "email",
+          "holds": "email"
+        },
+        {
+          "table": "reservations",
+          "column": "mobile",
+          "holds": "phone"
+        },
+        {
+          "table": "tickets",
+          "column": "receipt_to",
+          "holds": "email",
+          "via": "customer_id"
+        }
+      ]
+    }
+  ],
   "emailTemplates": [
     {
       "key": "pos-receipt",
