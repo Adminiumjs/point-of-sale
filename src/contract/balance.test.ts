@@ -36,7 +36,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { OFFERS_KEY, OFFERS_LINK_KEY, cardsRef, publicBalanceDoor, type BalanceDoor, type CardAnswer } from '../guests/balance';
 import { MESSAGES } from '../i18n/messages';
 import { resolveSurfaceConfig } from '../publicConfig';
-import { Caller, ENGINES, missing, ok, type Engine } from './harness';
+import { Caller, ENGINES, mailbox, missing, ok, until, type Engine } from './harness';
 import { cents, standUp, type Row, type Stand } from './stand';
 
 const why = missing();
@@ -88,13 +88,20 @@ describe.skipIf(why !== null)(`a gift card's balance on the Guests side, on a bu
         const made = await s.insert('offers_gift_cards', { kind: 'card', recipient_email: to, recipient_name: 'Ada' }, { offers_card_actions: [{ action: 'issue', amount, reason: 'Sold at the desk', paid_by: 'cash' }] });
         const kept = await s.one('offers_gift_cards', made['id']);
         expect([kept['status'], cents(kept['balance'])]).toEqual(['active', cents(amount)]);
-        return { id: made['id'], code: String(kept['code']), token: String(kept['link_token']) };
+        // The link's code is no staff member's to read: it is in the email the card's holder was sent, and only there.
+        expect(kept['link_token']).toBeUndefined();
+        const mail = await until(async () => (await mailbox(s.server)).find((m) => m.to.includes(to)), `the card's email to ${to}`, 150_000);
+        const token = /\/gift-card#([A-Za-z0-9_-]+)/.exec(`${mail.text ?? ''} ${mail.html ?? ''}`)?.[1];
+        if (token === undefined) throw new Error(`no /gift-card# link in the email to ${to}: ${(mail.text ?? '').slice(0, 600)}`);
+        return { id: made['id'], code: String(kept['code']), token };
       };
 
       beforeAll(async () => {
         s = await standUp(engine as Engine, PORT, `pos_balance_${engine}`, { addOns: ['offers'], addOnSamples: ['offers'] });
         await s.insert('settings', { venue_name: 'Daybreak Coffee', tax_rate_bp: 825 });
         ok(await s.staff.put('/api/v1/public-api', { enabled: true }));
+        // Where emailed links point: a card's email carries its balance link only when the till's Guests side has an address.
+        ok(await s.staff.put('/api/v1/settings/email', { publicOrigin: s.server.base }));
       }, 400_000);
       afterAll(async () => {
         await s?.server.stop();
