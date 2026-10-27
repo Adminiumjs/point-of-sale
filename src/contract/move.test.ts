@@ -1,8 +1,8 @@
 /**
  * THE TILL'S GIFT CARDS BROUGHT INTO OFFERS & GIFT CARDS, ON EVERY ENGINE.
  *
- * A shop that began on the released 0.2.3 — its sample card (GC-48219930,
- * $38.50 in three rows) and three more made through 0.2.3's own doors: one
+ * A shop that began on the released 0.3.0 — its sample card (GC-48219930,
+ * $38.50 in three rows) and three more made through 0.3.0's own doors: one
  * spent down, one cancelled with money on it, one never sold — updated to this
  * build with Offers & gift cards connected. Then the till's own steps
  * (`runCardMove` in state/move.ts, spoken through the same doors the till
@@ -79,7 +79,7 @@ describe.skipIf(why !== null)(`the till's gift cards brought into Offers & gift 
   ENGINES.forEach(([engine, available]) => {
     describe.skipIf(!available)(`on ${engine}`, () => {
       let shop: UpdatedShop;
-      /** The cards as 0.2.3 left them: code → [status, cents, rows]. */
+      /** The cards as 0.3.0 left them: code → [status, cents, rows]. */
       const were: Record<string, [string, number, number]> = {};
       let carrying: unknown;
       const OPTIONS = { voidReason: 'Cancelled at the till before the move' };
@@ -91,12 +91,17 @@ describe.skipIf(why !== null)(`the till's gift cards brought into Offers & gift 
             const person = (await d.rows('staff'))[0]!;
             const row = (card: Row, kind: string, amount: number, daysAgo: number) =>
               d.insert('gift_card_ledger', { id: randomUUID(), card_id: card['id'], kind, amount, staff_id: person['id'], at: new Date(Date.now() - daysAgo * 86_400_000).toISOString() });
+            // A card starts unsold, as the till makes it, and is sold by its move to active.
+            const sell = async (daysAgo: number) => {
+              const card = await d.insert('gift_cards', { status: 'inactive' });
+              return d.update('gift_cards', card['id'], { status: 'active', issued_at: new Date(Date.now() - daysAgo * 86_400_000).toISOString() });
+            };
             // Sold for $20.00, $5.00 spent.
-            const spent = await d.insert('gift_cards', { status: 'active', issued_at: new Date(Date.now() - 20 * 86_400_000).toISOString() });
+            const spent = await sell(20);
             await row(spent, 'issue', 20, 20);
             await row(spent, 'redeem', -5, 3);
             // Sold for $10.00, then cancelled with the money still on it.
-            const cancelled = await d.insert('gift_cards', { status: 'active' });
+            const cancelled = await sell(12);
             await row(cancelled, 'issue', 10, 12);
             await d.update('gift_cards', cancelled['id'], { status: 'void' });
             // Printed, never sold.
@@ -118,7 +123,7 @@ describe.skipIf(why !== null)(`the till's gift cards brought into Offers & gift 
       const latch = async () => (await shop.d.rows('offers_settings'))[0]!['cards_paused'];
       const settings = async () => (await shop.d.rows('settings'))[0]!;
 
-      it('before the move: four cards as 0.2.3 left them, the feature on, nothing of them in Offers', async () => {
+      it('before the move: four cards as 0.3.0 left them, the feature on, nothing of them in Offers', async () => {
         expect(Object.values(were).sort((a, b) => b[1] - a[1])).toEqual([['active', 3850, 3], ['active', 1500, 2], ['void', 1000, 1], ['inactive', 0, 0]]);
         expect(were['GC-48219930']).toEqual(['active', 3850, 3]);
         expect(featuresOf(ok(await shop.staff.get<{ addOns?: Record<string, never> }>('/apps/pos/staff/surface-config.json')).addOns)).toMatchObject({ 'gift-cards': true });
