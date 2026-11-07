@@ -61,6 +61,15 @@ export type TableOfRef = Readonly<Record<string, string>>;
 /** `apps/server/src/security/csrf.ts` — leg B's header. */
 const CSRF_HEADER = "x-adminium-csrf";
 
+/**
+ * `apps/server/src/installs/resolve.ts` — which install of the app a call is
+ * for. One app can be installed on several databases; the staff config names
+ * this side's install, and every call carries it so the server reads that
+ * install's database, settings and add-ons. Absent from an older Adminium,
+ * and then nothing is sent.
+ */
+const INSTALL_HEADER = "x-adminium-install";
+
 /** `apps/server/src/routes/data/schema.ts` — `limit` is `.max(200)`. */
 const PAGE_MAX = 200;
 
@@ -95,6 +104,11 @@ export interface SessionPortOptions {
     serverTimezone?: string | null;
     currency?: string | null;
   };
+  /**
+   * The install this side belongs to (the staff config's `installId`). Sent as
+   * `X-Adminium-Install` on every call; null or absent sends nothing.
+   */
+  installId?: string | null;
   /** A fresh token after `CSRF_FAILED` — the staff config again, for a till booted from it. */
   refreshToken?: () => Promise<string | null>;
   /** Test seam. */
@@ -245,6 +259,7 @@ function buildTransport(opts: SessionPortOptions): SessionTransport {
   const doFetch = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   let csrfToken: string | null = null;
+  const installId: string | null = opts.installId ?? null;
   let connectionId: string | null = opts.connectionId ?? null;
   /** Adminium's own zone, for the fallback below. Null on an older Adminium. */
   let serverTimezone: string | null = null;
@@ -272,6 +287,7 @@ function buildTransport(opts: SessionPortOptions): SessionTransport {
           accept: "application/json",
           ...(init?.body !== undefined ? { "content-type": "application/json" } : {}),
           ...(mutating && csrfToken !== null ? { [CSRF_HEADER]: csrfToken } : {}),
+          ...(installId !== null ? { [INSTALL_HEADER]: installId } : {}),
           ...init?.headers,
         },
       });

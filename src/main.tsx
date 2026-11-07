@@ -234,6 +234,7 @@ async function boot(): Promise<void> {
       ? createSessionTransport({
           tableOfRef: realTables(staffConfig?.tables ?? {}),
           connectionId: boundConnection ?? undefined,
+          installId: staffConfig?.installId ?? null,
           ...(staffConfig?.csrfToken
             ? {
                 staff: {

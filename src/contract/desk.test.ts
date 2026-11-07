@@ -56,11 +56,15 @@ describe.skipIf(why !== null)(`the till's own doors on a built Adminium${why ===
         ok(await s.staff.post(s.data('inventory_links'), { values: { source_table: 'pos:menu_items', source_row: String(mug['id']), kind: 'item', item_id: point['item_id'], qty: '1', place_id: point['place_id'] } }), 201);
         cashier = await s.member('cashier', 'Sam Okafor');
         // As main.tsx boots a hosted till: the staff config, the transport over it, the desk over both.
-        const config = ok(await cashier.get<{ tables?: Record<string, string>; connectionId?: string; csrfToken?: string; timezone?: string; currency?: string | null; addOns?: Record<string, { tables?: Record<string, string> }> }>('/apps/pos/staff/surface-config.json'));
+        const config = ok(await cashier.get<{ tables?: Record<string, string>; connectionId?: string; installId?: string; csrfToken?: string; timezone?: string; currency?: string | null; addOns?: Record<string, { tables?: Record<string, string> }> }>('/apps/pos/staff/surface-config.json'));
+        // The install this till is (0.3.49 on): the server picks the install's database by it, not by guessing.
+        expect(config.installId).toEqual(expect.any(String));
         const tables = realTables(config.tables ?? {});
         const transport = createSessionTransport({
           tableOfRef: tables,
           connectionId: config.connectionId,
+          // Every call below carries the install, the add-ons' (Offers' look-up and print, Inventory's words) included.
+          installId: config.installId,
           staff: { csrfToken: config.csrfToken!, timezone: config.timezone, currency: config.currency },
           fetchImpl: cashier.fetchAs(),
         } as never);

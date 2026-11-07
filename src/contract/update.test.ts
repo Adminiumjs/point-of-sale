@@ -50,7 +50,7 @@ const PREFIX = 'pos_';
 const TO = (manifest as { version: string }).version;
 const TABLES = (manifest as unknown as { requiredSchema: { tables: { ref: string; columns: { ref: string }[] }[] } }).requiredSchema.tables;
 
-/** What 0.3.1 adds to 0.3.0's tables: nothing. Its words are read by Adminium, not stored in the shop's database. */
+/** What 0.3.1 and 0.3.2 add to 0.3.0's tables: nothing. Its words are read by Adminium, not stored in the shop's database. */
 const NEW_TABLES: string[] = [];
 const NEW_COLUMNS: Record<string, string[]> = {};
 const NEW_ENUM_VALUES: Record<string, Record<string, string[]>> = {};

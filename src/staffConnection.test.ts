@@ -92,6 +92,7 @@ describe("loadStaffConfig", () => {
   it("reads everything a till boots from, and keeps nothing it does not understand", async () => {
     const fetchImpl = ok({
       connectionId: "con_42",
+      installId: "ins_7",
       appName: null,
       tables: { tickets: "pos_tickets", odd: 7 },
       settings: { business_type: "retail" },
@@ -107,6 +108,7 @@ describe("loadStaffConfig", () => {
     });
     expect(await loadStaffConfig({ hostedStaff: true, base: "/apps/pos/staff/", fetchImpl })).toEqual({
       connectionId: "con_42",
+      installId: "ins_7",
       appName: null,
       tables: { tickets: "pos_tickets" },
       settings: { business_type: "retail" },
@@ -129,6 +131,26 @@ describe("loadStaffConfig", () => {
     expect(config?.publicKeys).toEqual({});
     // No add-on attached, or an Adminium too old to say: every feature built on one is off.
     expect(config?.addOns).toEqual({});
+  });
+
+  it("names no install from an Adminium too old to say, so no install header is sent", async () => {
+    const config = await loadStaffConfig({ hostedStaff: true, base: "/apps/pos/staff/", fetchImpl: ok({ connectionId: "con_42" }) });
+    expect(config?.installId).toBeNull();
+  });
+
+  it("gives a second install, served at its own mount, its own install id and database", async () => {
+    // Each mount answers its own document; the bare mount is the first install.
+    const docs: Record<string, unknown> = {
+      "/apps/pos/staff/surface-config.json": { connectionId: "con_cafe", installId: "ins_cafe" },
+      "/apps/pos/kiln/staff/surface-config.json": { connectionId: "con_kiln", installId: "ins_kiln" },
+    };
+    const fetchImpl = vi.fn(async (input: unknown) =>
+      new Response(JSON.stringify(docs[String(input)] ?? null), { status: docs[String(input)] === undefined ? 404 : 200 }),
+    ) as unknown as typeof fetch;
+    const first = await loadStaffConfig({ hostedStaff: true, base: configBase("/apps/pos/staff/", "/apps/pos/staff/"), fetchImpl });
+    const second = await loadStaffConfig({ hostedStaff: true, base: configBase("/apps/pos/staff/", "/apps/pos/kiln/staff/sales"), fetchImpl });
+    expect([first?.installId, first?.connectionId]).toEqual(["ins_cafe", "con_cafe"]);
+    expect([second?.installId, second?.connectionId]).toEqual(["ins_kiln", "con_kiln"]);
   });
 
   it("is null outside a hosted staff build", async () => {

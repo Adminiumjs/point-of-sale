@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "key": "pos",
   "name": "Point of Sale",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "publisher": {
     "id": "adminium",
     "name": "Adminium",
@@ -17,7 +17,7 @@
     "hospitality"
   ],
   "compatibility": {
-    "minAdminiumVersion": "0.3.38",
+    "minAdminiumVersion": "0.3.49",
     "engines": [
       "sqlite",
       "postgres",
@@ -9285,7 +9285,8 @@
       "routes": {
         "pos": "/"
       },
-      "placement": "external"
+      "placement": "external",
+      "instances": true
     },
     {
       "side": "customer",
@@ -9296,7 +9297,8 @@
         "manage": "/manage",
         "giftCard": "/gift-card"
       },
-      "enabled": true
+      "enabled": true,
+      "instances": true
     }
   ],
   "navGroups": [
