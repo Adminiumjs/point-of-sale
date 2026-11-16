@@ -210,6 +210,10 @@ describe.skipIf(why !== null)(`taking a card through Adminium${why === null ? ''
         const croissant = items.find((i) => i['name'] === 'Croissant')!;
         const back = (who: Caller) =>
           doors(who, s.connectionId, s.ids).post('refunds', { id: randomUUID(), ticket_id: paidTicket['id'], method: 'online', payment_id: readerPayment['id'], reason: 'wrong-item' }, { refund_items: [{ id: randomUUID(), ticket_item_id: croissant['id'], qty: 1 }] });
+        // What the refund screen asks first: the quote, a dry run of the very row.
+        const quoted = await doors(manager, s.connectionId, s.ids).dryCreate('refunds', { id: randomUUID(), ticket_id: paidTicket['id'], method: 'online', payment_id: readerPayment['id'], reason: 'wrong-item' }, { refund_items: [{ id: randomUUID(), ticket_item_id: croissant['id'], qty: 1 }] });
+        expect(quoted.status, JSON.stringify(quoted.body).slice(0, 800)).toBe(200);
+        expect(cents((quoted.body as { data: Row }).data['amount'])).toBe(411);
         const before = (await s.rows('refunds')).length;
         const no = await back(cashier);
         expect([no.status, no.code]).toEqual([403, 'PAYMENT_REFUND_NOT_ALLOWED']);
