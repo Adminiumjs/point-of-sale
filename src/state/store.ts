@@ -2721,7 +2721,11 @@ export const usePos = create<PosState>()((set, get) => {
     openHeld: () => set({ heldOpen: true }),     closeHeld: () => set({ heldOpen: false }),
     setMethod: (m) => {
       const cur = get();
-      if (m === cur.payMethod) return;
+      // The tab already open: as always, what was typed in it is cleared, and nothing else moves.
+      if (m === cur.payMethod) {
+        set({ cash: '', card: 'waiting' });
+        return;
+      }
       // A card on the reader is a payment on its way: it is taken off the reader first, never left running beside another.
       if (chargeRunning(cur.charge)) {
         get().showToast(t('reader.stillOn'), 'error');
