@@ -105,6 +105,7 @@ describe("loadStaffConfig", () => {
       publicKeys: { kiosk: "adm_pub_k", broken: 3 },
       access: { tables: { tickets: ["read", "update", "fly"], odd: "all" }, roles: [{ slug: "pos-cashier", name: "POS cashier" }, { name: "no slug" }] },
       addOns: { invoices: { version: "1.0.3", settings: { business_name: "Daybreak" } }, "barcode-labels": { version: 2, settings: "none" }, odd: true },
+      payments: { on: true, online: "yes", test: false, refund: true, secret: "x" },
     });
     expect(await loadStaffConfig({ hostedStaff: true, base: "/apps/pos/staff/", fetchImpl })).toEqual({
       connectionId: "con_42",
@@ -121,6 +122,8 @@ describe("loadStaffConfig", () => {
       publicKeys: { kiosk: "adm_pub_k" },
       access: { tables: { tickets: ["read", "update"] }, roles: [{ slug: "pos-cashier", name: "POS cashier" }] },
       addOns: { invoices: { version: "1.0.3", settings: { business_name: "Daybreak" } }, "barcode-labels": { version: null, settings: {} } },
+      // Each payments flag true only when the server said so in so many words.
+      payments: { on: true, online: false, test: false, refund: true },
     });
   });
 
@@ -131,6 +134,8 @@ describe("loadStaffConfig", () => {
     expect(config?.publicKeys).toEqual({});
     // No add-on attached, or an Adminium too old to say: every feature built on one is off.
     expect(config?.addOns).toEqual({});
+    // An Adminium that says nothing of payments: the till takes none through it, and reads as it always has.
+    expect(config?.payments).toEqual({ on: false, online: false, test: false, refund: false });
   });
 
   it("names no install from an Adminium too old to say, so no install header is sent", async () => {
