@@ -122,9 +122,13 @@ export function cardPanel(s: Pick<PosState, 'payments' | 'readers' | 'readerId' 
   return tillReader(s) !== null && s.cardWay === 'reader' ? 'reader' : 'terminal';
 }
 
-/** The QR tab: the ticket's pay link while guests can pay online, else marked paid by hand as today. */
-export function qrPanel(s: Pick<PosState, 'payments' | 'connected'>): 'link' | 'mark' {
-  return s.connected && s.payments.online ? 'link' : 'mark';
+/**
+ * The QR tab: the ticket's pay link while guests can pay online, else marked
+ * paid by hand as today — also for a person Adminium keeps from its pay links
+ * (`linkOff`, learnt from the first refusal).
+ */
+export function qrPanel(s: Pick<PosState, 'payments' | 'connected' | 'linkOff'>): 'link' | 'mark' {
+  return s.connected && s.payments.online && !s.linkOff ? 'link' : 'mark';
 }
 
 /** The till's tip is set aside while a reader or a pay link takes the payment. */
@@ -390,6 +394,12 @@ export async function openLink(ctx: TillPayCtx): Promise<void> {
     link = await pd.payLink(saved.id);
   } catch (raw) {
     const error = asSinkError(raw);
+    // Not this person's to make: the QR tab is "Mark paid" for them, as it always was.
+    if (error.status === 403) {
+      ctx.set({ link: null, linkOff: true });
+      giveTipBack(ctx);
+      return;
+    }
     updateLink(ctx, mine, { phase: 'failed', words: error.status === 0 ? t('link.offline') : t('link.refused') });
     return;
   }

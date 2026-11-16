@@ -188,6 +188,8 @@ export interface PosState {
   slip: Slip;
   /** The ticket's pay link, while the QR tab shows it. */
   link: LinkRun | null;
+  /** Adminium refused this person its pay links: the QR tab marks paid by hand, as it always did. */
+  linkOff: boolean;
   /** The till's tip, set aside while a reader or a pay link takes the payment. */
   tipBefore: { tip: number | 'c'; tipCustom: string } | null;
   /** Why money is sent back through the payment service (a refund of a reader's or a pay link's payment). */
@@ -1706,6 +1708,7 @@ export const usePos = create<PosState>()((set, get) => {
     charge: null,
     slip: EMPTY_SLIP,
     link: null,
+    linkOff: false,
     tipBefore: null,
     refundReason: null,
     refundConfirm: false,

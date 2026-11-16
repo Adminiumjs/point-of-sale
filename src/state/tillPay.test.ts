@@ -368,6 +368,19 @@ describe('the QR tab', () => {
     expect(pay.asked.filter((a) => a.op === 'closeLink')).toHaveLength(2);
   });
 
+  it('a person Adminium keeps from its pay links gets "Mark paid", as always', async () => {
+    connect(standInPay({ payLink: async () => Promise.reject(new SinkError('screens only', 'refused', 403, 'FORBIDDEN')) }), { payments: { on: true, online: true, test: false, refund: false } });
+    usePos.setState({ tip: 2 });
+    await toPayment();
+    s().setMethod('qr');
+    await until(() => s().linkOff, 'the refusal');
+    expect(qrPanel(s())).toBe('mark');
+    expect(s().link).toBeNull();
+    // The tip set aside for the link is the till's again.
+    expect(s().tipBefore).toBeNull();
+    expect(s().tip).toBe(2);
+  });
+
   it('marks the ticket paid by hand, as always, while guests cannot pay online', async () => {
     connect(standInPay(), { payments: { on: true, online: false, test: false, refund: true } });
     await toPayment();
