@@ -216,7 +216,10 @@ export function Payment() {
   };
 
   // The bar: the reader's Charge only before a charge and after one was cancelled; a pay link has its own buttons.
-  const bar = isCard && panel === 'reader' ? s.charge === null || s.charge.phase === 'cancelled' || s.charge.phase === 'busy' : !(isQr && qr === 'link');
+  const bar =
+    isCard && panel === 'reader'
+      ? s.charge === null || (!running && s.charge.phase !== 'approved' && s.charge.phase !== 'recording' && s.charge.phase !== 'declined')
+      : !(isQr && qr === 'link');
 
   // cash presets
   const r5 = Math.ceil(rem / 5) * 5;

@@ -89,7 +89,7 @@ export function ReaderPanel({ amount }: { amount: number }) {
   };
   if (run === null) {
     // The till's own internet is down: the reader cannot be reached.
-    if (s.online === false) return <StateBox tone="warn" icon="wifi-off" title={t('reader.noNet')}><button className="pos-press" onClick={s.useTerminal} style={css(button(true))}>{t('reader.useTerminal')}</button></StateBox>;
+    if (!s.online) return <StateBox tone="warn" icon="wifi-off" title={t('reader.noNet')}><button className="pos-press" onClick={s.useTerminal} style={css(button(true))}>{t('reader.useTerminal')}</button></StateBox>;
     if (reader !== null && !reader.online)
       return (
         <StateBox tone="warn" icon="unplug" title={t('reader.offlineWords', { reader: reader.label })} sub={reader.lastSeenAt === null ? null : t('reader.offlineSince', { time: date(new Date(reader.lastSeenAt), { hour: 'numeric', minute: '2-digit' }) })}>
@@ -230,6 +230,10 @@ export function LinkPanel() {
   const run = s.link;
   const svg = useRef<HTMLSpanElement>(null);
   const url = run?.link?.url ?? null;
+  // The tab opened with no link yet (back on Payment, or after a part was paid): one is made.
+  useEffect(() => {
+    if (usePos.getState().link === null) usePos.getState().newLink();
+  }, [run === null]);
   useEffect(() => {
     if (svg.current === null || url === null) return;
     try {
