@@ -2811,6 +2811,16 @@ export const usePos = create<PosState>()((set, get) => {
         void get().quoteCard(typedCard);
         return;
       }
+      /*
+       * Nothing left to take: a reader or a pay link took the rest while this
+       * till was away (a reload, another screen). The payments are Adminium's
+       * and already on the ticket; it only closes.
+       */
+      if (cur.connected && cur.ticket.server !== undefined && cur.ticket.server.due <= 0.005 && remaining(cur) <= 0.005 && cur.splits.length > 0 && !cur.paying) {
+        settleTip = 0;
+        void finalize(cur.splits, 0);
+        return;
+      }
       if (m === 'cash') applyCash();
       else if (m === 'card') {
         // The till's reader, a standalone terminal's slip, or the demo's animation.

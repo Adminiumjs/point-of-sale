@@ -270,6 +270,19 @@ describe('the till’s card reader', () => {
     expect(s().tipBefore).toBeNull();
   });
 
+  it('a ticket the reader paid while the till was away only closes: nothing is charged again', async () => {
+    const pay = standInPay();
+    connect(pay);
+    await toPayment();
+    // Read back after a reload: the reader's payment is on the ticket, and nothing is owing.
+    ledger.due = '0.00';
+    await s().refreshTicket(s().ticket.rid);
+    usePos.setState({ splits: [{ id: 'p-earlier', method: 'card', via: 'reader', amount: 24.14, tip: 0 }] });
+    s().onCharge();
+    await until(() => s().view === 'complete', 'the sale to close');
+    expect(pay.asked.some((a) => a.op === 'charge')).toBe(false);
+  });
+
   it('keeps the cashier on the charge: another tab waits until it ends', async () => {
     connect(standInPay());
     await toPayment();
