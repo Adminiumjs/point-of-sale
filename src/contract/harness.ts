@@ -195,6 +195,8 @@ export function appBundle(): Bundle & { key: string; version: string; built: boo
 
 export interface Server {
   base: string;
+  /** The demo card reader's counter, when the server was booted with `reader`. */
+  reader: string;
   /** The SMTP sink's reader: every email the server sent. */
   sink: string;
   /** What the server has said so far (its log), for a failure to show. */
@@ -217,6 +219,11 @@ export interface BootOptions {
   now?: number;
   /** One connection to the shop's database, so everything waits its turn. */
   poolOfOne?: boolean;
+  /**
+   * The demo card reader's counter (`reader.mjs`) on the port after the
+   * server's four: the contract taps a card on it as a customer would.
+   */
+  reader?: boolean;
 }
 
 /**
@@ -247,9 +254,13 @@ export async function boot(engine: Engine, port: number, database: string, optio
       : {
           CONTRACT_NOW: String(options.now),
           CONTRACT_CLOCK_FILE: clockFile,
-          NODE_OPTIONS: `${process.env['NODE_OPTIONS'] ?? ''} --import=${pathToFileURL(fileURLToPath(new URL('./clock.mjs', import.meta.url))).href}`.trim(),
         }),
+    ...(options.reader === true ? { CONTRACT_READER_PORT: String(port + 4) } : {}),
   };
+  const preloads = [...(options.now === undefined ? [] : ['./clock.mjs']), ...(options.reader === true ? ['./reader.mjs'] : [])];
+  if (preloads.length > 0) {
+    env['NODE_OPTIONS'] = `${process.env['NODE_OPTIONS'] ?? ''} ${preloads.map((file) => `--import=${pathToFileURL(fileURLToPath(new URL(file, import.meta.url))).href}`).join(' ')}`.trim();
+  }
   const script = options.keep === undefined ? join(checkout, 'apps', 'e2e', 'scripts', 'e2e-server.mjs') : fileURLToPath(new URL('./studio-server.mjs', import.meta.url));
   const child: ChildProcess = spawn(process.execPath, [script], { cwd: join(checkout, 'apps', 'e2e'), env, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = '';
@@ -273,6 +284,7 @@ export async function boot(engine: Engine, port: number, database: string, optio
   }
   return {
     base,
+    reader: `http://127.0.0.1:${String(port + 4)}`,
     sink: `http://127.0.0.1:${String(port + 2)}`,
     log: () => log,
     setClock: async (at, still = false) => {
@@ -477,12 +489,31 @@ export function releasedMissing(): string | null {
 }
 
 /** A file of the release as its tag holds it, or null when the tag is not in this clone. */
-function taggedFile(path: string): Buffer | null {
+function taggedFile(path: string, version = FROM_VERSION): Buffer | null {
   try {
-    return execFileSync('git', ['show', `v${FROM_VERSION}:${path}`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 });
+    return execFileSync('git', ['show', `v${version}:${path}`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 });
   } catch {
     return null;
   }
+}
+
+/**
+ * A released version as its tag holds it — its manifest and sample, stand-in
+ * pages — packed as an operator uploads it, or null when the tag is not in
+ * this clone. For an update proved on one Adminium: installed, used, then
+ * updated to this build.
+ */
+export function taggedBundle(version: string): (Bundle & { key: string; version: string }) | null {
+  const text = taggedFile('manifest.json', version);
+  if (text === null) return null;
+  const manifest = JSON.parse(text.toString('utf8')) as { key: string; version: string; sampleData?: { file: string } };
+  const files: Record<string, Buffer> = {
+    'package.json': Buffer.from(JSON.stringify({ name: `@adminiumjs/app-${manifest.key}`, version: manifest.version })),
+    'manifest.json': text,
+  };
+  for (const side of ['staff', 'customer']) files[`${side}/index.html`] = Buffer.from(`<!doctype html><html><body data-app="pos-${side}"></body></html>`);
+  if (manifest.sampleData !== undefined) files[manifest.sampleData.file] = taggedFile(manifest.sampleData.file, version)!;
+  return { ...bundle(files), key: manifest.key, version: manifest.version };
 }
 
 /**
