@@ -56,6 +56,7 @@ import type { ListCondition, SnapshotPort } from './snapshotPort';
 import type { DataSource } from './source';
 import { instant, venueMidnight } from './venueTime';
 import { listAll, listIn } from './listing';
+import { wayOf, type PaymentWay } from './payments';
 
 /* --------------------------------------------------------------- the wire */
 
@@ -182,7 +183,12 @@ interface WireTicketItem {
 interface WirePayment {
   id: Key;
   ticket_id: Key;
-  method: 'cash' | 'card' | 'qr' | 'gift_card';
+  method: 'cash' | 'card' | 'qr' | 'gift_card' | 'online';
+  /** A payment Adminium took (`online`): a card reader's carries the card's last four, a pay link's none. */
+  payment_last4?: string | null;
+  approval_code?: string | null;
+  paid_with?: string | null;
+  provider?: string | null;
   /** A gift card's code, when one paid. */
   reference: string | null;
   amount: Num;
@@ -683,12 +689,15 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
     const takings = todaysPayments.filter((row) => instant(row.paid_at) >= shiftStart);
     // Added in cents: a float sum of prices drifts (96.24000000000001).
     const cents = (values: Num[]): number => values.reduce<number>((total, v) => total + Math.round(num(v) * 100), 0) / 100;
-    const sum = (method: WirePayment['method']): number =>
-      cents(takings.filter((row) => row.method === method).flatMap((row) => [tookBy(row), row.tip ?? 0]));
+    // How each was taken: a card reader's payment counts as a card, a pay link's with QR and wallets (the QR the cashier showed).
+    const sum = (way: PaymentWay): number =>
+      cents(takings.filter((row) => (way === 'card' ? ['card', 'terminal', 'reader'].includes(wayOf(row)) : wayOf(row) === way || (way === 'qr' && wayOf(row) === 'link'))).flatMap((row) => [tookBy(row), row.tip ?? 0]));
+    const readerTook = sum('reader');
     const shift: ShiftTotals = {
       orders: new Set(takings.map((row) => key(row.ticket_id))).size,
       gross: cents(takings.map((row) => tookBy(row))),
       card: sum('card'),
+      ...(readerTook > 0 ? { reader: readerTook } : {}),
       cash: sum('cash'),
       qr: sum('qr'),
       gift: sum('gift_card'),
@@ -706,10 +715,18 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
               // One of Offers' cards is known by its last four, and by what it held after it paid.
               const last4 = row.card_last4 === null || row.card_last4 === undefined || row.card_last4 === '' ? undefined : row.card_last4;
               const reference = last4 ?? row.reference ?? undefined;
+              const way = wayOf(row);
+              const viaOf = way === 'reader' || way === 'link' || way === 'terminal' ? way : undefined;
               return {
                 id: key(row.id),
-                method: row.method,
+                // A card reader's payment is a card at the till.
+                method: way === 'reader' ? 'card' : row.method,
                 amount: num(tookBy(row)) + num(row.tip),
+                ...(viaOf === undefined ? {} : { via: viaOf }),
+                ...(viaOf === 'reader' ? { tip: num(row.tip) } : {}),
+                ...(typeof row.payment_last4 === 'string' && row.payment_last4 !== '' ? { last4: row.payment_last4 } : {}),
+                ...(typeof row.paid_with === 'string' && row.paid_with !== '' ? { paidWith: row.paid_with } : {}),
+                ...(typeof row.provider === 'string' && row.provider !== '' ? { provider: row.provider } : {}),
                 ...(reference === undefined ? {} : { reference }),
                 ...(last4 === undefined || row.card_balance_after === null || row.card_balance_after === undefined ? {} : { cardLeft: num(row.card_balance_after) }),
               };

@@ -17,6 +17,7 @@
 import { DEMO } from '../surface';
 import { seedSales } from './demo';
 import { listAll, listIn } from './listing';
+import { wayOf } from './payments';
 import type { ListCondition, SnapshotPort } from './snapshotPort';
 import type { PastLine, PastSale, PayMethod } from './types';
 import { instant, venueDay, venueMidnight } from './venueTime';
@@ -80,6 +81,11 @@ interface WirePayment {
   amount?: Num | null;
   /** The last four of a gift card kept by Offers, when one paid, and what it paid (`amount` stays nothing). */
   card_last4?: string | null;
+  /** A payment Adminium took, or one a standalone terminal's slip recorded: the card's last four, the reader's words, the service. */
+  payment_last4?: string | null;
+  approval_code?: string | null;
+  paid_with?: string | null;
+  provider?: string | null;
   card_amount?: Num | null;
   paid_at: string;
 }
@@ -142,9 +148,24 @@ export function portHistory(
         ...(row.gift_card_id === null || row.gift_card_id === undefined ? {} : { giftCard: true as const }),
       }));
       const paid = payments.filter((p) => key(p.ticket_id) === key(ticket.id)).sort((a, b) => a.paid_at.localeCompare(b.paid_at));
-      const paidWith = paid.flatMap((p) =>
-        p.id === undefined ? [] : [{ id: key(p.id), method: p.method, amount: n(p.method === 'gift_card' && p.card_amount !== null && p.card_amount !== undefined ? p.card_amount : p.amount), ...(p.card_last4 === null || p.card_last4 === undefined || p.card_last4 === '' ? {} : { last4: p.card_last4 }) }],
-      );
+      const filled = (value: string | null | undefined): value is string => value !== null && value !== undefined && value !== '';
+      const paidWith = paid.flatMap((p) => {
+        if (p.id === undefined) return [];
+        const way = wayOf(p);
+        return [
+          {
+            id: key(p.id),
+            method: p.method,
+            amount: n(p.method === 'gift_card' && p.card_amount !== null && p.card_amount !== undefined ? p.card_amount : p.amount),
+            ...(filled(p.card_last4) ? { last4: p.card_last4 } : {}),
+            // How a card or an online payment was taken, and where its money goes back.
+            ...(way === 'reader' || way === 'link' || way === 'terminal' ? { via: way } : {}),
+            ...(filled(p.payment_last4) ? { cardLast4: p.payment_last4 } : {}),
+            ...(filled(p.paid_with) ? { paidWith: p.paid_with } : {}),
+            ...(filled(p.provider) ? { provider: p.provider } : {}),
+          },
+        ];
+      });
       const subtotal = n(ticket.subtotal);
       const tax = n(ticket.tax);
       const total = n(ticket.total);
