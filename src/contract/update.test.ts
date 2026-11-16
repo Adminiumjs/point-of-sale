@@ -50,10 +50,22 @@ const PREFIX = 'pos_';
 const TO = (manifest as { version: string }).version;
 const TABLES = (manifest as unknown as { requiredSchema: { tables: { ref: string; columns: { ref: string }[] }[] } }).requiredSchema.tables;
 
-/** What 0.3.1 and 0.3.2 add to 0.3.0's tables: nothing. Its words are read by Adminium, not stored in the shop's database. */
+/**
+ * What 0.3.3 adds to 0.3.0's tables (0.3.1 and 0.3.2 added none): what a
+ * payment Adminium takes leaves on the till's payments (its reference, the
+ * service, what it was paid with, a card's approval code and last four, money
+ * given back at the service) and on a refund it sends back (its reference and
+ * where it stands), and `online` among the ways a payment and a refund go.
+ * Every one is new and empty: no row that was there changes.
+ */
 const NEW_TABLES: string[] = [];
-const NEW_COLUMNS: Record<string, string[]> = {};
-const NEW_ENUM_VALUES: Record<string, Record<string, string[]>> = {};
+const NEW_COLUMNS: Record<string, string[]> = {
+  payments: ['approval_code', 'paid_with', 'payment_last4', 'payment_ref', 'provider', 'refunded_elsewhere'],
+  refunds: ['refund_ref', 'refund_state'],
+};
+const NEW_ENUM_VALUES: Record<string, Record<string, string[]>> = { payments: { method: ['online'] }, refunds: { method: ['online'] } };
+/** A column, an index or a check that names one of the new columns. */
+const isNew = (table: string, text: string): boolean => (NEW_COLUMNS[table.slice(PREFIX.length)] ?? []).some((column) => new RegExp(`\\b${column}\\b`).test(text));
 
 const RUNS = [
   { id: 'plain', title: '', addOns: false },
@@ -250,7 +262,8 @@ describe.skipIf(why !== null)(`the update of a live ${FROM_VERSION} shop to ${TO
             expect([ref, planned.action, planned.class, planned.table, planned.renameExistingTo, planned.blocked]).toEqual([ref, 'reuse', 'own-leftover', `${PREFIX}${ref}`, undefined, []]);
             expect([ref, planned.edits.filter((e) => e.kind === 'add-column').map((e) => e.column).sort()]).toEqual([ref, NEW_COLUMNS[ref] ?? []]);
             expect([ref, Object.fromEntries(planned.edits.filter((e) => e.kind === 'enum-values').map((e) => [e.column, e.values]))]).toEqual([ref, NEW_ENUM_VALUES[ref] ?? {}]);
-            expect([ref, planned.edits.filter((e) => !['add-column', 'enum-values'].includes(e.kind))]).toEqual([ref, []]);
+            // The new reference is unique: its index comes with it, and nothing else.
+            expect([ref, planned.edits.filter((e) => !['add-column', 'enum-values'].includes(e.kind) && !((NEW_COLUMNS[ref] ?? []).includes(e.column) && ['add-unique', 'add-index'].includes(e.kind)))]).toEqual([ref, []]);
           }
         }, 120_000);
 
@@ -258,6 +271,8 @@ describe.skipIf(why !== null)(`the update of a live ${FROM_VERSION} shop to ${TO
           const reply = await staff.post<{ from: string; to: string; app: { version: string; schema?: { created: string[] }; rules?: { skipped: unknown[] } } }>('/api/v1/apps/pos/update', {
             planChecksum: plan.checksum,
             publicAccess: true,
+            // The manager gains "may refund online payments" for the till's own payments: the operator allows it.
+            roleGrants: true,
             ...(run.addOns ? { addOns: ['inventory', 'offers'].map((key) => ({ key, version: addOnBundle(key).version })) } : {}),
           });
           expect(reply.status, JSON.stringify(reply.body).slice(0, 1500)).toBe(200);
@@ -276,9 +291,16 @@ describe.skipIf(why !== null)(`the update of a live ${FROM_VERSION} shop to ${TO
           for (const [name, was] of Object.entries(before)) {
             const now = after[name]!;
             expect([name, now.key]).toEqual([name, was.key]);
-            expect([name, now.columns]).toEqual([name, was.columns]);
-            expect([name, now.constraints]).toEqual([name, was.constraints]);
-            expect(now.rows, `the rows of ${name}`).toEqual(was.rows);
+            // The new columns come empty; everything that was there is as it was.
+            const fresh = NEW_COLUMNS[name.slice(PREFIX.length)] ?? [];
+            const old = <T,>(row: Record<string, T>) => Object.fromEntries(Object.entries(row).filter(([column]) => !fresh.includes(column)));
+            expect([name, old(now.columns)]).toEqual([name, was.columns]);
+            expect([name, Object.keys(now.columns).filter((column) => fresh.includes(column)).sort()]).toEqual([name, [...fresh].sort()]);
+            // A list's new value widens its check; nothing else about the constraints moves.
+            const kept = (list: string[]) => list.filter((c) => !isNew(name, c) && !/online/.test(c));
+            expect([name, kept(now.constraints)]).toEqual([name, kept(was.constraints)]);
+            expect(now.rows.map(old), `the rows of ${name}`).toEqual(was.rows);
+            for (const row of now.rows) for (const column of fresh) expect([name, column, row[column]]).toEqual([name, column, null]);
           }
         }, 120_000);
 

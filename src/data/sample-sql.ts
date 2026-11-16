@@ -19,6 +19,7 @@ interface Column {
   enum?: string[];
   default?: string | number | boolean;
   maxLength?: number;
+  unique?: boolean;
   rules?: { sequence?: unknown; code?: unknown };
 }
 interface Table {
@@ -108,8 +109,8 @@ function columnSql(tables: Table[], column: Column): string {
   }
   if (column.type === 'enum') parts.push(`CHECK (${column.ref} IN (${(column.enum ?? []).map(quote).join(', ')}))`);
   if (column.type === 'fk') parts.push(`REFERENCES ${real(column.references!)} (id)`);
-  // A number from a counter and a code a guest types are each unique.
-  if (column.rules?.sequence !== undefined || column.rules?.code !== undefined) parts.push('UNIQUE');
+  // A number from a counter, a code a guest types and a payment taken online are each unique.
+  if (column.unique === true || column.rules?.sequence !== undefined || column.rules?.code !== undefined) parts.push('UNIQUE');
   return parts.join(' ');
 }
 

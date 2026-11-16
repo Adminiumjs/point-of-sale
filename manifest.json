@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "key": "pos",
   "name": "Point of Sale",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "publisher": {
     "id": "adminium",
     "name": "Adminium",
@@ -17,7 +17,7 @@
     "hospitality"
   ],
   "compatibility": {
-    "minAdminiumVersion": "0.3.49",
+    "minAdminiumVersion": "0.3.61",
     "engines": [
       "sqlite",
       "postgres",
@@ -3230,7 +3230,8 @@
               "cash",
               "card",
               "qr",
-              "gift_card"
+              "gift_card",
+              "online"
             ],
             "label": {
               "en-US": "Method",
@@ -3284,6 +3285,16 @@
                     "ar-EG": "بطاقة هدية",
                     "zh-CN": "礼品卡",
                     "zh-TW": "禮物卡"
+                  },
+                  "online": {
+                    "en-US": "Online",
+                    "de-DE": "Online",
+                    "fr-FR": "En ligne",
+                    "da-DK": "Online",
+                    "cs-CZ": "Online",
+                    "ar-EG": "عبر الإنترنت",
+                    "zh-CN": "在线",
+                    "zh-TW": "線上"
                   }
                 }
               }
@@ -3363,6 +3374,102 @@
               "ar-EG": "المرجع",
               "zh-CN": "参考号",
               "zh-TW": "參考號"
+            }
+          },
+          {
+            "ref": "payment_ref",
+            "type": "text",
+            "maxLength": 64,
+            "nullable": true,
+            "unique": true,
+            "label": {
+              "en-US": "Online payment reference",
+              "de-DE": "Referenz der Onlinezahlung",
+              "fr-FR": "Référence du paiement en ligne",
+              "da-DK": "Reference for onlinebetaling",
+              "cs-CZ": "Reference online platby",
+              "ar-EG": "مرجع الدفع عبر الإنترنت",
+              "zh-CN": "在线支付参考号",
+              "zh-TW": "線上付款參考編號"
+            }
+          },
+          {
+            "ref": "provider",
+            "type": "text",
+            "maxLength": 80,
+            "nullable": true,
+            "label": {
+              "en-US": "Payment service",
+              "de-DE": "Zahlungsdienst",
+              "fr-FR": "Service de paiement",
+              "da-DK": "Betalingstjeneste",
+              "cs-CZ": "Platební služba",
+              "ar-EG": "خدمة الدفع",
+              "zh-CN": "支付服务",
+              "zh-TW": "付款服務"
+            }
+          },
+          {
+            "ref": "paid_with",
+            "type": "text",
+            "maxLength": 120,
+            "nullable": true,
+            "label": {
+              "en-US": "Paid with",
+              "de-DE": "Bezahlt mit",
+              "fr-FR": "Payé avec",
+              "da-DK": "Betalt med",
+              "cs-CZ": "Zaplaceno",
+              "ar-EG": "دُفع بواسطة",
+              "zh-CN": "支付方式",
+              "zh-TW": "付款方式"
+            }
+          },
+          {
+            "ref": "approval_code",
+            "type": "text",
+            "maxLength": 12,
+            "nullable": true,
+            "label": {
+              "en-US": "Approval code",
+              "de-DE": "Genehmigungscode",
+              "fr-FR": "Code d’autorisation",
+              "da-DK": "Godkendelseskode",
+              "cs-CZ": "Autorizační kód",
+              "ar-EG": "رمز الموافقة",
+              "zh-CN": "授权码",
+              "zh-TW": "授權碼"
+            }
+          },
+          {
+            "ref": "payment_last4",
+            "type": "text",
+            "maxLength": 4,
+            "nullable": true,
+            "label": {
+              "en-US": "Last four digits",
+              "de-DE": "Letzte vier Ziffern",
+              "fr-FR": "Quatre derniers chiffres",
+              "da-DK": "Sidste fire cifre",
+              "cs-CZ": "Poslední čtyři číslice",
+              "ar-EG": "آخر أربعة أرقام",
+              "zh-CN": "卡号后四位",
+              "zh-TW": "卡號末四碼"
+            }
+          },
+          {
+            "ref": "refunded_elsewhere",
+            "type": "money",
+            "nullable": true,
+            "label": {
+              "en-US": "Given back at the payment service",
+              "de-DE": "Beim Zahlungsdienst zurückgegeben",
+              "fr-FR": "Rendu via le service de paiement",
+              "da-DK": "Givet tilbage hos betalingstjenesten",
+              "cs-CZ": "Vráceno u platební služby",
+              "ar-EG": "أُعيد لدى خدمة الدفع",
+              "zh-CN": "在支付服务处退回",
+              "zh-TW": "在付款服務退回"
             }
           },
           {
@@ -3704,7 +3811,8 @@
               "cash",
               "card",
               "qr",
-              "gift_card"
+              "gift_card",
+              "online"
             ],
             "label": {
               "en-US": "Method",
@@ -3758,6 +3866,16 @@
                     "ar-EG": "بطاقة هدية",
                     "zh-CN": "礼品卡",
                     "zh-TW": "禮物卡"
+                  },
+                  "online": {
+                    "en-US": "Online",
+                    "de-DE": "Online",
+                    "fr-FR": "En ligne",
+                    "da-DK": "Online",
+                    "cs-CZ": "Online",
+                    "ar-EG": "عبر الإنترنت",
+                    "zh-CN": "在线",
+                    "zh-TW": "線上"
                   }
                 }
               }
@@ -4331,6 +4449,89 @@
             }
           },
           {
+            "ref": "refund_ref",
+            "type": "text",
+            "maxLength": 255,
+            "nullable": true,
+            "label": {
+              "en-US": "Refund reference",
+              "de-DE": "Erstattungsreferenz",
+              "fr-FR": "Référence du remboursement",
+              "da-DK": "Refusionsreference",
+              "cs-CZ": "Reference vrácení",
+              "ar-EG": "مرجع الاسترداد",
+              "zh-CN": "退款参考号",
+              "zh-TW": "退款參考編號"
+            }
+          },
+          {
+            "ref": "refund_state",
+            "type": "enum",
+            "enum": [
+              "asked",
+              "pending",
+              "done",
+              "not-sent"
+            ],
+            "nullable": true,
+            "label": {
+              "en-US": "Where the refund stands",
+              "de-DE": "Stand der Erstattung",
+              "fr-FR": "État du remboursement",
+              "da-DK": "Status for refusion",
+              "cs-CZ": "Stav vrácení",
+              "ar-EG": "حالة الاسترداد",
+              "zh-CN": "退款状态",
+              "zh-TW": "退款狀態"
+            },
+            "rules": {
+              "enumLabels": {
+                "labels": {
+                  "asked": {
+                    "en-US": "Asked",
+                    "de-DE": "Angefragt",
+                    "fr-FR": "Demandé",
+                    "da-DK": "Anmodet",
+                    "cs-CZ": "Vyžádáno",
+                    "ar-EG": "مطلوب",
+                    "zh-CN": "已申请",
+                    "zh-TW": "已申請"
+                  },
+                  "pending": {
+                    "en-US": "On its way",
+                    "de-DE": "Unterwegs",
+                    "fr-FR": "En cours",
+                    "da-DK": "Undervejs",
+                    "cs-CZ": "Probíhá",
+                    "ar-EG": "قيد التنفيذ",
+                    "zh-CN": "处理中",
+                    "zh-TW": "處理中"
+                  },
+                  "done": {
+                    "en-US": "Sent back",
+                    "de-DE": "Zurückgezahlt",
+                    "fr-FR": "Remboursé",
+                    "da-DK": "Tilbagebetalt",
+                    "cs-CZ": "Vráceno",
+                    "ar-EG": "تمت الإعادة",
+                    "zh-CN": "已退回",
+                    "zh-TW": "已退回"
+                  },
+                  "not-sent": {
+                    "en-US": "Not sent",
+                    "de-DE": "Nicht gesendet",
+                    "fr-FR": "Non envoyé",
+                    "da-DK": "Ikke sendt",
+                    "cs-CZ": "Neodesláno",
+                    "ar-EG": "لم يُرسل",
+                    "zh-CN": "未发送",
+                    "zh-TW": "未傳送"
+                  }
+                }
+              }
+            }
+          },
+          {
             "ref": "cash_part",
             "type": "money",
             "nullable": true,
@@ -4345,9 +4546,20 @@
                   },
                   0,
                   {
-                    "coalesce": [
-                      "amount",
-                      0
+                    "if": [
+                      {
+                        "eq": [
+                          "refund_state",
+                          "not-sent"
+                        ]
+                      },
+                      0,
+                      {
+                        "coalesce": [
+                          "amount",
+                          0
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -8588,7 +8800,13 @@
             "card_balance_after",
             "refunded",
             "refundable",
-            "held_until"
+            "held_until",
+            "payment_ref",
+            "provider",
+            "paid_with",
+            "approval_code",
+            "payment_last4",
+            "refunded_elsewhere"
           ],
           "writable": [
             "ticket_id",
@@ -8613,7 +8831,9 @@
             "paid_at",
             "staff_id",
             "card_code",
-            "id"
+            "id",
+            "approval_code",
+            "payment_last4"
           ]
         },
         "refunds": {
@@ -8913,7 +9133,8 @@
         "table:@messages:read",
         "table:@messages:create",
         "table:@messages:update",
-        "app:@:staff"
+        "app:@:staff",
+        "payments:@:refund"
       ],
       "limits": {
         "tickets": {
@@ -9038,7 +9259,13 @@
             "card_balance_after",
             "refunded",
             "refundable",
-            "held_until"
+            "held_until",
+            "payment_ref",
+            "provider",
+            "paid_with",
+            "approval_code",
+            "payment_last4",
+            "refunded_elsewhere"
           ],
           "writable": [
             "ticket_id",
@@ -9063,7 +9290,9 @@
             "paid_at",
             "staff_id",
             "card_code",
-            "id"
+            "id",
+            "approval_code",
+            "payment_last4"
           ]
         },
         "refunds": {
@@ -10089,5 +10318,69 @@
   ],
   "sampleData": {
     "file": "seeds/pos.sample.json"
+  },
+  "payments": {
+    "payables": [
+      {
+        "table": "tickets",
+        "label": "number",
+        "amount": {
+          "column": "total"
+        },
+        "currency": {
+          "connection": true
+        },
+        "due": {
+          "column": "due"
+        },
+        "payments": {
+          "kind": "table",
+          "table": "payments",
+          "link": "ticket_id",
+          "amount": "amount",
+          "paidAt": "paid_at",
+          "method": {
+            "column": "method",
+            "values": {
+              "*": "online"
+            }
+          },
+          "note": "paid_with",
+          "reference": "payment_ref",
+          "provider": "provider",
+          "approvalCode": "approval_code",
+          "last4": "payment_last4",
+          "tip": "tip",
+          "refundedElsewhere": "refunded_elsewhere"
+        },
+        "payableWhen": [
+          {
+            "column": "status",
+            "in": [
+              "open",
+              "sent"
+            ]
+          }
+        ],
+        "receipt": "engine",
+        "onlyOnline": true,
+        "instantOnly": true,
+        "refunds": {
+          "model": "rows",
+          "table": "refunds",
+          "payment": "payment_id",
+          "amount": "amount",
+          "when": [
+            {
+              "column": "method",
+              "eq": "online"
+            }
+          ],
+          "providerRef": "refund_ref",
+          "state": "refund_state",
+          "openIn": "/"
+        }
+      }
+    ]
   }
 }
