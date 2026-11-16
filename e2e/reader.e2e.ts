@@ -199,12 +199,17 @@ test.describe('the till’s card reader on a built Adminium', () => {
     test.setTimeout(240_000);
     const failures: string[] = [];
     const page = await openTill();
+    // What Adminium answered the refund screen, said when a step waits in vain.
+    const said: string[] = [];
+    page.on('response', (response) => {
+      if (response.url().includes('/dry-run') || response.status() >= 400) void response.text().then((body) => said.push(`${String(response.status())} ${new URL(response.url()).pathname}: ${body.slice(0, 300)}`));
+    });
     await tool(page, 'refund');
     const sale = (await rows('tickets')).find((t) => t['status'] === 'paid' && Number(t['tip']) === 1.35)!;
     await page.locator(`[data-refund-sale="${String(Number(/(\d+)/.exec(String(sale['number']))![1]))}"]`).click();
     await expect(page.locator('[data-refund-payment="reader"]')).toContainText('Card reader');
     await expect(page.locator('[data-refund-payment="reader"]')).toContainText('Goes back to Visa ••4242 (usually 5–10 days).');
-    await expect(page.locator('[data-refund-issue]')).toBeEnabled({ timeout: 20_000 });
+    await expect(page.locator('[data-refund-issue]'), said.join('\n')).toBeEnabled({ timeout: 20_000 });
     await page.locator('[data-refund-issue]').click();
     await expect(page.getByText('Choose a reason.')).toBeVisible();
     await page.locator('[data-refund-reason="wrong-item"]').click();
