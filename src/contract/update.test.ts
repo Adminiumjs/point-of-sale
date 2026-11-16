@@ -296,8 +296,8 @@ describe.skipIf(why !== null)(`the update of a live ${FROM_VERSION} shop to ${TO
             const old = <T,>(row: Record<string, T>) => Object.fromEntries(Object.entries(row).filter(([column]) => !fresh.includes(column)));
             expect([name, old(now.columns)]).toEqual([name, was.columns]);
             expect([name, Object.keys(now.columns).filter((column) => fresh.includes(column)).sort()]).toEqual([name, [...fresh].sort()]);
-            // A list's new value widens its check; nothing else about the constraints moves.
-            const kept = (list: string[]) => list.filter((c) => !isNew(name, c) && !/online/.test(c));
+            // A list's new value widens the method's check (it lists 'gift_card'); nothing else about the constraints moves.
+            const kept = (list: string[]) => list.filter((c) => !isNew(name, c) && !/gift_card/.test(c));
             expect([name, kept(now.constraints)]).toEqual([name, kept(was.constraints)]);
             expect(now.rows.map(old), `the rows of ${name}`).toEqual(was.rows);
             for (const row of now.rows) for (const column of fresh) expect([name, column, row[column]]).toEqual([name, column, null]);
