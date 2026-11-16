@@ -222,6 +222,8 @@ async function follow(ctx: TillPayCtx, mine: number, first: ChargeView, rem: num
     const run = current(ctx, mine);
     if (run === null || run.attemptId === null) return;
     if (view.state === 'paid') return recorded(ctx, mine, view, rem);
+    // The cashier's cancel was answered: taken off the reader, nothing taken.
+    if (run.phase === 'cancelled') return;
     if (view.state === 'declined') return updateRun(ctx, mine, { phase: 'declined', cancelling: false });
     if (view.state === 'cancelled') return updateRun(ctx, mine, { phase: 'cancelled', cancelling: false });
     if (view.state === 'failed') {
