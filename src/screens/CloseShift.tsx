@@ -17,8 +17,16 @@ export function CloseShift() {
   const over = round2(s.closeCount - expected);
   const balanced = Math.abs(over) < 0.005;
   const tone = balanced ? 'var(--fg-muted)' : over > 0 ? 'var(--pos)' : 'var(--danger)';
-  const rows = [
+  // Card takings split by how the card was taken, once a card reader took any: the rest went through a standalone terminal.
+  const byReader = sh.reader !== undefined && sh.reader > 0;
+  const rows: { label: string; v: string; ic: string; sub?: boolean }[] = [
     { label: t('common.card'), v: money(sh.card), ic: 'credit-card' },
+    ...(byReader
+      ? [
+          { label: t('shift.reader'), v: money(sh.reader!), ic: 'smartphone', sub: true },
+          { label: t('shift.terminal'), v: money(round2(sh.card - sh.reader!)), ic: 'credit-card', sub: true },
+        ]
+      : []),
     { label: t('common.cash'), v: money(sh.cash), ic: 'banknote' },
     { label: t('shift.qr'), v: money(sh.qr), ic: 'qr-code' },
     { label: t('shift.tips'), v: money(sh.tips), ic: 'hand-coins' },
@@ -54,9 +62,9 @@ export function CloseShift() {
             <div style={css('font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin-bottom:4px;')}>{t('shift.gross')}</div>
             <div style={css('font-size:40px;font-weight:800;letter-spacing:-.02em;margin-bottom:12px;' + MONO)}>{money(sh.gross)}</div>
             {rows.map((r) => (
-              <div key={r.ic} style={css('display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--border);')}>
-                <Icon name={r.ic} size={17} color="var(--fg-muted)" />
-                <span style={css('font-size:14px;font-weight:600;')}>{r.label}</span>
+              <div key={r.label} data-shift-row={r.sub === true ? 'sub' : 'row'} style={css('display:flex;align-items:center;gap:11px;padding:' + (r.sub === true ? '7px 0' : '11px 0') + ';padding-inline-start:' + (r.sub === true ? '28px' : '0') + ';border-top:' + (r.sub === true ? 'none' : '1px solid var(--border)') + ';')}>
+                <Icon name={r.ic} size={r.sub === true ? 15 : 17} color="var(--fg-muted)" />
+                <span style={css('font-size:' + (r.sub === true ? '13px' : '14px') + ';font-weight:600;' + (r.sub === true ? 'color:var(--fg-muted);' : ''))}>{r.label}</span>
                 <span style={css('margin-inline-start:auto;font-weight:700;' + MONO)}>{r.v}</span>
               </div>
             ))}

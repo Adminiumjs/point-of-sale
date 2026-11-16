@@ -15,11 +15,13 @@ import {
   tipFor,
   total,
 } from '../state/calc';
-import { DEMO } from '../surface';
 import { useT, type MessageKey } from '../i18n';
 import { Icon } from '../components/Icon';
 import { ReductionRows, TotalLabel, WhyOff } from '../components/Figures';
 import { css } from '../components/css';
+import { useEffect, type KeyboardEvent } from 'react';
+import { cardPanel, chargeRunning, qrPanel } from '../state/tillPay';
+import { LinkPanel, ReaderPanel, TerminalPanel, TestBand, splitWords } from './PayPanels';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
 
@@ -63,6 +65,20 @@ export function Payment() {
   const isCash = s.payMethod === 'cash';
   const isCard = s.payMethod === 'card';
   const isQr = s.payMethod === 'qr';
+  // How the card and QR tabs work here: the till's reader, a standalone terminal or the demo's animation; a pay link or "Mark paid".
+  const panel = cardPanel(s);
+  const qr = qrPanel(s);
+  const tipAside = s.tipBefore !== null && ((isCard && panel === 'reader') || (isQr && qr === 'link'));
+  const running = chargeRunning(s.charge);
+  // A pay link still open when the screen goes is closed with it: nobody pays a ticket the till no longer waits for.
+  useEffect(() => () => usePos.getState().closeLink(), []);
+  const back = () => {
+    if (chargeRunning(usePos.getState().charge)) {
+      s.showToast(t('reader.stillOn'), 'error');
+      return;
+    }
+    usePos.setState({ view: 'register' });
+  };
   /*
    * A gift card kept by Offers & gift cards (the till's cards, once moved):
    * the card pays what ADMINIUM says it covers. The till asks first (a dry
@@ -139,13 +155,23 @@ export function Payment() {
         ? tend >= target - 0.005
         : tend > 0
       : isCard
-        ? s.card === 'waiting' || s.card === 'declined'
+        ? panel === 'reader'
+          ? !running && !off
+          : panel === 'terminal'
+            ? !s.paying && !s.slip.busy && s.slip.done === null
+            : s.card === 'waiting' || s.card === 'declined'
         : true;
   let chargeLabel: string;
   let chargeIcon: string;
   if (isGift) {
     chargeIcon = 'gift';
     chargeLabel = s.cardPay === null ? t('cards.check') : t('cards.use', { amount: money(s.cardPay.covers) });
+  } else if (isCard && panel === 'reader') {
+    chargeIcon = 'credit-card';
+    chargeLabel = t('reader.charge');
+  } else if (isCard && panel === 'terminal') {
+    chargeIcon = 'check';
+    chargeLabel = t('terminal.record', { amount: money(target) });
   } else if (isCard) {
     chargeIcon = s.card === 'declined' ? 'rotate-ccw' : 'credit-card';
     chargeLabel =
@@ -171,6 +197,27 @@ export function Payment() {
     chargeLabel = t('payment.markPaid', { amount: money(target) });
   }
 
+  // The tabs, in today's order; arrow keys move between them (mirrored in a right-to-left language).
+  const tabs = [
+    { m: 'cash', l: 'common.cash', ic: 'banknote' },
+    { m: 'card', l: 'common.card', ic: 'credit-card' },
+    { m: 'qr', l: 'payment.qr', ic: 'qr-code' },
+    ...(giftTab ? [{ m: 'gift_card', l: 'gift.method', ic: 'gift' }] : []),
+  ] as { m: PayMethod; l: MessageKey; ic: string }[];
+  const tabKey = (e: KeyboardEvent, i: number) => {
+    const rtl = document.documentElement.dir === 'rtl';
+    const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    const to = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : step === 0 ? -1 : (i + (rtl ? -step : step) + tabs.length) % tabs.length;
+    if (to < 0) return;
+    e.preventDefault();
+    const next = tabs[to]!;
+    s.setMethod(next.m);
+    document.getElementById(`pay-tab-${next.m}`)?.focus();
+  };
+
+  // The bar: the reader's Charge only before a charge and after one was cancelled; a pay link has its own buttons.
+  const bar = isCard && panel === 'reader' ? s.charge === null || s.charge.phase === 'cancelled' || s.charge.phase === 'busy' : !(isQr && qr === 'link');
+
   // cash presets
   const r5 = Math.ceil(rem / 5) * 5;
   const r10 = Math.ceil(rem / 10) * 10;
@@ -184,7 +231,7 @@ export function Payment() {
   return (
     <div style={css('flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg);')}>
       <header style={css('flex-shrink:0;min-height:70px;display:flex;align-items:center;gap:14px;padding:0 18px;background:var(--surface);border-bottom:1px solid var(--border);')}>
-        <button className="pos-press" onClick={() => usePos.setState({ view: 'register' })} style={css('display:flex;align-items:center;gap:9px;height:50px;padding:0 16px 0 12px;border-radius:14px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:15px;font-weight:700;cursor:pointer;')}>
+        <button className="pos-press" onClick={back} style={css('display:flex;align-items:center;gap:9px;height:50px;padding:0 16px 0 12px;border-radius:14px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:15px;font-weight:700;cursor:pointer;')}>
           <Icon name="arrow-left" size={19} />
           {t('payment.back')}
         </button>
@@ -196,7 +243,9 @@ export function Payment() {
         </div>
       </header>
 
-      {isCard && s.card === 'declined' && (
+      {s.payments.test && s.connected && <TestBand />}
+
+      {isCard && panel === 'demo' && s.card === 'declined' && (
         <div style={css('flex-shrink:0;display:flex;align-items:center;gap:12px;margin:14px 18px 0;padding:14px 16px;border-radius:14px;background:var(--danger-soft);border:1px solid color-mix(in srgb, var(--danger) 35%, transparent);color:var(--danger);')}>
           <Icon name="x-circle" size={22} />
           <div style={css('flex:1;')}>
@@ -216,13 +265,13 @@ export function Payment() {
             <div style={css('margin-top:16px;display:flex;flex-direction:column;gap:8px;')}>
               {s.splits.map((sp, i) => (
                 <div key={i} style={css('display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:13px;background:var(--surface);border:1px solid var(--border);')}>
-                  <Icon name={sp.method === 'cash' ? 'banknote' : sp.method === 'card' ? 'credit-card' : sp.method === 'gift_card' ? 'gift' : 'qr-code'} size={17} color="var(--pos)" />
+                  <Icon name={sp.method === 'cash' ? 'banknote' : sp.method === 'card' ? 'credit-card' : sp.method === 'gift_card' ? 'gift' : sp.method === 'online' ? 'globe' : 'qr-code'} size={17} color="var(--pos)" />
                   <span style={css('font-size:14px;font-weight:700;min-width:0;')}>
                     {sp.method === 'gift_card'
                       ? sp.cardLeft === undefined
                         ? t('gift.paidFrom', { code: sp.reference ?? '' })
                         : t('cards.kept', { last4: sp.reference ?? '' })
-                      : t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : 'payment.qrPay')}
+                      : (splitWords(t, sp) ?? t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : 'payment.qrPay'))}
                     {/* What one of Offers' cards held after it paid, as Adminium answered. */}
                     {sp.method === 'gift_card' && sp.cardLeft !== undefined && (
                       <span data-card-left="" style={css('display:block;font-size:12px;font-weight:600;color:var(--fg-muted);')}>{t('cards.leftOnIt', { amount: money(sp.cardLeft) })}</span>
@@ -236,6 +285,12 @@ export function Payment() {
           )}
 
           <div style={css('margin-top:24px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin-bottom:11px;')}>{t('common.tip')}</div>
+          {tipAside ? (
+            <div data-tip-aside="" style={css('display:flex;align-items:center;gap:10px;height:64px;padding:0 16px;border-radius:14px;border:1.5px dashed var(--border-strong);color:var(--fg-muted);font-size:14.5px;font-weight:700;')}>
+              <Icon name={isCard ? 'smartphone' : 'qr-code'} size={18} />
+              {t(isCard ? 'reader.chosenOnReader' : 'link.noTip')}
+            </div>
+          ) : (
           <div style={css('display:flex;gap:8px;')}>
             {/* The buttons ARE the venue's presets (`settings.tip_presets`): the label and
                 the amount under it come from the same number, never a 10/15/20 written here. */}
@@ -254,6 +309,7 @@ export function Payment() {
               {s.tip === 'c' && tipAmt(s) > 0 && <span style={css('font-size:12px;' + MONO + 'opacity:.7;margin-top:2px;')}>{money(tipAmt(s))}</span>}
             </button>
           </div>
+          )}
 
           <div style={css('margin-top:22px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin-bottom:11px;')}>
             {t('payment.splitBill')}
@@ -327,17 +383,26 @@ export function Payment() {
 
         {/* RIGHT: method pane */}
         <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;')}>
-          <div style={css('flex-shrink:0;display:flex;gap:10px;padding:20px 22px 0;')}>
-            {([
-              { m: 'cash', l: 'common.cash', ic: 'banknote' },
-              { m: 'card', l: 'common.card', ic: 'credit-card' },
-              { m: 'qr', l: 'payment.qr', ic: 'qr-code' },
-              ...(giftTab ? [{ m: 'gift_card', l: 'gift.method', ic: 'gift' }] : []),
-            ] as { m: PayMethod; l: MessageKey; ic: string }[]).map((x) => {
+          <div role="tablist" aria-label={t('payment.howPay')} style={css('flex-shrink:0;display:flex;gap:10px;padding:20px 22px 0;')}>
+            {tabs.map((x, i) => {
               // The gift card tab is off without a connection: the card's money is never the till's to guess.
               const dead = x.m === 'gift_card' && off;
+              const on = s.payMethod === x.m;
               return (
-                <button key={x.m} data-method={x.m} className="pos-press" disabled={dead} onClick={() => s.setMethod(x.m)} style={css(methodStyle(s.payMethod === x.m) + (dead ? 'opacity:.5;cursor:not-allowed;' : ''))}>
+                <button
+                  key={x.m}
+                  id={`pay-tab-${x.m}`}
+                  role="tab"
+                  aria-selected={on}
+                  aria-controls="pay-panel"
+                  tabIndex={on ? 0 : -1}
+                  data-method={x.m}
+                  className="pos-press"
+                  disabled={dead}
+                  onClick={() => s.setMethod(x.m)}
+                  onKeyDown={(e) => tabKey(e, i)}
+                  style={css(methodStyle(on) + (dead ? 'opacity:.5;cursor:not-allowed;' : ''))}
+                >
                   <Icon name={x.ic} size={20} />
                   {/* Four tabs across a phone: the gift card's takes its short name there. */}
                   {x.m === 'gift_card' ? (
@@ -358,7 +423,7 @@ export function Payment() {
             </div>
           )}
 
-          <div className="pos-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:20px 22px;')}>
+          <div id="pay-panel" role="tabpanel" aria-labelledby={`pay-tab-${s.payMethod}`} className="pos-scroll" style={css('flex:1;min-height:0;overflow-y:auto;padding:20px 22px;')}>
             {isCash && (
               <div style={css('display:flex;gap:20px;flex-wrap:wrap;')}>
                 <div style={css('flex:1;min-width:220px;')}>
@@ -392,7 +457,9 @@ export function Payment() {
               </div>
             )}
 
-            {isCard && (
+            {isCard && panel === 'reader' && <ReaderPanel amount={target} />}
+            {isCard && panel === 'terminal' && <TerminalPanel amount={target} />}
+            {isCard && panel === 'demo' && (
               <div style={css('max-width:460px;margin:8px auto;text-align:center;')}>
                 <div style={css('padding:38px 30px;border-radius:22px;border:1.5px solid ' + cardBorder + ';background:var(--surface);' + (s.card === 'waiting' ? 'animation:pos-cardglow 2.2s infinite;' : ''))}>
                   <Icon name={cardIcon} size={48} color={cardIconCol} />
@@ -400,8 +467,8 @@ export function Payment() {
                   <div style={css('font-size:13.5px;color:var(--fg-muted);margin-top:6px;')}>{cardSub}</div>
                   {s.card === 'reading' && <div style={css('width:34px;height:34px;border:3px solid var(--surface-3);border-top-color:var(--accent);border-radius:50%;animation:pos-spin .8s linear infinite;margin:18px auto 0;')} />}
                 </div>
-                {/* No card reader is driven from here: a real till records a payment taken on the venue's own terminal. */}
-                <div style={css('margin-top:14px;font-size:12.5px;color:var(--fg-subtle);')}>{t(DEMO ? 'payment.cardDemo' : 'payment.cardTerminal')}</div>
+                {/* The demo's reader is this animation, and says so. */}
+                <div style={css('margin-top:14px;font-size:12.5px;color:var(--fg-subtle);')}>{t('payment.cardDemo')}</div>
                 <div style={css('display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;font-size:12.5px;color:var(--fg-subtle);')}>
                   <Icon name="shield-check" size={15} />
                   {t('payment.encrypted')}
@@ -456,7 +523,8 @@ export function Payment() {
               </div>
             )}
 
-            {isQr && (
+            {isQr && qr === 'link' && <LinkPanel />}
+            {isQr && qr === 'mark' && (
               <div style={css('max-width:420px;margin:8px auto;text-align:center;')}>
                 <div style={css('width:224px;height:224px;margin:0 auto;border-radius:22px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);')}>
                   <Icon name="qr-code" size={156} color="var(--fg)" />
@@ -467,6 +535,7 @@ export function Payment() {
             )}
           </div>
 
+          {bar && (
           <div style={css('flex-shrink:0;padding:16px 22px;border-top:1px solid var(--border);background:var(--surface);')}>
             <button
               data-charge=""
@@ -478,6 +547,7 @@ export function Payment() {
               {chargeLabel}
             </button>
           </div>
+          )}
         </div>
       </div>
     </div>

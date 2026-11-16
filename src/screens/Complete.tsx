@@ -10,6 +10,7 @@ import { TotalLabel } from '../components/Figures';
 import { CardPrints } from '../components/CardPrints';
 import { css } from '../components/css';
 import type { Sale } from '../data/types';
+import { splitWords } from './PayPanels';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
 
@@ -31,7 +32,7 @@ export function Complete() {
 
   const methods: string[] = [];
   sale.splits.forEach((sp) => {
-    const l = t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : sp.method === 'gift_card' ? 'gift.method' : 'payment.qr');
+    const l = splitWords(t, sp) ?? t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : sp.method === 'gift_card' ? 'gift.method' : 'payment.qr');
     if (methods.indexOf(l) < 0) methods.push(l);
   });
   /*
@@ -113,7 +114,10 @@ export function Complete() {
                   <div key={i} data-paid-row="" style={css('display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:4px;')}>
                     <span style={css('color:var(--fg-muted);')}>
                       {t('complete.paidWith', {
-                        methods: sp.method === 'gift_card' && sp.cardLeft !== undefined ? t('cards.kept', { last4: sp.reference ?? '' }) : t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : sp.method === 'gift_card' ? 'gift.method' : 'payment.qr'),
+                        methods:
+                          sp.method === 'gift_card' && sp.cardLeft !== undefined
+                            ? t('cards.kept', { last4: sp.reference ?? '' })
+                            : (splitWords(t, sp) ?? t(sp.method === 'cash' ? 'common.cash' : sp.method === 'card' ? 'common.card' : sp.method === 'gift_card' ? 'gift.method' : 'payment.qr')),
                       })}
                     </span>
                     {/* A single payment took the whole sale, tip and all. */}
