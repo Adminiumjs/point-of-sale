@@ -44,6 +44,8 @@ export function setPayDesk(next: PayDesk | null): void {
 export function sessionPayDesk(transport: SessionTransport, ticketsTable: string): PayDesk {
   const call = async <T>(run: () => Promise<T>): Promise<T> => {
     try {
+      // The session is found first (the connection, and the token every write carries), whichever door is asked first.
+      await transport.connection();
       return await run();
     } catch (error) {
       if ((error as { code?: string }).code !== 'CSRF_FAILED') throw asSinkError(error);
