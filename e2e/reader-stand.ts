@@ -24,6 +24,8 @@ export interface ReaderStand {
   pid: number;
   connectionId: string;
   cookie: string;
+  /** A cashier's session: a role that opens the till's own screens only, with no refund right. */
+  cashier: string;
   counter: string;
 }
 
@@ -51,7 +53,8 @@ async function main(): Promise<void> {
     const started = ok(await s.staff.post<{ data: { pairing: string } }>('/api/v1/payments/readers/pairing', { provider: 'demo-reader', mode: 'test', label: 'Front counter', locationId: 'loc_demo' })).data;
     const code = ((await (await fetch(`${s.server.reader}/code?pairing=${encodeURIComponent(started.pairing)}`)).json()) as { code: string }).code;
     ok(await s.staff.post('/api/v1/payments/readers/pairing/finish', { provider: 'demo-reader', mode: 'test', label: 'Front counter', locationId: 'loc_demo', pairing: started.pairing, code }));
-    const out: ReaderStand = { base: s.server.base, pid: process.pid, connectionId: s.connectionId, cookie: s.staff.session, counter: s.server.reader };
+    const cashier = await s.member('cashier', 'Sam Okafor');
+    const out: ReaderStand = { base: s.server.base, pid: process.pid, connectionId: s.connectionId, cookie: s.staff.session, cashier: cashier.session, counter: s.server.reader };
     writeFileSync(OUT, JSON.stringify(out), { mode: 0o600 });
   } catch (error) {
     await s.server.stop();

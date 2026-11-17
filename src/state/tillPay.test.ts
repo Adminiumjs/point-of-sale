@@ -101,7 +101,7 @@ function standInPay(over: Partial<PayDesk> = {}): PayDesk & { asked: { op: strin
     }) as PayDesk[K];
   return { asked, readers: spy('readers'), charge: spy('charge'), charged: spy('charged'), cancel: spy('cancel'), payLink: spy('payLink'), closeLink: spy('closeLink') };
 }
-const view = (state: ChargeView['state'], more: Partial<ChargeView> = {}): ChargeView => ({ attemptId: 'pat_1', state, amount: 24.14, currency: 'USD', tip: null, last4: null, message: null, ...more });
+const view = (state: ChargeView['state'], more: Partial<ChargeView> = {}): ChargeView => ({ attemptId: 'pat_1', state, amount: 24.14, currency: 'USD', tip: null, brand: null, last4: null, message: null, ...more });
 const link = (): PayLink => ({ id: 'plk_1', url: 'https://pay.example/pay/abcdef', mode: 'live', expiresAt: Date.now() + 3_600_000 });
 
 /** A sink that answers the close the way Adminium does: paid once nothing is owing. */
@@ -156,13 +156,15 @@ describe('the till’s card reader', () => {
     const pay = standInPay({
       charged: async () => {
         polls += 1;
+        // The card being read: still on the reader, never a failure.
+        if (polls === 2) return view('processing');
         if (polls < 3) return view('on_reader');
         // The reader took it: Adminium writes the payment into the till's table, tip beside it.
         if (ledger.payments.length === 0) {
           ledger.payments.push({ id: 'p-reader', ticket_id: 1, method: 'online', amount: '24.14', tip: '3.35', payment_ref: 'pat_1', payment_last4: '4242', paid_with: 'Visa ••4242', approval_code: 'DEMO01' });
           ledger.due = '0.00';
         }
-        return view('paid', { tip: 3.35, last4: '4242' });
+        return view('paid', { tip: 3.35, last4: '4242', brand: 'Visa' });
       },
     });
     connect(pay);
@@ -176,6 +178,8 @@ describe('the till’s card reader', () => {
 
     s().onCharge();
     await until(() => s().charge?.phase === 'on_reader', 'the reader to hold the amount');
+    await until(() => polls >= 2, 'the card being read');
+    expect(s().charge?.phase === 'on_reader' || s().charge?.phase === 'recording' || s().view === 'complete').toBe(true);
     // The whole balance: no amount named, Adminium reads what is due itself.
     expect(pay.asked.find((a) => a.op === 'charge')!.args).toEqual([1, 'prd_1', null]);
     await until(() => s().view === 'complete', 'the sale to close');
@@ -366,19 +370,6 @@ describe('the QR tab', () => {
     await settled();
     expect(s().link).toBeNull();
     expect(pay.asked.filter((a) => a.op === 'closeLink')).toHaveLength(2);
-  });
-
-  it('a person Adminium keeps from its pay links gets "Mark paid", as always', async () => {
-    connect(standInPay({ payLink: async () => Promise.reject(new SinkError('screens only', 'refused', 403, 'FORBIDDEN')) }), { payments: { on: true, online: true, test: false, refund: false } });
-    usePos.setState({ tip: 2 });
-    await toPayment();
-    s().setMethod('qr');
-    await until(() => s().linkOff, 'the refusal');
-    expect(qrPanel(s())).toBe('mark');
-    expect(s().link).toBeNull();
-    // The tip set aside for the link is the till's again.
-    expect(s().tipBefore).toBeNull();
-    expect(s().tip).toBe(2);
   });
 
   it('marks the ticket paid by hand, as always, while guests cannot pay online', async () => {

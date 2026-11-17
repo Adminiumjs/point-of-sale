@@ -28,7 +28,7 @@ export interface TillReader {
 }
 
 /** Where a charge on a reader stands, as Adminium answers it. */
-export type ChargeState = 'sending' | 'on_reader' | 'paid' | 'declined' | 'cancelled' | 'failed';
+export type ChargeState = 'sending' | 'on_reader' | 'processing' | 'paid' | 'declined' | 'cancelled' | 'failed';
 export interface ChargeView {
   attemptId: string;
   state: ChargeState;
@@ -36,6 +36,8 @@ export interface ChargeView {
   amount: number;
   currency: string;
   tip: number | null;
+  /** The card's brand ("Visa"), once the reader took it. */
+  brand: string | null;
   last4: string | null;
   message: string | null;
 }
@@ -137,7 +139,7 @@ export function readerOf(raw: unknown): TillReader | null {
   };
 }
 
-const STATES: readonly ChargeState[] = ['sending', 'on_reader', 'paid', 'declined', 'cancelled', 'failed'];
+const STATES: readonly ChargeState[] = ['sending', 'on_reader', 'processing', 'paid', 'declined', 'cancelled', 'failed'];
 
 /** A charge from the terminal routes' `data`. */
 export function chargeOf(raw: unknown): ChargeView {
@@ -149,6 +151,7 @@ export function chargeOf(raw: unknown): ChargeView {
     amount: amount(r['amount']) ?? 0,
     currency: text(r['currency']) ?? '',
     tip: amount(r['tip']),
+    brand: text(r['brand']),
     last4: text(r['last4']),
     message: text(r['message']),
   };

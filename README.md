@@ -156,7 +156,7 @@ With **Inventory** connected: link a menu item to a stock item on Inventory's pa
 
 ## Taking cards through Adminium (from 0.3.3)
 
-Point of Sale takes every payment it took before, the same way. With Adminium **0.3.61** or later it can also take a card **through Adminium**: on a card reader paired in Adminium, or by a pay link the guest scans and pays on their phone. Nothing changes until someone who manages payments switches **Point of Sale** on in Adminium's **Payments → Apps**; until then the till reads exactly as it did.
+Point of Sale takes every payment it took before, the same way. With Adminium **0.3.62** or later it can also take a card **through Adminium**: on a card reader paired in Adminium, or by a pay link the guest scans and pays on their phone. Nothing changes until someone who manages payments switches **Point of Sale** on in Adminium's **Payments → Apps**; until then the till reads exactly as it did.
 
 **The card tab** works one of three ways:
 
@@ -175,6 +175,8 @@ A reader needs the internet: a till that is offline, or a reader that stops answ
 **Refunds.** A refund is still the till's own refund row, with its lines; Adminium works out the amount, as before. A refund of a payment a reader or a pay link took goes back **through the payment service**: it asks for a reason and a confirm step, and only someone who may refund online payments can make it (the **POS manager** role carries that right; the install review shows it and it can be unticked). Adminium sends the money back and stamps the row (`refund_ref`, `refund_state`: asked, on its way, sent back, or not sent — a refund not sent counts for nothing, so the payment can be refunded another way). Cash and a standalone terminal's card keep their one step; the terminal's refund is made on the terminal too.
 
 **Close shift** splits card takings into **Card reader** and **Standalone terminal** once a reader took any; a pay link counts with QR and wallets.
+
+0.3.3 needs Adminium **0.3.62**: that release lets a till's screens-only cashier use the reader and the pay link, and gives a payment Adminium writes into the till's `payments` its key on SQLite and MySQL (an earlier Adminium wrote a reader's payment there without one). Update Adminium first, then the app.
 
 What 0.3.3 adds to the tables (every column new and empty; no row changes): on `payments`, `payment_ref` (unique: Adminium's reference), `provider`, `paid_with`, `approval_code`, `payment_last4` (a payment card's, never the gift card's `card_last4`), `refunded_elsewhere`, and the method `online`; on `refunds`, `refund_ref`, `refund_state` and the method `online`. Only Adminium writes a payment's reference and the refund stamps, and a payment Adminium took is changed only by a refund. The update gives the **POS manager** role the right to refund the till's online payments: allow it at the update.
 

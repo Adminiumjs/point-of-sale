@@ -59,8 +59,8 @@ async function tap(card: 'succeeds' | 'declined', tip = '0'): Promise<void> {
   expect(res.status, await res.text()).toBe(200);
 }
 
-async function openTill(): Promise<Page> {
-  const page = await context.newPage();
+async function openTill(within: BrowserContext = context): Promise<Page> {
+  const page = await within.newPage();
   await page.goto(stand.base + TILL);
   await expect(page.locator('.ticket-aside')).toBeVisible({ timeout: 30_000 });
   return page;
@@ -195,6 +195,47 @@ test.describe('the till’s card reader on a built Adminium', () => {
     expect(failures).toEqual([]);
   });
 
+  test('a cashier’s till reaches the readers and pay links, but sends no money back without the right', async ({ browser }) => {
+    test.setTimeout(240_000);
+    const failures: string[] = [];
+    const cashier = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+    await cashier.addCookies(
+      stand.cashier.split('; ').map((pair) => {
+        const at = pair.indexOf('=');
+        return { name: pair.slice(0, at), value: pair.slice(at + 1), url: stand.base };
+      }),
+    );
+    try {
+      // The routes a screens-only role's till speaks: the readers, and a ticket's pay link.
+      const config = (await (await cashier.request.get(`${stand.base}${TILL}surface-config.json`)).json()) as { csrfToken: string; tables: Record<string, string> };
+      const readers = await cashier.request.get(`${stand.base}/api/v1/payments/terminal/readers`);
+      expect(readers.status(), await readers.text()).toBe(200);
+      expect(((await readers.json()) as { data: { label: string }[] }).data.map((r) => r.label)).toEqual(['Front counter']);
+      const madeTicket = await cashier.request.post(`${stand.base}/api/v1/data/${stand.connectionId}/${config.tables['tickets']!}`, { data: { values: { guests: 1, status: 'open' } }, headers: { 'x-adminium-csrf': config.csrfToken, origin: stand.base } });
+      expect(madeTicket.status(), await madeTicket.text()).toBe(201);
+      const ticket = ((await madeTicket.json()) as { data: Row }).data;
+      {
+        const schema = (await (await context.request.get(`${stand.base}/api/v1/connections/${stand.connectionId}/schema`)).json()) as { model: { tables: { id: string; name: string }[] } };
+        const tableName = schema.model.tables.find((t) => t.name === config.tables['tickets'])!.id;
+        const made = await cashier.request.post(`${stand.base}/api/v1/payments/links`, { data: { kind: 'profile', connectionId: stand.connectionId, tableName, rowKey: String(ticket['id']) }, headers: { 'x-adminium-csrf': config.csrfToken, origin: stand.base } });
+        expect(made.status(), await made.text()).toBe(200);
+      }
+      // A refund of the reader's payment: the cashier is told who may, and no Refund button is there.
+      const page = await openTill(cashier);
+      await expect(page.locator('[data-nav="tillsettings"]')).toHaveCount(0);
+      await tool(page, 'refund');
+      const sale = (await rows('tickets')).find((t) => t['status'] === 'paid' && Number(t['tip']) === 1.35)!;
+      await page.locator(`[data-refund-sale="${String(Number(/(\d+)/.exec(String(sale['number']))![1]))}"]`).click();
+      await expect(page.locator('[data-refund-noperm]')).toContainText('Ask a manager who can refund online payments.');
+      await expect(page.locator('[data-refund-issue]')).toHaveCount(0);
+      await axe(page, 'a cashier at a refund that needs the right', failures);
+      await page.close();
+    } finally {
+      await cashier.close();
+    }
+    expect(failures).toEqual([]);
+  });
+
   test('a refund of the reader’s payment asks a reason and one sentence, and goes back through the reader', async () => {
     test.setTimeout(240_000);
     const failures: string[] = [];
@@ -231,4 +272,5 @@ test.describe('the till’s card reader on a built Adminium', () => {
     await page.close();
     expect(failures).toEqual([]);
   });
+
 });

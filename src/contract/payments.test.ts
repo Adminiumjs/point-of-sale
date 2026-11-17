@@ -9,9 +9,8 @@
  *
  *   1. the till arrives switched off: its payable is there, off, and the
  *      staff config says so; the manager may give money back, a cashier not;
- *   2. a payment manager pairs the demo reader in Studio, and the manager's
- *      till lists it (a cashier's role opens the till's screens only, and
- *      Adminium keeps its payment routes from such a role: refused);
+ *   2. a payment manager pairs the demo reader in Studio, and a cashier's
+ *      till (a role that opens the till's own screens only) lists it;
  *   3. while the payment manager rehearses, a ticket's balance goes on the
  *      reader: the reader takes it with a tip, Adminium writes the payment
  *      once into the till's table — the amount asked, the tip beside it, the
@@ -23,7 +22,7 @@
  *      a cash refund keeps its one step;
  *   6. a standalone terminal's slip is the cashier's to record; nobody but
  *      Adminium writes a payment's reference, or changes a payment it took;
- *   7. the ticket's pay link is made, read back and closed at the till;
+ *   7. the ticket's pay link is made, read back and closed by a cashier;
  *   8. an update of a shop on 0.3.2 keeps every row, adds the new columns
  *      empty, and arrives switched off.
  *
@@ -125,7 +124,7 @@ describe.skipIf(why !== null)(`taking a card through Adminium${why === null ? ''
         expect(mgr.config.payments).toEqual({ on: false, online: false, test: false, refund: true });
       }, 60_000);
 
-      it('a payment manager pairs the demo reader, and the manager’s till lists it', async () => {
+      it('a payment manager pairs the demo reader, and a cashier’s till lists it', async () => {
         const started = ok(await s.staff.post<{ data: { pairing: string; way: string } }>('/api/v1/payments/readers/pairing', { provider: 'demo-reader', mode: 'test', label: 'Front counter', locationId: 'loc_demo' })).data;
         expect(started.way).toBe('enter');
         const code = ((await (await fetch(`${s.server.reader}/code?pairing=${encodeURIComponent(started.pairing)}`)).json()) as { code: string }).code;
@@ -133,16 +132,10 @@ describe.skipIf(why !== null)(`taking a card through Adminium${why === null ? ''
         expect(finished.state).toBe('paired');
         // The pairing is the payment managers' alone; the list is any till's.
         expect((await cashier.post('/api/v1/payments/readers/pairing', { provider: 'demo-reader', mode: 'test', label: 'Back bar' })).status).toBe(403);
-        const listed = await mgr.pay.readers();
+        // A cashier's role opens the till's own screens only: its till still lists the readers.
+        const listed = await cash.pay.readers();
         expect(listed.map((r) => [r.label, r.mode, r.online])).toEqual([['Front counter', 'test', true]]);
         reader = listed[0]!;
-        /*
-         * A cashier's role opens the till's own screens only, and Adminium keeps
-         * its payment routes from such a role today: the cashier's till is
-         * refused the list, so its card tab stays a standalone terminal.
-         */
-        const refusedList = await refusal(cash.pay.readers());
-        expect([refusedList.status]).toEqual([403]);
       }, 60_000);
 
       let paidTicket: Row;
@@ -152,16 +145,16 @@ describe.skipIf(why !== null)(`taking a card through Adminium${why === null ? ''
         // Made by the rehearsing payment manager: a sample row, where a test payment may land.
         const t = await ticket();
         expect(cents(t['due'])).toBe(1386);
-        const view = await mgr.pay.charge(t['id'] as RowId, reader.id, null);
+        const view = await cash.pay.charge(t['id'] as RowId, reader.id, null);
         expect([view.state, view.amount]).toEqual(['on_reader', 13.86]);
         await tap(s.server.reader, 'succeeds', '2.08');
-        const done: ChargeView = await ended(mgr.pay, view.attemptId);
-        expect([done.state, done.tip, done.last4]).toEqual(['paid', 2.08, '4242']);
+        const done: ChargeView = await ended(cash.pay, view.attemptId);
+        expect([done.state, done.tip, done.brand, done.last4]).toEqual(['paid', 2.08, 'Visa', '4242']);
         const row = await recorded(view.attemptId);
         expect([row['method'], cents(row['amount']), cents(row['tip']), row['payment_last4'], row['approval_code'], row['paid_with']]).toEqual(['online', 1386, 208, '4242', 'DEMO01', 'Visa ••4242']);
         expect(row['provider']).toEqual(expect.any(String));
         // As the till reads it back after the charge: through its own door, by the reference.
-        expect((await mgr.desk.rows('payments', { column: 'payment_ref', op: 'eq', value: view.attemptId })).map((r) => r['id'])).toEqual([row['id']]);
+        expect((await cash.desk.rows('payments', { column: 'payment_ref', op: 'eq', value: view.attemptId })).map((r) => r['id'])).toEqual([row['id']]);
         const owing = await s.one('tickets', t['id']);
         expect(cents(owing['due'])).toBe(0);
         // The till closes the ticket as it does after any payment: the reader's tip on it.
@@ -176,32 +169,32 @@ describe.skipIf(why !== null)(`taking a card through Adminium${why === null ? ''
 
       it('says a declined card, a cancel on the till, a cancel that lost the race (recorded), and a busy reader', async () => {
         const t = await ticket();
-        const first = await mgr.pay.charge(t['id'] as RowId, reader.id, null);
+        const first = await cash.pay.charge(t['id'] as RowId, reader.id, null);
         await tap(s.server.reader, 'declined');
-        expect((await ended(mgr.pay, first.attemptId)).state).toBe('declined');
+        expect((await ended(cash.pay, first.attemptId)).state).toBe('declined');
 
-        const second = await mgr.pay.charge(t['id'] as RowId, reader.id, null);
+        const second = await cash.pay.charge(t['id'] as RowId, reader.id, null);
         expect(second.attemptId).not.toBe(first.attemptId);
-        expect((await mgr.pay.cancel(second.attemptId)).state).toBe('cancelled');
+        expect((await cash.pay.cancel(second.attemptId)).state).toBe('cancelled');
         expect((await s.rows('payments')).filter((p) => p['ticket_id'] === t['id'])).toHaveLength(0);
 
         // Another ticket's charge holds the reader: this one is refused, by name.
         const other = await ticket();
-        const holding = await mgr.pay.charge(other['id'] as RowId, reader.id, null);
-        const busy = await refusal(mgr.pay.charge(t['id'] as RowId, reader.id, null));
+        const holding = await cash.pay.charge(other['id'] as RowId, reader.id, null);
+        const busy = await refusal(cash.pay.charge(t['id'] as RowId, reader.id, null));
         expect([busy.status, busy.details['reason']]).toEqual([409, 'reader-busy']);
-        expect((await mgr.pay.cancel(holding.attemptId)).state).toBe('cancelled');
+        expect((await cash.pay.cancel(holding.attemptId)).state).toBe('cancelled');
 
         // Part of the balance, then the card is tapped a moment before the cancel: that is a payment.
-        const third = await mgr.pay.charge(t['id'] as RowId, reader.id, '5.00');
+        const third = await cash.pay.charge(t['id'] as RowId, reader.id, '5.00');
         expect(third.amount).toBe(5);
         await tap(s.server.reader, 'succeeds');
-        expect((await mgr.pay.cancel(third.attemptId)).state).toBe('paid');
+        expect((await cash.pay.cancel(third.attemptId)).state).toBe('paid');
         const row = await recorded(third.attemptId);
         expect(cents(row['amount'])).toBe(500);
         expect(cents((await s.one('tickets', t['id']))['due'])).toBe(886);
         // More than is owing is never asked.
-        const over = await refusal(mgr.pay.charge(t['id'] as RowId, reader.id, '9.00'));
+        const over = await refusal(cash.pay.charge(t['id'] as RowId, reader.id, '9.00'));
         expect([over.status, over.details['reason']]).toEqual([422, 'amount']);
       }, 180_000);
 
@@ -251,15 +244,14 @@ describe.skipIf(why !== null)(`taking a card through Adminium${why === null ? ''
         expect((given.body as { data: Row }).data['refund_state'] ?? null).toBeNull();
       }, 120_000);
 
-      it('the ticket’s pay link is made, read back as the current one, and closed at the till', async () => {
+      it('the ticket’s pay link is made, read back as the current one, and closed by a cashier', async () => {
         const t = await ticket();
-        // A cashier's till is kept from the link routes as from the reader's: its QR tab marks a ticket paid by hand.
-        expect((await refusal(cash.pay.payLink(t['id'] as RowId))).status).toBe(403);
-        const link = await mgr.pay.payLink(t['id'] as RowId);
+        const link = await cash.pay.payLink(t['id'] as RowId);
         expect(link.url).toMatch(/^https?:\/\/[^/]+\/pay\//);
-        // Closed, the ticket's next link is a new one.
-        await mgr.pay.closeLink(link.id);
-        const again = await mgr.pay.payLink(t['id'] as RowId);
+        // Asked again, the link already open; closed, the ticket's next link is a new one.
+        expect((await cash.pay.payLink(t['id'] as RowId)).id).toBe(link.id);
+        await cash.pay.closeLink(link.id);
+        const again = await cash.pay.payLink(t['id'] as RowId);
         expect(again.id).not.toBe(link.id);
       }, 60_000);
     });

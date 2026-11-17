@@ -61,15 +61,17 @@ describe('the answers of Adminium’s routes', () => {
       locationName: 'Harbour Rd',
     });
     expect(readerOf({ label: 'no id' })).toBeNull();
-    expect(chargeOf({ attemptId: 'pat_1', state: 'paid', amount: '24.14', currency: 'USD', tip: '3.35', last4: '4242', message: null })).toEqual({
+    expect(chargeOf({ attemptId: 'pat_1', state: 'paid', amount: '24.14', currency: 'USD', tip: '3.35', brand: 'Visa', last4: '4242', message: null })).toEqual({
       attemptId: 'pat_1',
       state: 'paid',
       amount: 24.14,
       currency: 'USD',
       tip: 3.35,
+      brand: 'Visa',
       last4: '4242',
       message: null,
     });
+    expect(chargeOf({ attemptId: 'pat_1', state: 'processing', amount: '1.00' }).state).toBe('processing');
     // A state the till does not know is a failure, never a payment.
     expect(chargeOf({ attemptId: 'pat_1', state: 'weird', amount: '1.00' }).state).toBe('failed');
     expect(payLinkOf({ id: 'plk_1', url: 'https://pay.example/p/abc', mode: 'live', expiresAt: 5 })).toEqual({ id: 'plk_1', url: 'https://pay.example/p/abc', mode: 'live', expiresAt: 5 });

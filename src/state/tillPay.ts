@@ -122,13 +122,9 @@ export function cardPanel(s: Pick<PosState, 'payments' | 'readers' | 'readerId' 
   return tillReader(s) !== null && s.cardWay === 'reader' ? 'reader' : 'terminal';
 }
 
-/**
- * The QR tab: the ticket's pay link while guests can pay online, else marked
- * paid by hand as today — also for a person Adminium keeps from its pay links
- * (`linkOff`, learnt from the first refusal).
- */
-export function qrPanel(s: Pick<PosState, 'payments' | 'connected' | 'linkOff'>): 'link' | 'mark' {
-  return s.connected && s.payments.online && !s.linkOff ? 'link' : 'mark';
+/** The QR tab: the ticket's pay link while guests can pay online, else marked paid by hand as today. */
+export function qrPanel(s: Pick<PosState, 'payments' | 'connected'>): 'link' | 'mark' {
+  return s.connected && s.payments.online ? 'link' : 'mark';
 }
 
 /** The till's tip is set aside while a reader or a pay link takes the payment. */
@@ -237,6 +233,7 @@ async function follow(ctx: TillPayCtx, mine: number, first: ChargeView, rem: num
     // Still on its way. The reader's own state is read now and then: off the network, the cashier is told.
     const off = tick % 5 === 4 ? await readerOff(ctx, run.readerId) : run.phase === 'offline';
     if (current(ctx, mine) === null) return;
+    // `processing` (the card is being read) is drawn as the charge on the reader: readers seldom say it.
     updateRun(ctx, mine, { phase: off ? 'offline' : view.state === 'sending' ? 'sending' : 'on_reader' });
     await sleep(TIMING.poll);
     if (current(ctx, mine) === null) return;
@@ -251,7 +248,9 @@ async function follow(ctx: TillPayCtx, mine: number, first: ChargeView, rem: num
 
 /** The reader took it: wait for the payment in the till's table, show it, and go on. */
 async function recorded(ctx: TillPayCtx, mine: number, view: ChargeView, rem: number): Promise<void> {
-  updateRun(ctx, mine, { phase: 'recording', tip: view.tip, last4: view.last4, cancelling: false });
+  // What the card was, as the reader said it ("Visa ••4242"); the recorded row says the same once it is in.
+  const told = view.brand !== null && view.last4 !== null ? `${view.brand} ••${view.last4}` : null;
+  updateRun(ctx, mine, { phase: 'recording', tip: view.tip, last4: view.last4, paidWith: told, cancelling: false });
   const d = desk();
   let row: SinkRow | undefined;
   for (let i = 0; i < RECORD_WAIT && d !== null && row === undefined; i += 1) {
@@ -265,7 +264,7 @@ async function recorded(ctx: TillPayCtx, mine: number, view: ChargeView, rem: nu
   const run = current(ctx, mine);
   if (run === null) return;
   const tip = view.tip ?? 0;
-  const paidWith = row !== undefined && typeof row['paid_with'] === 'string' && row['paid_with'] !== '' ? row['paid_with'] : null;
+  const paidWith = told ?? (row !== undefined && typeof row['paid_with'] === 'string' && row['paid_with'] !== '' ? row['paid_with'] : null);
   const last4 = row !== undefined && typeof row['payment_last4'] === 'string' && row['payment_last4'] !== '' ? row['payment_last4'] : view.last4;
   updateRun(ctx, mine, { phase: 'approved', paidWith, last4 });
   const split: Split = {
@@ -394,12 +393,6 @@ export async function openLink(ctx: TillPayCtx): Promise<void> {
     link = await pd.payLink(saved.id);
   } catch (raw) {
     const error = asSinkError(raw);
-    // Not this person's to make: the QR tab is "Mark paid" for them, as it always was.
-    if (error.status === 403) {
-      ctx.set({ link: null, linkOff: true });
-      giveTipBack(ctx);
-      return;
-    }
     updateLink(ctx, mine, { phase: 'failed', words: error.status === 0 ? t('link.offline') : t('link.refused') });
     return;
   }
