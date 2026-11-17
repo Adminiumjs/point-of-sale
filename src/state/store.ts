@@ -918,7 +918,7 @@ export const usePos = create<PosState>()((set, get) => {
       });
     }
   };
-  // ---- saving (§ the outbox) ----
+  // ---- saving (the outbox) ----
   /** Who rang it up: a staff row's key, or nobody for a session with no staff row. */
   const staffKey = () => {
     const id = curStaffOf(get()).id;
