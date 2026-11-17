@@ -265,7 +265,7 @@ test.describe('the till’s card reader on a built Adminium', () => {
     await expect(page.locator('[data-refund-issue]')).toBeFocused();
     await page.locator('[data-refund-issue]').click();
     await page.locator('[data-refund-go]').click();
-    await expect(page.getByText('Refund issued')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('Refund issued').first()).toBeVisible({ timeout: 30_000 });
     await expect
       .poll(async () => (await rows('refunds')).find((r) => r['method'] === 'online')?.['refund_state'], { timeout: 120_000 })
       .toBe('done');
