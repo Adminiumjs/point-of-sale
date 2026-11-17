@@ -248,9 +248,11 @@ describe.skipIf(why !== null)(`taking a card through Adminium${why === null ? ''
         const t = await ticket();
         const link = await cash.pay.payLink(t['id'] as RowId);
         expect(link.url).toMatch(/^https?:\/\/[^/]+\/pay\//);
-        // Asked again, the link already open; closed, the ticket's next link is a new one.
+        // Asked again, the link already open.
         expect((await cash.pay.payLink(t['id'] as RowId)).id).toBe(link.id);
-        await cash.pay.closeLink(link.id);
+        // Closing a link is not a screens-only role's yet (Adminium keeps the revoke route from it): the manager closes it.
+        expect((await refusal(cash.pay.closeLink(link.id))).status).toBe(403);
+        await mgr.pay.closeLink(link.id);
         const again = await cash.pay.payLink(t['id'] as RowId);
         expect(again.id).not.toBe(link.id);
       }, 60_000);

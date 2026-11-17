@@ -372,6 +372,20 @@ describe('the QR tab', () => {
     expect(pay.asked.filter((a) => a.op === 'closeLink')).toHaveLength(2);
   });
 
+  it('a link the till could not close stays open, and the till goes on waiting for it', async () => {
+    connect(standInPay({ closeLink: async () => Promise.reject(new SinkError('screens only', 'refused', 403, 'FORBIDDEN')) }), { payments: { on: true, online: true, test: false, refund: false } });
+    await toPayment();
+    s().setMethod('qr');
+    await until(() => s().link?.phase === 'waiting', 'the link');
+    s().closeLink();
+    await until(() => s().toast !== null, 'the toast');
+    expect(s().link?.phase).toBe('waiting');
+    // Paid after all: the till sees it, and closes the ticket.
+    ledger.payments.push({ id: 'p-late', ticket_id: 1, method: 'online', amount: '24.14', tip: '0.00', payment_ref: 'pat_late', payment_last4: null });
+    ledger.due = '0.00';
+    await until(() => s().view === 'complete', 'the sale to close');
+  });
+
   it('marks the ticket paid by hand, as always, while guests cannot pay online', async () => {
     connect(standInPay(), { payments: { on: true, online: false, test: false, refund: true } });
     await toPayment();

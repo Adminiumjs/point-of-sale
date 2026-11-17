@@ -261,7 +261,7 @@ export function LinkPanel() {
         <span aria-hidden="true" style={css('width:18px;height:18px;border:2.5px solid var(--surface-3);border-top-color:var(--accent);border-radius:50%;animation:pos-spin .8s linear infinite;')} />
         {t('link.wait')}
       </div>
-      <button className="pos-press" data-link-cancel="" onClick={s.closeLink} style={css('margin-top:20px;' + button(false))}>
+      <button className="pos-press" data-link-cancel="" disabled={run.phase === 'closing'} onClick={s.closeLink} style={css('margin-top:20px;' + button(false))}>
         {t('common.cancel')}
       </button>
     </div>

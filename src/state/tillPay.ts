@@ -61,7 +61,7 @@ export interface ReaderRun {
 }
 
 /** Where the ticket's pay link stands, as the QR tab shows it. */
-export type LinkPhase = 'making' | 'waiting' | 'paid' | 'closed' | 'expired' | 'failed';
+export type LinkPhase = 'making' | 'waiting' | 'closing' | 'paid' | 'closed' | 'expired' | 'failed';
 
 export interface LinkRun {
   phase: LinkPhase;
@@ -400,7 +400,7 @@ export async function openLink(ctx: TillPayCtx): Promise<void> {
   for (;;) {
     await sleep(TIMING.linkPoll);
     const run = linkNow(ctx, mine);
-    if (run === null || run.phase !== 'waiting') return;
+    if (run === null || (run.phase !== 'waiting' && run.phase !== 'closing')) return;
     if (Date.now() >= link.expiresAt) return updateLink(ctx, mine, { phase: 'expired' });
     let fresh: SinkRow[];
     try {
@@ -439,11 +439,16 @@ export async function closeLink(ctx: TillPayCtx, quiet = false): Promise<void> {
     if (quiet) ctx.set({ link: null });
     return;
   }
-  ctx.set({ link: quiet ? null : { ...run, phase: 'closed' } });
+  if (quiet) ctx.set({ link: null });
+  else updateLink(ctx, run.seq, { phase: 'closing' });
   try {
     await pd.closeLink(run.link.id);
+    if (!quiet) ctx.set((s) => (s.link !== null && s.link.seq === run.seq && s.link.phase === 'closing' ? { link: { ...s.link, phase: 'closed' } } : {}));
   } catch {
-    if (!quiet) ctx.get().showToast(t('link.closeLost'), 'error');
+    if (quiet) return;
+    // Not closed: the link is still open, and the till goes on waiting for it.
+    ctx.set((s) => (s.link !== null && s.link.seq === run.seq && s.link.phase === 'closing' ? { link: { ...s.link, phase: 'waiting' } } : {}));
+    ctx.get().showToast(t('link.closeLost'), 'error');
   }
 }
 
