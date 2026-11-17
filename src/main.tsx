@@ -16,6 +16,7 @@ import { initialsOf, readSessionOperator, SESSION_STAFF_ID } from './data/sessio
 import { realTables } from './data/tableOfRef';
 import { setServerZone } from './data/venueTime';
 import { loadStaffConfig } from './staffConnection';
+import { NO_PAYMENTS } from './data/payments';
 import { appName, setTenantCurrency, setTimezoneClaim } from './i18n/ambient';
 import { DEMO, HOSTED, SURFACE_SIDE } from './surface';
 
@@ -354,6 +355,8 @@ async function boot(): Promise<void> {
       addOnTables: addOnTables(staffConfig?.addOns),
       cardsMoved: snap.cardsMoved,
       ownCards: snap.ownCards,
+      // Whether the till takes payments through Adminium, and what this person may do with them.
+      payments: staffConfig?.payments ?? NO_PAYMENTS,
     });
     // Every action at the till is saved as the signed-in staff member, from here on.
     if (transport !== null) {
@@ -365,6 +368,10 @@ async function boot(): Promise<void> {
        * the names the staff config stores them under.
        */
       setDesk(sessionDesk(transport, { ...tables, ...addOnTables(staffConfig?.addOns) }));
+      // The card reader and the pay link: never queued, and only while the till takes payments through Adminium.
+      const { setPayDesk, sessionPayDesk } = await import('./data/payDesk');
+      setPayDesk(sessionPayDesk(transport, tables['tickets'] ?? 'pos_tickets'));
+      if (usePos.getState().payments.on || usePos.getState().payments.test) void usePos.getState().loadReaders();
       usePos.setState({ connected: true });
       void usePos.getState().refreshTicket();
       // Label sheets are drawn by Adminium, asked for through the same session.

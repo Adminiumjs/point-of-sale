@@ -246,7 +246,7 @@ export async function standUpFromRelease(
     const app = appBundle();
     await put('apps', app);
     const plan = ok(await staff.post<{ plan: { checksum: string; installable: boolean } }>('/api/v1/apps/plan', { key: app.key, version: app.version, connectionId })).plan;
-    const updated = await staff.post('/api/v1/apps/pos/update', { planChecksum: plan.checksum, publicAccess: true, ...((options.addOns ?? []).length === 0 ? {} : { addOns: (options.addOns ?? []).map((key) => ({ key, version: addOnBundle(key).version })) }) });
+    const updated = await staff.post('/api/v1/apps/pos/update', { planChecksum: plan.checksum, publicAccess: true, roleGrants: true, ...((options.addOns ?? []).length === 0 ? {} : { addOns: (options.addOns ?? []).map((key) => ({ key, version: addOnBundle(key).version })) }) });
     if (updated.status !== 200) throw new Error(`the update: ${JSON.stringify(updated.body).slice(0, 2000)}`);
     const ids = await readIds(staff, connectionId);
     return { server, staff, connectionId, ids, d: doors(staff, connectionId, ids) };

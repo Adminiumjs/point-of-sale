@@ -79,7 +79,7 @@ export const SURFACE_EXTRAS = {
    * till itself, and none is a place a shift is worked from — Refund and Close
    * shift start from what the till holds now, which a link cannot rebuild.
    */
-  staff: ['login', 'payment', 'complete', 'refund', 'shiftclose', 'eod', 'staff', 'menu86', 'labels', 'loyalty', 'giftcards', 'display'],
+  staff: ['login', 'payment', 'complete', 'refund', 'shiftclose', 'eod', 'staff', 'menu86', 'labels', 'loyalty', 'giftcards', 'display', 'tillsettings'],
   /*
    * The confirmation email's preview: the demo's only — a guest reads the real one in their mail.
    * A gift card's balance: there only while Offers & gift cards is attached, so it is no section

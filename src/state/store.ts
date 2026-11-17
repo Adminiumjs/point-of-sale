@@ -15,7 +15,27 @@ import { source } from '../data/source';
 import { seedTicket } from '../data/demo';
 import { asSinkError, dbKey, type RowId, type SinkError, type SinkRow } from '../data/sink';
 import { desk, type Desk } from '../data/desk';
-import type { StaffAccess } from '../staffConnection';
+import type { StaffAccess, StaffPayments } from '../staffConnection';
+import { chooseReader, chosenReader, NO_PAYMENTS, sendsBack, type RefundReason, type TillReader } from '../data/payments';
+import { payDesk } from '../data/payDesk';
+import {
+  cancelReader as cancelOnReader,
+  cardPanel,
+  chargeReader,
+  chargeRunning,
+  closeLink as closePayLink,
+  EMPTY_SLIP,
+  giveTipBack,
+  openLink as openPayLink,
+  qrPanel,
+  recordSlip as recordTerminalSlip,
+  setTipAside,
+  toTerminal,
+  type LinkRun,
+  type ReaderRun,
+  type Slip,
+  type TillPayCtx,
+} from './tillPay';
 import { cardsToMove, runCardMove, type MoveOutcome } from './move';
 import { moveDoorOf } from './moveDoor';
 import { cardRefusal, codeRefusal, discountRefusal, refundRefusal, unavailableWords } from './refusals';
@@ -152,6 +172,30 @@ export interface PosState {
   splitMode: SplitMode;
   splitN: number;
   splitCustom: string;
+
+  // payments Adminium takes (`tillPay.ts`)
+  /** What the staff config says of payments: all off in the demo, and from a server that does not say. */
+  payments: StaffPayments;
+  /** The readers paired in Adminium, as last read; null before the first read. */
+  readers: TillReader[] | null;
+  /** The reader this device takes cards on (its own choice, Till settings), or null for a standalone terminal. */
+  readerId: string | null;
+  /** The card tab, for this payment: the till's reader, or a standalone terminal. */
+  cardWay: 'reader' | 'terminal';
+  /** A charge on the reader, while it runs and as it ended. */
+  charge: ReaderRun | null;
+  /** What is typed from a standalone terminal's slip. */
+  slip: Slip;
+  /** The ticket's pay link, while the QR tab shows it. */
+  link: LinkRun | null;
+  /** The till's tip, set aside while a reader or a pay link takes the payment. */
+  tipBefore: { tip: number | 'c'; tipCustom: string } | null;
+  /** Why money is sent back through the payment service (a refund of a reader's or a pay link's payment). */
+  refundReason: RefundReason | null;
+  /** That refund's confirm step is open. */
+  refundConfirm: boolean;
+  /** Till settings: "Saved." after a reader is picked. */
+  tillSaved: boolean;
 
   // sale + kitchen
   lastSale: Sale | null;
@@ -431,6 +475,26 @@ export interface PosState {
   setSplitFraction: (f: number) => void;
   clearSplit: () => void;
   onCharge: () => void;
+  /** The card tab's way for this payment: the till's reader, or a standalone terminal. */
+  setCardWay: (way: 'reader' | 'terminal') => void;
+  /** Take the amount off the reader. */
+  cancelCharge: () => void;
+  /** Leave the reader for a standalone terminal (the reader is off the network, or there is no internet). */
+  useTerminal: () => void;
+  /** Another way: the reader's charge ended, and the cashier picks another tab. */
+  dropCharge: () => void;
+  setSlip: (field: 'code' | 'last4', value: string) => void;
+  /** Close the ticket's pay link (Cancel). */
+  closeLink: () => void;
+  /** A new pay link, after one closed or ran out. */
+  newLink: () => void;
+  /** Read the paired readers again. */
+  loadReaders: () => Promise<void>;
+  /** This till's reader (null: a standalone terminal), kept on this device. */
+  pickReader: (id: string | null) => void;
+  setRefundReason: (reason: RefundReason) => void;
+  /** Open or close the confirm step of a refund that sends money back. */
+  setRefundConfirm: (open: boolean) => void;
   newOrder: () => void;
   printReceipt: () => void;
   /** A texted receipt: the demo's only, until a text-message add-on exists. */
@@ -692,6 +756,14 @@ export interface TopUpCard {
  */
 export const partPaidBefore = (s: Pick<PosState, 'ticket' | 'splits'>): boolean => s.ticket.rateless === true && (s.ticket.partPaid !== false || s.splits.length > 0);
 
+/**
+ * Whether Till settings is this person's: while the till takes payments
+ * through Adminium (or they rehearse it), for those who may change the till's
+ * settings. A screens-only cashier's till keeps the reader a manager chose.
+ */
+export const seesTillSettings = (s: Pick<PosState, 'connected' | 'payments' | 'access'>): boolean =>
+  !DEMO && s.connected && (s.payments.on || s.payments.test) && (s.access === null || (s.access.tables['settings'] ?? []).includes('update'));
+
 /** Whether the banner that brings the till's cards into Offers is this person's to see. */
 export const seesCardMove = (s: Pick<PosState, 'access' | 'addOnTables'>): boolean => mayRunCardMove(s.access, s.addOnTables);
 /** Whether "Sell a new card" is this person's: making a card is a grant of its own in Offers. */
@@ -713,7 +785,7 @@ const DISCOUNT_KIND = { pct: 'percent', amt: 'amount', comp: 'comp' } as const;
 
 /** A sale's payments in the order a refund offers them: a card's first. */
 export const payOrder = (sale: PastSale): NonNullable<PastSale['payments']> => {
-  const rank: Record<PayMethod, number> = { card: 0, gift_card: 1, qr: 2, cash: 3 };
+  const rank: Record<PayMethod, number> = { card: 0, online: 0, gift_card: 1, qr: 2, cash: 3 };
   return [...(sale.payments ?? [])].sort((a, b) => rank[a.method] - rank[b.method]);
 };
 
@@ -846,7 +918,7 @@ export const usePos = create<PosState>()((set, get) => {
       });
     }
   };
-  // ---- saving (§ the outbox) ----
+  // ---- saving (the outbox) ----
   /** Who rang it up: a staff row's key, or nobody for a session with no staff row. */
   const staffKey = () => {
     const id = curStaffOf(get()).id;
@@ -1070,7 +1142,7 @@ export const usePos = create<PosState>()((set, get) => {
    * The payment that settles the ticket carries its tip, the way the Overview
    * adds tips up; a device-made key makes a retried one the same payment.
    */
-  const savePayment = async (split: Split, settles: boolean): Promise<boolean> => {
+  const savePayment = async (split: Split, settles: boolean, extra: SinkRow = {}): Promise<boolean> => {
     const rid = ensureTicket();
     const tip = settles ? tipAmt(get()) : 0;
     if (settles) settleTip = tip;
@@ -1089,6 +1161,7 @@ export const usePos = create<PosState>()((set, get) => {
         tendered: split.tendered ?? null,
         change: split.change ?? null,
         ...(split.reference === undefined ? {} : { reference: split.reference }),
+        ...extra,
         staff_id: staffKey(),
       },
       {
@@ -1103,6 +1176,37 @@ export const usePos = create<PosState>()((set, get) => {
     );
     set({ paying: false });
     return row !== null;
+  };
+
+  /**
+   * A payment is in — taken on a reader, through a pay link, or recorded from
+   * a terminal slip: it joins the ticket's, and closes the ticket when it
+   * settles it. `tipless`: the payment carried no tip of the till's (a reader
+   * collects its own, inside the split; a pay link takes none).
+   */
+  const took = (split: Split, settles: boolean, tipless: boolean) => {
+    const now = get();
+    const splits = now.splits.concat([split]);
+    set({ charge: null, link: null, slip: EMPTY_SLIP });
+    if (settles) {
+      if (tipless) settleTip = 0;
+      set({ tipBefore: null });
+      void finalize(splits, 0);
+      return;
+    }
+    set({ splits, ...clearAmountSplit(now) });
+    if (now.ticket.rid !== undefined) void refreshTicket(now.ticket.rid);
+    get().showToast(t('toast.cardSharePaid', { rem: money(Math.max(0, round2(remaining(now) - (split.amount - (split.tip ?? 0))))) }), 'success');
+  };
+  /** What `tillPay.ts` borrows: the till's own doors, so its payments are saved and settled as every other. */
+  const payCtx: TillPayCtx = {
+    get,
+    set,
+    savePayment,
+    took,
+    refreshTicket: (rid) => refreshTicket(rid),
+    awaitingTotal: () => awaitingTotal(),
+    offline: () => offline(),
   };
 
   /**
@@ -1212,7 +1316,8 @@ export const usePos = create<PosState>()((set, get) => {
      * full and the guest who had already handed over cash was asked again.
      */
     if (cur.splits.length) {
-      set({ view: 'payment', cardDraft: kept, cardAsked: null, cardPay: null, cardPayWords: null, ...(kept === '' ? {} : { payMethod: 'gift_card' as PayMethod }) });
+      set({ view: 'payment', cardDraft: kept, cardAsked: null, cardPay: null, cardPayWords: null, ...(kept === '' ? {} : { payMethod: 'gift_card' as PayMethod }), ...payReset(cur) });
+      alignTip();
       return;
     }
     clearTimeout(ctTimer);
@@ -1229,15 +1334,35 @@ export const usePos = create<PosState>()((set, get) => {
       splitN: 0,
       splitCustom: '',
       card: 'waiting',
+      ...payReset(cur),
       // NOT the tip: the guest may have chosen one on the customer display
       // already, and Payment keeps it.
     });
+    alignTip();
+  };
+  /** A charge or a pay link of another ticket is not this one's; a charge still running is kept, and followed. */
+  const payReset = (cur: PosState): Partial<PosState> => ({
+    ...(chargeRunning(cur.charge) && cur.charge?.rid === cur.ticket.rid ? {} : { charge: null }),
+    link: null,
+    slip: EMPTY_SLIP,
+    cardWay: 'reader' as const,
+  });
+  /**
+   * A reader collects its own tip and a pay link takes none: while either
+   * takes the payment the till's tip is set aside, and given back otherwise.
+   */
+  const alignTip = () => {
+    const s = get();
+    const aside = (s.payMethod === 'card' && cardPanel(s) === 'reader') || (s.payMethod === 'qr' && qrPanel(s) === 'link');
+    if (aside) setTipAside(payCtx);
+    else giveTipBack(payCtx);
   };
 
   const finalize = async (splits: Split[], change: number) => {
     const before = get();
     const rid = before.ticket.rid;
-    const tip = settleTip ?? tipAmt(before);
+    // The till's own tip, and what guests chose on a card reader (inside those payments).
+    const tip = round2((settleTip ?? tipAmt(before)) + splits.reduce((sum, x) => sum + (x.via === 'reader' ? (x.tip ?? 0) : 0), 0));
     settleTip = null;
     /*
      * The ticket is paid only once the server says so; the receipt shows after.
@@ -1308,8 +1433,12 @@ export const usePos = create<PosState>()((set, get) => {
       orders: was.orders + 1,
       gross: round2(was.gross + regTotal(s)),
       card: round2(was.card + took('card')),
+      ...(splits.some((x) => x.via === 'reader') || was.reader !== undefined
+        ? { reader: round2((was.reader ?? 0) + splits.filter((x) => x.via === 'reader').reduce((sum, x) => sum + x.amount, 0)) }
+        : {}),
       cash: round2(was.cash + took('cash')),
-      qr: round2(was.qr + took('qr')),
+      // A pay link is the QR the cashier showed: counted with QR and wallets.
+      qr: round2(was.qr + took('qr') + took('online')),
       gift: round2(was.gift + took('gift_card')),
       tips: round2(was.tips + sale.tip),
       comps: s.discount?.kind === 'comp' ? round2(was.comps + sale.discount) : was.comps,
@@ -1340,7 +1469,23 @@ export const usePos = create<PosState>()((set, get) => {
       ...(splits.find((x) => x.method === 'gift_card' && x.cardLeft === undefined)?.reference === undefined
         ? {}
         : { giftCardCode: splits.find((x) => x.method === 'gift_card' && x.cardLeft === undefined)!.reference! }),
-      payments: splits.flatMap((x) => (x.id === undefined ? [] : [{ id: x.id, method: x.method, amount: x.amount, ...(x.cardLeft === undefined || x.reference === undefined ? {} : { last4: x.reference }) }])),
+      payments: splits.flatMap((x) =>
+        x.id === undefined
+          ? []
+          : [
+              {
+                id: x.id,
+                method: x.method,
+                // What a refund can give back of it: a reader's tip is no part of that.
+                amount: round2(x.amount - (x.via === 'reader' ? (x.tip ?? 0) : 0)),
+                ...(x.cardLeft === undefined || x.reference === undefined ? {} : { last4: x.reference }),
+                ...(x.via === undefined ? {} : { via: x.via }),
+                ...(x.via !== undefined && x.last4 !== undefined ? { cardLast4: x.last4 } : {}),
+                ...(x.paidWith === undefined ? {} : { paidWith: x.paidWith }),
+                ...(x.provider === undefined ? {} : { provider: x.provider }),
+              },
+            ],
+      ),
     };
     if (rid !== undefined) lastApplied.delete(rid);
     set({
@@ -1371,6 +1516,11 @@ export const usePos = create<PosState>()((set, get) => {
       splitMode: 'none',
       splitN: 0,
       splitCustom: '',
+      charge: null,
+      link: null,
+      slip: EMPTY_SLIP,
+      cardWay: 'reader',
+      tipBefore: null,
       // The tip was this ticket's too; the next guest chooses their own.
       tip: 0,
       tipCustom: '',
@@ -1385,14 +1535,24 @@ export const usePos = create<PosState>()((set, get) => {
     });
   };
 
-  /** A refund's own row: where the money goes back, and no figure at all. */
-  const refundHead = (s: PosState, ticketId: RowId): SinkRow => ({
-    id: deviceKey(),
-    ticket_id: ticketId,
-    method: s.refundMethod,
-    ...(s.refundPayment === null ? {} : { payment_id: s.refundPayment }),
-    staff_id: staffKey(),
-  });
+  /**
+   * A refund's own row: where the money goes back, and no figure at all. A
+   * refund of a payment a reader or a pay link took goes back through the
+   * payment service (`online`): Adminium sends it, for someone who may, with
+   * the reason the cashier chose.
+   */
+  const refundHead = (s: PosState, ticketId: RowId): SinkRow => {
+    const back = sendsBack(refundPaymentOf(s)?.via) && s.payments.refund;
+    return {
+      id: deviceKey(),
+      ticket_id: ticketId,
+      method: back ? 'online' : s.refundMethod === 'online' ? 'card' : s.refundMethod,
+      ...(s.refundPayment === null ? {} : { payment_id: s.refundPayment }),
+      ...(back && s.refundReason !== null ? { reason: s.refundReason } : {}),
+      staff_id: staffKey(),
+    };
+  };
+  const refundPaymentOf = (s: PosState) => (s.refundPayment === null ? undefined : s.refundSale?.payments?.find((x) => x.id === s.refundPayment));
   /**
    * The lines given back. With Inventory, each says where the thing itself
    * goes: in retail the cashier chooses (the shelf unless told otherwise); a
@@ -1538,6 +1698,18 @@ export const usePos = create<PosState>()((set, get) => {
     splitMode: 'none',
     splitN: 0,
     splitCustom: '',
+
+    payments: NO_PAYMENTS,
+    readers: null,
+    readerId: DEMO ? null : chosenReader(),
+    cardWay: 'reader',
+    charge: null,
+    slip: EMPTY_SLIP,
+    link: null,
+    tipBefore: null,
+    refundReason: null,
+    refundConfirm: false,
+    tillSaved: false,
 
     lastSale: null,
     features: DEMO ? DEMO_FEATURES : NO_FEATURES,
@@ -2547,7 +2719,57 @@ export const usePos = create<PosState>()((set, get) => {
       toPayment();
     },
     openHeld: () => set({ heldOpen: true }),     closeHeld: () => set({ heldOpen: false }),
-    setMethod: (m) => set({ payMethod: m, cash: '', card: 'waiting' }),
+    setMethod: (m) => {
+      const cur = get();
+      // The tab already open: as always, what was typed in it is cleared, and nothing else moves.
+      if (m === cur.payMethod) {
+        set({ cash: '', card: 'waiting' });
+        return;
+      }
+      // A card on the reader is a payment on its way: it is taken off the reader first, never left running beside another.
+      if (chargeRunning(cur.charge)) {
+        get().showToast(t('reader.stillOn'), 'error');
+        return;
+      }
+      // Leaving the QR tab closes the pay link it showed: nobody pays a ticket the till no longer waits for.
+      if (cur.link !== null) void closePayLink(payCtx, true);
+      set({ payMethod: m, cash: '', card: 'waiting', charge: null, slip: EMPTY_SLIP });
+      alignTip();
+      if (m === 'qr' && qrPanel(get()) === 'link') void openPayLink(payCtx);
+    },
+    setCardWay: (way) => {
+      if (chargeRunning(get().charge)) return;
+      set({ cardWay: way, charge: null, slip: EMPTY_SLIP });
+      alignTip();
+    },
+    cancelCharge: () => void cancelOnReader(payCtx),
+    useTerminal: () => void toTerminal(payCtx),
+    dropCharge: () => {
+      if (chargeRunning(get().charge)) return;
+      set({ charge: null });
+    },
+    setSlip: (field, value) =>
+      set((st) => ({ slip: { ...st.slip, [field]: field === 'last4' ? value.replace(/\D+/g, '').slice(0, 4) : value.replace(/[^A-Za-z0-9]+/g, '').slice(0, 12) } })),
+    closeLink: () => void closePayLink(payCtx),
+    newLink: () => {
+      set({ link: null });
+      void openPayLink(payCtx);
+    },
+    loadReaders: async () => {
+      const pd = payDesk();
+      if (pd === null) return;
+      try {
+        set({ readers: await pd.readers() });
+      } catch {
+        // Kept as last read; the settings screen says when there are none.
+      }
+    },
+    pickReader: (id) => {
+      chooseReader(id);
+      set({ readerId: id, tillSaved: true, cardWay: 'reader' });
+    },
+    setRefundReason: (reason) => set({ refundReason: reason }),
+    setRefundConfirm: (open) => set({ refundConfirm: open }),
     setTip: (i) => set({ tip: i }),
     cashPush: (d) =>
       set((s) => {
@@ -2593,8 +2815,26 @@ export const usePos = create<PosState>()((set, get) => {
         void get().quoteCard(typedCard);
         return;
       }
+      /*
+       * Nothing left to take: a reader or a pay link took the rest while this
+       * till was away (a reload, another screen). The payments are Adminium's
+       * and already on the ticket; it only closes.
+       */
+      if (cur.connected && cur.ticket.server !== undefined && cur.ticket.server.due <= 0.005 && remaining(cur) <= 0.005 && cur.splits.length > 0 && !cur.paying) {
+        settleTip = 0;
+        void finalize(cur.splits, 0);
+        return;
+      }
       if (m === 'cash') applyCash();
-      else if (m === 'card') runCard();
+      else if (m === 'card') {
+        // The till's reader, a standalone terminal's slip, or the demo's animation.
+        const panel = cardPanel(cur);
+        if (panel === 'reader') void chargeReader(payCtx);
+        else if (panel === 'terminal') void recordTerminalSlip(payCtx);
+        else runCard();
+      } else if (m === 'qr' && qrPanel(cur) === 'link') {
+        if (cur.link === null || cur.link.phase === 'failed' || cur.link.phase === 'closed' || cur.link.phase === 'expired') get().newLink();
+      }
       // A gift card kept by Offers pays what Adminium says it covers, never an amount the till names.
       else if (m === 'gift_card') void get().payCard();
       else applyQr();
@@ -2812,7 +3052,7 @@ export const usePos = create<PosState>()((set, get) => {
 
     // ---- refund ----
     openRefund: () =>
-      set({ view: 'refund', refundSale: null, refundSel: [], refundDone: null, refunding: false, refundQuote: null, refundWords: null, refundGoes: {}, refundPayment: null }),
+      set({ view: 'refund', refundSale: null, refundSel: [], refundDone: null, refunding: false, refundQuote: null, refundWords: null, refundGoes: {}, refundPayment: null, refundReason: null, refundConfirm: false }),
     pickRefundSale: (sale) => {
       // The payments it can go back to, a card's first (the demo, with no server, keeps its three ways).
       // With the cards moved and Offers switched off, a card is not a way back.
@@ -2828,6 +3068,8 @@ export const usePos = create<PosState>()((set, get) => {
         refundQuote: null,
         refundWords: null,
         refundDone: null,
+        refundReason: null,
+        refundConfirm: false,
       });
       void get().quoteRefund();
     },
@@ -2846,7 +3088,7 @@ export const usePos = create<PosState>()((set, get) => {
     setRefundPayment: (id) => {
       const payment = get().refundSale?.payments?.find((x) => x.id === id);
       if (payment === undefined) return;
-      set({ refundPayment: id, refundMethod: payment.method });
+      set({ refundPayment: id, refundMethod: payment.method, refundConfirm: false });
       void get().quoteRefund();
     },
     setRefundGoes: (i, to) => {
@@ -2897,7 +3139,23 @@ export const usePos = create<PosState>()((set, get) => {
       const estimated = refundMoney(sale, s.refundSel);
       const asked = desk() !== null && sale.rid !== undefined;
       if (asked ? s.refundQuote === null : estimated.total <= 0) return;
-      set({ refunding: true });
+      /*
+       * Money that goes back through the payment service by itself takes two
+       * steps, with a reason: chosen first, then one sentence to confirm. Cash
+       * and a standalone terminal's card keep their one step.
+       */
+      if (sendsBack(refundPaymentOf(s)?.via)) {
+        if (!s.payments.refund) return;
+        if (s.refundReason === null) {
+          set({ refundWords: t('refund.reasonErr') });
+          return;
+        }
+        if (!s.refundConfirm) {
+          set({ refundConfirm: true, refundWords: null });
+          return;
+        }
+      }
+      set({ refunding: true, refundConfirm: false });
       const saleRid = sale.rid;
       const items = refundRows(s, sale);
       /*

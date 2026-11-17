@@ -30,7 +30,8 @@ export type View =
   | 'book'
   | 'manage'
   | 'email'
-  | 'balance';
+  | 'balance'
+  | 'tillsettings';
 
 export interface Staff {
   id: string;
@@ -215,7 +216,8 @@ export interface Discount {
   label: string;
 }
 
-export type PayMethod = 'cash' | 'card' | 'qr' | 'gift_card';
+/** `online`: a payment Adminium took from a pay link (a reader's is a `card` at the till, `online` in the table). */
+export type PayMethod = 'cash' | 'card' | 'qr' | 'gift_card' | 'online';
 
 export interface Split {
   /** The payment's own key, made on the device: a refund names it. */
@@ -228,6 +230,18 @@ export interface Split {
   reference?: string;
   tendered?: number;
   change?: number;
+  /** How a card or an online payment was taken: on a card reader, by a pay link, or on a standalone terminal. */
+  via?: 'reader' | 'link' | 'terminal';
+  /** The tip the guest chose on a card reader, inside `amount`. */
+  tip?: number;
+  /** The card's last four, from a reader or a terminal slip. */
+  last4?: string;
+  /** What a reader said the card was ("Visa ••4242"). */
+  paidWith?: string;
+  /** The reader it was taken on, by its name. */
+  reader?: string;
+  /** The payment service a pay link was paid through. */
+  provider?: string;
 }
 
 export interface SaleLine {
@@ -306,6 +320,8 @@ export interface ShiftTotals {
   card: number;
   cash: number;
   qr: number;
+  /** The part of `card` taken on a card reader through Adminium (the rest on a standalone terminal). */
+  reader?: number;
   /** Paid from gift cards (wave 2): not money into the drawer or the bank today. */
   gift: number;
   tips: number;
@@ -360,6 +376,14 @@ export interface PastPayment {
   amount: number;
   /** A gift card's last four, when one paid. */
   last4?: string;
+  /** How a card or an online payment was taken: a reader or a pay link (the money goes back through the service), a standalone terminal. */
+  via?: 'reader' | 'link' | 'terminal';
+  /** The card's last four, for a reader or a terminal slip. */
+  cardLast4?: string;
+  /** What the reader said the card was ("Visa ••4242"). */
+  paidWith?: string;
+  /** The payment service, for one Adminium took. */
+  provider?: string;
 }
 /** Where a returned item goes (Inventory): back on the shelf, written off, or nowhere. */
 export type BackTo = 'shelf' | 'damaged' | 'none';

@@ -122,6 +122,28 @@ export interface StaffConfig {
    * Empty from a server that attaches none, or is too old to say.
    */
   addOns: Record<string, AttachedAddOn>;
+  /**
+   * Whether the till takes payments through Adminium, and what this person
+   * may do with them: `on` someone switched Point of Sale on in Adminium's
+   * Payments; `online` a guest can pay a pay link right now (the server is on
+   * the internet, a payment service is live); `test` this person is
+   * rehearsing; `refund` they may send money back. All false from a server
+   * that does not say, and then the till reads exactly as it always has.
+   */
+  payments: StaffPayments;
+}
+
+export interface StaffPayments {
+  on: boolean;
+  online: boolean;
+  test: boolean;
+  refund: boolean;
+}
+
+/** `payments` as the server sent it: each flag true only when it said so. */
+export function paymentsOf(value: unknown): StaffPayments {
+  const doc = record(value);
+  return { on: doc.on === true, online: doc.online === true, test: doc.test === true, refund: doc.refund === true };
 }
 
 export interface AttachedAddOn {
@@ -222,6 +244,7 @@ export async function loadStaffConfig(opts: StaffConfigOptions = {}): Promise<St
       ),
       access: accessOf(d.access),
       addOns: addOnsOf(d.addOns),
+      payments: paymentsOf(d.payments),
     };
   } catch {
     // An older server answers this path with the SPA index (HTML).

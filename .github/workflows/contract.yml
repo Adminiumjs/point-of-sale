@@ -26,9 +26,9 @@ on:
   workflow_dispatch:
 
 env:
-  ADD_ONS_REF: v1.0.10
+  ADD_ONS_REF: v1.0.28
   # The Adminium this release needs, and the one the last release (0.3.0) was installed under.
-  ADMINIUM_REF: v0.3.49
+  ADMINIUM_REF: v0.3.62
   FROM_ADMINIUM_REF: v0.3.20
   FROM_TARBALL_URL: https://downloads.adminium.dev/apps/pos/pos-0.3.0.tgz
 

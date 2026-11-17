@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { REFUND_REASONS, sendsBack, type RefundReason } from '../data/payments';
+import type { PastPayment } from '../data/types';
 import { cardState, payOrder, usePos, refundMoney } from '../state/store';
 import { money, tableName } from '../state/calc';
 import { history } from '../data/history';
@@ -22,7 +24,25 @@ const METHOD_OF: Record<PayMethod, { label: MessageKey; icon: string }> = {
   cash: { label: 'common.cash', icon: 'banknote' },
   qr: { label: 'refund.wallet', icon: 'qr-code' },
   gift_card: { label: 'gift.method', icon: 'gift' },
+  online: { label: 'refund.online', icon: 'globe' },
 };
+
+const REASON_WORDS: Record<RefundReason, MessageKey> = {
+  'wrong-item': 'refund.rsWrong',
+  quality: 'refund.rsQuality',
+  'changed-mind': 'refund.rsMind',
+  other: 'refund.rsOther',
+};
+
+/** How a payment shows on the refund screen: its own name, the way it was taken, and where its money goes back. */
+function wayWords(t: ReturnType<typeof useT>, x: PastPayment): { name: string | null; chip: string | null; note: string | null } {
+  const card = x.paidWith ?? (x.cardLast4 === undefined ? t('common.card') : t('reader.cardEnding', { last4: x.cardLast4 }));
+  if (x.via === 'reader') return { name: card, chip: t('refund.chipReader'), note: t('refund.backCard', { card }) };
+  if (x.via === 'link' || x.method === 'online')
+    return { name: t('refund.online'), chip: x.provider === undefined ? t('refund.chipOnlinePlain') : t('refund.chipOnline', { provider: x.provider }), note: t('refund.backLink') };
+  if (x.via === 'terminal') return { name: null, chip: t('refund.chipTerminal'), note: t('refund.onTerminal') };
+  return { name: null, chip: null, note: null };
+}
 
 const BACK: { to: BackTo; label: MessageKey }[] = [
   { to: 'shelf', label: 'refund.backShelf' },
@@ -193,6 +213,10 @@ function Pick({ sale }: { sale: PastSale }) {
   const pays = (asked ? payOrder(sale) : []).filter((one) => !(noCards && one.method === 'gift_card'));
   // Where a returned thing goes is asked in retail, with Inventory attached.
   const stockChoice = s.features.stock && s.mode === 'retail';
+  // A reader's or a pay link's payment: its money goes back through the payment service, in two steps, with a reason.
+  const payment = pays.find((one) => one.id === s.refundPayment);
+  const back = asked && sendsBack(payment?.via);
+  const issue = useRef<HTMLButtonElement>(null);
   return (
     <div className="refund-body" style={css('flex:1;min-height:0;display:flex;')}>
       <div className="pos-scroll refund-lines" style={css('flex:1;min-width:0;overflow-y:auto;padding:22px;border-inline-end:1px solid var(--border);')}>
@@ -247,12 +271,17 @@ function Pick({ sale }: { sale: PastSale }) {
               {pays.map((x) => {
                 const on = s.refundPayment === x.id;
                 const max = quote?.payments.find((one) => one.key === x.id)?.max;
-                const m = METHOD_OF[x.method];
+                const m = x.via === 'reader' ? METHOD_OF.card : METHOD_OF[x.method];
+                const way = wayWords(t, x);
                 return (
-                  <button key={x.id} role="radio" aria-checked={on} className="pos-press" onClick={() => s.setRefundPayment(x.id)} style={css('display:flex;align-items:center;gap:10px;height:56px;padding:0 14px;border-radius:14px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;text-align:start;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border-strong)') + ';background:' + (on ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (on ? 'var(--accent)' : 'var(--fg)') + ';')}>
-                    <Icon name={m.icon} size={18} />
-                    <span style={css('flex:1;')}>{x.method === 'gift_card' && x.last4 !== undefined ? t('cards.kept', { last4: x.last4 }) : t(m.label)}</span>
-                    {max !== undefined && <span style={css('font-size:12.5px;font-weight:700;' + MONO)}>{t('refund.canTake', { amount: money(max) })}</span>}
+                  <button key={x.id} role="radio" aria-checked={on} data-refund-payment={x.via ?? x.method} className="pos-press" onClick={() => s.setRefundPayment(x.id)} style={css('display:flex;flex-direction:column;align-items:stretch;gap:4px;min-height:56px;padding:10px 14px;border-radius:14px;font-family:inherit;cursor:pointer;text-align:start;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border-strong)') + ';background:' + (on ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (on ? 'var(--accent)' : 'var(--fg)') + ';')}>
+                    <span style={css('display:flex;align-items:center;gap:10px;font-size:15px;font-weight:800;')}>
+                      <Icon name={m.icon} size={18} />
+                      <span style={css('flex:1;min-width:0;')}>{way.name ?? (x.method === 'gift_card' && x.last4 !== undefined ? t('cards.kept', { last4: x.last4 }) : t(m.label))}</span>
+                      {way.chip !== null && <span style={css('font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);color:var(--fg-muted);white-space:nowrap;')}>{way.chip}</span>}
+                      {max !== undefined && <span style={css('font-size:12.5px;font-weight:700;' + MONO)}>{t('refund.canTake', { amount: money(max) })}</span>}
+                    </span>
+                    {way.note !== null && <span style={css('font-size:12.5px;font-weight:600;color:var(--fg-muted);padding-inline-start:28px;')}>{way.note}</span>}
                   </button>
                 );
               })}
@@ -270,20 +299,97 @@ function Pick({ sale }: { sale: PastSale }) {
               })}
             </div>
           )}
+          {back && s.payments.refund && (
+            <div style={css('margin-bottom:22px;')}>
+              <Caps>{t('refund.reason')}</Caps>
+              <div role="radiogroup" aria-label={t('refund.reason')} aria-describedby={s.refundWords === t('refund.reasonErr') ? 'refund-reason-err' : undefined} style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
+                {REFUND_REASONS.map((r) => {
+                  const on = s.refundReason === r;
+                  return (
+                    <button key={r} role="radio" aria-checked={on} data-refund-reason={r} className="pos-press" onClick={() => s.setRefundReason(r)} style={css('min-height:46px;padding:0 14px;border-radius:12px;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border-strong)') + ';background:' + (on ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (on ? 'var(--accent)' : 'var(--fg)') + ';')}>
+                      {t(REASON_WORDS[r])}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div style={css('background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;')}>
             <RefundFigures count={s.refundSel.length} quote={quote} estimate={sums} asked={asked} />
           </div>
           {s.refundQuoting && <div role="status" style={css('font-size:13px;color:var(--fg-muted);margin-top:10px;')}>{t('refund.quoting')}</div>}
           {s.refundWords !== null && (
-            <div role="alert" style={css('margin-top:12px;padding:12px 14px;border-radius:13px;background:var(--danger-soft);color:var(--danger);font-size:14px;font-weight:700;')}>
+            <div id={s.refundWords === t('refund.reasonErr') ? 'refund-reason-err' : undefined} role="alert" style={css('margin-top:12px;padding:12px 14px;border-radius:13px;background:var(--danger-soft);color:var(--danger);font-size:14px;font-weight:700;')}>
               {s.refundWords}
             </div>
           )}
         </div>
         <div style={css('flex-shrink:0;padding:16px 22px;border-top:1px solid var(--border);background:var(--surface);')}>
-          <button data-refund-issue="" className="pos-press" disabled={!can} onClick={() => void s.processRefund()} style={css('width:100%;height:66px;border-radius:16px;border:none;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;cursor:' + (can ? 'pointer' : 'not-allowed') + ';background:' + (can ? 'var(--danger)' : 'var(--surface-3)') + ';color:' + (can ? 'var(--danger-fg)' : 'var(--fg-subtle)') + ';')}>
+          {/* Money that goes back through the payment service is refunded only by someone who may: no button for anyone else. */}
+          {back && !s.payments.refund ? (
+            <div data-refund-noperm="" style={css('display:flex;align-items:center;gap:10px;min-height:66px;padding:0 16px;border-radius:16px;background:var(--surface-2);border:1px solid var(--border);font-size:14.5px;font-weight:700;color:var(--fg-muted);')}>
+              <Icon name="lock" size={18} />
+              {t('refund.noPerm')}
+            </div>
+          ) : (
+          <button ref={issue} data-refund-issue="" className="pos-press" disabled={!can} onClick={() => void s.processRefund()} style={css('width:100%;height:66px;border-radius:16px;border:none;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;cursor:' + (can ? 'pointer' : 'not-allowed') + ';background:' + (can ? 'var(--danger)' : 'var(--surface-3)') + ';color:' + (can ? 'var(--danger-fg)' : 'var(--fg-subtle)') + ';')}>
             <Icon name="undo-2" size={20} />
             {t(s.refunding ? 'refund.issuing' : 'refund.issue', { amount: money(due) })}
+          </button>
+          )}
+        </div>
+        {s.refundConfirm && back && <ConfirmBack amount={due} payment={payment!} number={sale.number} back={issue} />}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The confirm step of a refund the payment service sends back: one sentence,
+ * then Refund or Back. Focus goes into it, Escape closes it, and focus goes
+ * back to the button that opened it.
+ */
+function ConfirmBack({ amount, payment, number, back }: { amount: number; payment: PastPayment; number: number; back: { current: HTMLButtonElement | null } }) {
+  const s = usePos();
+  const t = useT();
+  const first = useRef<HTMLButtonElement>(null);
+  const close = () => {
+    s.setRefundConfirm(false);
+    back.current?.focus();
+  };
+  useEffect(() => {
+    first.current?.focus();
+  }, []);
+  const card = payment.paidWith ?? (payment.cardLast4 === undefined ? t('common.card') : t('reader.cardEnding', { last4: payment.cardLast4 }));
+  return (
+    <div style={css('position:fixed;inset:0;z-index:240;display:flex;align-items:center;justify-content:center;padding:20px;background:color-mix(in srgb, var(--fg) 35%, transparent);')} onClick={close}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="refund-confirm-title"
+        aria-describedby="refund-confirm-words"
+        data-refund-confirm=""
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            close();
+          }
+        }}
+        style={css('width:100%;max-width:440px;background:var(--surface);border-radius:20px;border:1px solid var(--border);box-shadow:var(--shadow-lg);padding:24px;')}
+      >
+        <h2 id="refund-confirm-title" style={css('margin:0;font-size:20px;font-weight:800;')}>
+          {t('refund.confirmTitle', { amount: money(amount) })}
+        </h2>
+        <p id="refund-confirm-words" style={css('margin:10px 0 0;font-size:14.5px;color:var(--fg-muted);line-height:1.55;')}>
+          {payment.via === 'reader' ? t('refund.confirmBack', { amount: money(amount), card, n: number }) : t('refund.confirmLink', { amount: money(amount), n: number })}
+        </p>
+        <div style={css('display:flex;gap:10px;margin-top:22px;')}>
+          <button ref={first} data-refund-go="" className="pos-press" disabled={s.refunding} onClick={() => void s.processRefund()} style={css('flex:1;height:56px;border-radius:14px;border:none;background:var(--danger);color:var(--danger-fg);font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;')}>
+            {t('refund.confirmGo')}
+          </button>
+          <button className="pos-press" onClick={close} style={css('flex:1;height:56px;border-radius:14px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;')}>
+            {t('refund.confirmBackBtn')}
           </button>
         </div>
       </div>

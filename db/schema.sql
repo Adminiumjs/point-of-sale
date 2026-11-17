@@ -252,12 +252,18 @@ CREATE TABLE pos_ticket_codes (
 CREATE TABLE pos_payments (
   id UUID PRIMARY KEY,
   ticket_id INTEGER NOT NULL REFERENCES pos_tickets (id),
-  method TEXT NOT NULL CHECK (method IN ('cash', 'card', 'qr', 'gift_card')),
+  method TEXT NOT NULL CHECK (method IN ('cash', 'card', 'qr', 'gift_card', 'online')),
   amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
   tip NUMERIC(12, 2) NOT NULL DEFAULT 0,
   tendered NUMERIC(12, 2),
   change NUMERIC(12, 2),
   reference VARCHAR(64),
+  payment_ref VARCHAR(64) UNIQUE,
+  provider VARCHAR(80),
+  paid_with VARCHAR(120),
+  approval_code VARCHAR(12),
+  payment_last4 VARCHAR(4),
+  refunded_elsewhere NUMERIC(12, 2),
   paid_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   staff_id INTEGER REFERENCES pos_staff (id),
   card_code VARCHAR(64),
@@ -274,7 +280,7 @@ CREATE TABLE pos_payments (
 CREATE TABLE pos_refunds (
   id UUID PRIMARY KEY,
   ticket_id INTEGER NOT NULL REFERENCES pos_tickets (id),
-  method TEXT NOT NULL CHECK (method IN ('cash', 'card', 'qr', 'gift_card')),
+  method TEXT NOT NULL CHECK (method IN ('cash', 'card', 'qr', 'gift_card', 'online')),
   amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
   tax NUMERIC(12, 2) NOT NULL DEFAULT 0,
   reason VARCHAR(120),
@@ -293,6 +299,8 @@ CREATE TABLE pos_refunds (
   repriced NUMERIC(12, 2),
   repriced_tax NUMERIC(12, 2),
   payment_id UUID REFERENCES pos_payments (id),
+  refund_ref VARCHAR(255),
+  refund_state TEXT CHECK (refund_state IN ('asked', 'pending', 'done', 'not-sent')),
   cash_part NUMERIC(12, 2)
 );
 

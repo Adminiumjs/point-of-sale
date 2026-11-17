@@ -14,7 +14,7 @@ The demo also shows what the till does with **Offers & gift cards** and **Invent
 
 - **Login** — staff chips, a PIN pad that auto-verifies at 4 digits (shake on error), and an opening-float drawer count.
 - **Register** — quick-add favourites, category filter + density toggle, a menu grid, a **modifier bottom-sheet** (size / milk / extras / seat / note with live price deltas), and a ticket pane that merges identical lines by a composite key. Hold / Send, coursing by seat, and **type-VOID-to-confirm** for sent items.
-- **Payment** — tip presets, a cash keypad with change, a **simulated card reader** (waiting → reading → approved / declined), QR, and a **split-payment ledger** (even + fraction splits with last-payer remainder absorption).
+- **Payment** — tip presets, a cash keypad with change, a card reader paired in Adminium or a standalone terminal's slip (the demo keeps a **simulated card reader**: waiting → reading → approved / declined), QR with the ticket's pay link while guests can pay online, and a **split-payment ledger** (even + fraction splits with last-payer remainder absorption). See [Taking cards through Adminium](#taking-cards-through-adminium-from-033).
 - **Receipt** — printable receipt facsimile (the till's own, printed at once, offline too), an emailed receipt when Invoices & Receipts is attached (see [Add-ons](#add-ons)), new order.
 - **Floor** — zones, live table states, seat/auto-hold flow.
 - **Kitchen display** — three-column bump flow with an all-day aggregate.
@@ -153,6 +153,32 @@ With **Offers & gift cards** connected:
 - **Switched off for the till** (not removed), Offers cannot answer: a ticket line is refused by name rather than sold at full price in silence. Switch it on again, or disconnect it — then the till is as it was without it.
 
 With **Inventory** connected: link a menu item to a stock item on Inventory's pages (the link names the till's menu, `pos:menu_items`). Nothing is counted for an item with no link. Switched off for the till, sales go through uncounted.
+
+## Taking cards through Adminium (from 0.3.3)
+
+Point of Sale takes every payment it took before, the same way. With Adminium **0.3.62** or later it can also take a card **through Adminium**: on a card reader paired in Adminium, or by a pay link the guest scans and pays on their phone. Nothing changes until someone who manages payments switches **Point of Sale** on in Adminium's **Payments → Apps**; until then the till reads exactly as it did.
+
+**The card tab** works one of three ways:
+
+| | When | What the till does |
+| --- | --- | --- |
+| **Card reader** | A reader is paired in Adminium (**Payments → Card readers**: Card payments for Stripe Terminal readers, Card readers for Square Terminal) and chosen for this till in **Till settings** | **Charge** sends what is due (or the part being split) to the reader. The till follows it — sent, approved, declined, cancelled — and Adminium writes the payment into the till's own `payments` table: the amount asked, the tip the guest chose **on the reader** in `tip`, the card's last four, the approval code and what it was paid with ("Visa ••4242"). A cancel that arrives after the card was approved is a payment, and is recorded as one. One charge at a time per reader, whichever till sent it. |
+| **Standalone terminal** | No reader for this till, or payments are off | The card is taken on the shop's own terminal; the cashier records it with the **approval code** (up to 12 letters and digits) and the **last four digits** from the slip. Nothing is sent anywhere. |
+| **Demo** | The website demo only | Today's animation. No money moves. |
+
+A reader needs the internet: a till that is offline, or a reader that stops answering, is sent to the standalone terminal with one button. A test reader (Adminium's demo reader, or a service's simulated one) is offered only to a payment manager who is **rehearsing** in test mode; their tickets are sample data, and go when sample data is removed.
+
+**Till settings** (in the till's menu, for people who may change the till's settings, while the till takes payments) picks this till's reader. The choice belongs to the device: every till picks its own.
+
+**The QR tab** shows the ticket's **pay link** as a QR code while guests can pay online (Point of Sale is switched on, a payment service is live, and Adminium's pay address is on the public internet). The link asks for the ticket's balance, with no tip, and only ways that settle at once (cards and wallets); the till waits, and closes the ticket when the payment arrives. **Cancel** closes the link. Without online payments the QR tab is today's **Mark paid**.
+
+**Refunds.** A refund is still the till's own refund row, with its lines; Adminium works out the amount, as before. A refund of a payment a reader or a pay link took goes back **through the payment service**: it asks for a reason and a confirm step, and only someone who may refund online payments can make it (the **POS manager** role carries that right; the install review shows it and it can be unticked). Adminium sends the money back and stamps the row (`refund_ref`, `refund_state`: asked, on its way, sent back, or not sent — a refund not sent counts for nothing, so the payment can be refunded another way). Cash and a standalone terminal's card keep their one step; the terminal's refund is made on the terminal too.
+
+**Close shift** splits card takings into **Card reader** and **Standalone terminal** once a reader took any; a pay link counts with QR and wallets.
+
+0.3.3 needs Adminium **0.3.62**: that release lets a till's screens-only cashier use the reader and the pay link, and gives a payment Adminium writes into the till's `payments` its key on SQLite and MySQL (an earlier Adminium wrote a reader's payment there without one). Update Adminium first, then the app.
+
+What 0.3.3 adds to the tables (every column new and empty; no row changes): on `payments`, `payment_ref` (unique: Adminium's reference), `provider`, `paid_with`, `approval_code`, `payment_last4` (a payment card's, never the gift card's `card_last4`), `refunded_elsewhere`, and the method `online`; on `refunds`, `refund_ref`, `refund_state` and the method `online`. Only Adminium writes a payment's reference and the refund stamps, and a payment Adminium took is changed only by a refund. The update gives the **POS manager** role the right to refund the till's online payments: allow it at the update.
 
 ### Moving from 0.3.0
 

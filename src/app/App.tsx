@@ -32,6 +32,7 @@ import { GiftCards } from '../screens/GiftCards';
 import { Pickup, PickupSheet } from '../screens/Pickup';
 import { CustomerDisplay } from '../screens/CustomerDisplay';
 import { TipPad } from '../components/TipPad';
+import { TillSettings } from '../screens/TillSettings';
 
 /*
  * The Guests pages and the guest's email, as till screens — for the demo only,
@@ -77,6 +78,7 @@ const SCREENS = {
   kitchen: Kitchen,
   reservations: Reservations,
   refund: Refund,
+  tillsettings: TillSettings,
   shiftclose: CloseShift,
   eod: EndOfDay,
   staff: StaffClock,

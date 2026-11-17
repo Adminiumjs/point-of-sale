@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { cardState, usePos } from '../state/store';
+import { cardState, seesTillSettings, usePos } from '../state/store';
 import type { View } from '../data/types';
 import type { Features } from '../features';
 import { useT, type MessageKey } from '../i18n';
@@ -27,6 +27,8 @@ const TOOLS: { v: View; label: MessageKey; icon: string }[] = [
   { v: 'menu86', label: 'nav.menu86', icon: 'ban' },
   // A retail shop's shelf labels, while Barcode Labels is attached (features.ts).
   { v: 'labels', label: 'nav.labels', icon: 'tag' },
+  // This till's own settings (its card reader), while the till takes payments through Adminium.
+  { v: 'tillsettings', label: 'nav.tillSettings', icon: 'settings' },
 ];
 
 /** The tools this till offers: shelf labels only in retail, and only while Barcode Labels is attached. */
@@ -34,9 +36,14 @@ const TOOLS: { v: View; label: MessageKey; icon: string }[] = [
  * `cardsMoved`: the till's gift cards are Offers' now — sold and spent on the
  * ticket and at Pay — so the old Gift cards screen leaves the menu.
  */
-export const toolsFor = (retail: boolean, features: Features, cardsMoved = false, cardsClosed = false) =>
+export const toolsFor = (retail: boolean, features: Features, cardsMoved = false, cardsClosed = false, tillSettings = false) =>
   // `cardsClosed`: the cards moved and Offers is switched off — the old screen's tables are closed, so it stays away too.
-  TOOLS.filter((x) => (x.v !== 'labels' || (retail && features['shelf-labels'])) && (x.v !== 'giftcards' || !((features['gift-cards'] && cardsMoved) || cardsClosed)));
+  TOOLS.filter(
+    (x) =>
+      (x.v !== 'labels' || (retail && features['shelf-labels'])) &&
+      (x.v !== 'giftcards' || !((features['gift-cards'] && cardsMoved) || cardsClosed)) &&
+      (x.v !== 'tillsettings' || tillSettings),
+  );
 
 const seg = (on: boolean) =>
   'width:44px;height:40px;border-radius:10px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;background:' +
@@ -151,7 +158,7 @@ export function TillNav() {
             {SCREENS.map((x) => item(x))}
             <div role="separator" style={css('height:1px;margin:6px 8px;background:var(--border);')} />
           </div>
-          {toolsFor(retail, s.features, cardState(s) === 3, cardState(s) === 4).map((x) => item(x))}
+          {toolsFor(retail, s.features, cardState(s) === 3, cardState(s) === 4, seesTillSettings(s)).map((x) => item(x))}
         </div>
       )}
     </div>
