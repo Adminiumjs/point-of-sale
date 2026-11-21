@@ -5296,7 +5296,7 @@
               "validation": {
                 "format": "phone"
               },
-              "personal": false
+              "personal": true
             },
             "label": {
               "en-US": "Mobile",
@@ -8663,6 +8663,7 @@
         "table:@time_clock:update",
         "table:@menu_items:update",
         "table:@customers:read",
+        "table:@customers:read_pii",
         "table:@customers:create",
         "table:@customers:update",
         "table:@rewards:read",
@@ -9101,6 +9102,7 @@
         "page:@pos-shifts:view",
         "page:@pos-shifts:edit",
         "table:@customers:read",
+        "table:@customers:read_pii",
         "table:@customers:create",
         "table:@customers:update",
         "table:@customers:delete",

@@ -41,7 +41,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import manifest from '../../manifest.json';
 import { addOnBundle, appBundle, boot, Caller, ENGINES, FROM_ADMINIUM, FROM_VERSION, mailbox, missing, ok, rawTables, releasedBundle, releasedMissing, until, type Engine, type RawTable, type Server } from './harness';
-import { ADMIN, cents, doors, readIds, type Row } from './stand';
+import { ADMIN, cents, doors, memberBook, readIds, type Row } from './stand';
 
 const why = missing() ?? releasedMissing();
 if (why !== null && process.env['ADMINIUM_REQUIRE_CONTRACT'] === '1') throw new Error(`the update contract must run here, and cannot: ${why}`);
@@ -284,6 +284,20 @@ describe.skipIf(why !== null)(`the update of a live ${FROM_VERSION} shop to ${TO
           const staffConfig = ok(await staff.get<{ addOns?: Record<string, unknown> }>('/apps/pos/staff/surface-config.json'));
           expect(Object.keys(staffConfig.addOns ?? {}).sort()).toEqual(run.addOns ? ['inventory', 'invoices', 'offers'] : ['invoices']);
         }, 300_000);
+
+        it(`lets the till's roles from ${FROM_VERSION} go on finding a member by phone and reading the number`, async () => {
+          const email = `manager.${run.id}.${engine}@tillmail.net`;
+          const password = `contract-manager-${run.id}-${engine}-pass!`;
+          const role = ok(await staff.get<{ roles: { id: string; name: string }[] }>('/api/v1/roles')).roles.find((x) => x.name === 'POS manager')!;
+          const invited = ok(await staff.post<{ invite: { token: string } }>('/api/v1/users', { email, name: 'Mia Laurent', roleIds: [role.id] }), 201);
+          ok(await new Caller(server.base, { origin: server.base }).post('/api/v1/auth/password/reset', { token: invited.invite.token, newPassword: password }));
+          const manager = new Caller(server.base, { origin: server.base });
+          await manager.signIn(email, password);
+          for (const caller of [cashier, manager]) {
+            const found = await (await memberBook(caller)).search('415 555 0132');
+            expect(found.map((member) => member.mobile)).toEqual(['(415) 555-0132']);
+          }
+        }, 60_000);
 
         it('keeps every row that was there, byte for byte, and every column, index, key and check as it was', async () => {
           const after = await raw();

@@ -10,6 +10,9 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { portLoyalty, type LoyaltyBook } from '../data/loyalty';
+import { createSessionTransport } from '../data/sessionSource';
+import { realTables } from '../data/tableOfRef';
 import { addOnBundle, appBundle, boot, Caller, FROM_ADMINIUM, ok, releasedBundle, until, type BootOptions, type Engine, type Reply, type Server } from './harness';
 
 export type Row = Record<string, unknown>;
@@ -20,6 +23,19 @@ export const ADMIN = { email: process.env['E2E_ADMIN_EMAIL'] ?? 'e2e@adminium.lo
 export const cents = (value: unknown): number => Math.round(Number(value) * 100);
 /** The figure as a receipt prints it. */
 export const money = (value: unknown): string => (value === null || value === undefined ? '—' : (Math.round(Number(value) * 100) / 100).toFixed(2));
+
+/** The till's own member search, spoken as this caller. */
+export async function memberBook(caller: Caller): Promise<LoyaltyBook> {
+  const config = ok(await caller.get<{ tables?: Record<string, string>; connectionId: string; installId: string; csrfToken: string; timezone: string; currency: string }>('/apps/pos/staff/surface-config.json'));
+  const transport = createSessionTransport({
+    tableOfRef: realTables(config.tables ?? {}),
+    connectionId: config.connectionId,
+    installId: config.installId,
+    staff: { csrfToken: config.csrfToken, timezone: config.timezone, currency: config.currency },
+    fetchImpl: caller.fetchAs(),
+  } as never);
+  return portLoyalty(transport.port);
+}
 
 export interface Stand {
   server: Server;

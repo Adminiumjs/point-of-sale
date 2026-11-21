@@ -25,6 +25,7 @@ const m = manifest as unknown as Json & {
   people: (Json & { table: string; copies: { table: string; column: string; holds: string; via?: string }[] })[];
   outbox: Json & { table: string; recipient: Json; kinds: Record<string, string>; classes: Record<string, string> };
   requiredSchema: { tables: Table[] };
+  roles: { key: string; permissions: string[] }[];
   emailTemplates: { key: string }[];
   automations?: unknown[];
 };
@@ -97,6 +98,14 @@ describe("the shop's people", () => {
     expect(table('staff').columns.some((c) => c.semantic === 'email')).toBe(true);
     expect(found.length).toBeGreaterThan(0);
     expect(found.filter((ref) => !declared.has(ref))).toEqual([]);
+  });
+
+  it("mark a member's mobile as personal, and the till's roles, which find members by it, may read it", () => {
+    expect(column('customers', 'mobile')?.rules?.personal).toBe(true);
+    expect(m.roles.map((role) => [role.key, role.permissions.includes('table:@customers:read_pii')])).toEqual([
+      ['cashier', true],
+      ['manager', true],
+    ]);
   });
 });
 
