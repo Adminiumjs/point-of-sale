@@ -1,0 +1,89 @@
+/**
+ * TEXTS ON A BUILT ADMINIUM (plan 80), with no provider connected — which is
+ * how every shop starts, and how the demo stays.
+ *
+ * The till asks for a text by writing one row in its outbox, as the cashier.
+ * Adminium claims the row and writes how it ended in fixed words; the till
+ * reads that row back through the same session and says one result. With no
+ * provider, that result is "texts aren't set up" — never "sent", never an
+ * error the till cannot read. A member who gave only a mobile is a person
+ * Adminium can find and erase by that number.
+ */
+import { randomUUID } from 'node:crypto';
+
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { createSessionTransport } from '../data/sessionSource';
+import { realTables } from '../data/tableOfRef';
+import { sessionTextLog, type TextLog } from '../data/textLog';
+import { follow, setTextPace } from '../state/texts';
+import { ENGINES, missing, ok, type Caller, type Engine } from './harness';
+import { standUp, type Stand } from './stand';
+
+const why = missing();
+if (why !== null && process.env['ADMINIUM_REQUIRE_CONTRACT'] === '1') throw new Error(`the contract must run here, and cannot: ${why}`);
+const PORT = Number(process.env['CONTRACT_PORT'] ?? 4931) + 44;
+
+/** The till's own text log, spoken as this caller. */
+async function tillLog(caller: Caller): Promise<TextLog> {
+  const config = ok(await caller.get<{ tables?: Record<string, string>; connectionId: string; installId: string; csrfToken: string; timezone: string; currency: string }>('/apps/pos/staff/surface-config.json'));
+  const transport = createSessionTransport({
+    tableOfRef: realTables(config.tables ?? {}),
+    connectionId: config.connectionId,
+    installId: config.installId,
+    staff: { csrfToken: config.csrfToken, timezone: config.timezone, currency: config.currency },
+    fetchImpl: caller.fetchAs(),
+  } as never);
+  return sessionTextLog(transport.port);
+}
+
+describe.skipIf(why !== null)(`texts on a built Adminium${why === null ? '' : ` — skipped: ${why}`}`, () => {
+  ENGINES.forEach(([engine, available]) => {
+    describe.skipIf(!available)(`on ${engine}`, () => {
+      let s: Stand;
+      let cashier: Caller;
+      let log: TextLog;
+
+      beforeAll(async () => {
+        s = await standUp(engine as Engine, PORT, `pos_texts_${engine}`);
+        cashier = await s.member('cashier', 'Till cashier');
+        log = await tillLog(cashier);
+        // The till's own pace, a little longer: the outbox's job runs beside other work.
+        setTextPace([500, 1000, 1500, 2000, 3000, 4000, 5000, 6000, 8000], 1000);
+      }, 400_000);
+      afterAll(async () => {
+        await s?.server.stop();
+      });
+
+      it('a pickup text the cashier asks for is read back as "texts aren’t set up"', async () => {
+        const customer = await s.insert('customers', { name: 'Wen Li', mobile: '+44 7700 900471' });
+        const id = randomUUID();
+        await s.as(cashier).insert('messages', { id, kind: 'pickup_ready', status: 'queued', customer_id: customer['id'] });
+        expect(await follow(() => log.read(id))).toBe('not-set-up');
+        expect(await s.one('messages', id)).toMatchObject({ status: 'skipped', error: 'No text provider is connected' });
+      }, 120_000);
+
+      it("a booking's reminder goes to the number on the booking, and reads back the same way", async () => {
+        const booking = await s.insert('reservations', { name: 'Nell Varga', mobile: '+44 7700 900472', party_size: 2, starts_at: new Date(Date.now() + 86_400_000).toISOString(), status: 'confirmed', channel: 'phone' });
+        expect(booking['texts_ok'] ?? null).toBeNull();
+        const id = randomUUID();
+        await s.as(cashier).insert('messages', { id, kind: 'table_reminder', status: 'queued', reservation_id: booking['id'] });
+        expect(await follow(() => log.read(id))).toBe('not-set-up');
+      }, 120_000);
+
+      it('the emailed receipt still takes an address in the same column', async () => {
+        const id = randomUUID();
+        const row = await s.as(cashier).insert('messages', { id, kind: 'receipt', status: 'queued', to_address: 'guest@tillmail.net' });
+        expect(row['to_address']).toBe('guest@tillmail.net');
+      }, 60_000);
+
+      it('a member known only by their mobile is found by it, to be erased', async () => {
+        const mobile = '+44 7700 900473';
+        await s.insert('customers', { name: 'Ida Lund', mobile });
+        const preview = ok(await s.staff.post<{ data: { goes: { kind: string; table?: string; count: number }[] } }>('/api/v1/privacy/phone/erase/preview', { phone: mobile })).data;
+        const members = preview.goes.filter((item) => item.kind === 'people' && (item.table ?? '').endsWith('customers'));
+        expect(members.map((item) => item.count)).toEqual([1]);
+      }, 60_000);
+    });
+  });
+});
