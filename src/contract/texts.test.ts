@@ -80,15 +80,29 @@ describe.skipIf(why !== null)(`texts on a built Adminium${why === null ? '' : ` 
       }, 60_000);
 
       it('says texts are not set up, so the till draws no box and offers no text receipt', async () => {
-        expect(await log.ready()).toBe(false);
+        expect(await (await tillLog(s.staff)).ready()).toBe(false);
       }, 60_000);
 
-      it("a cashier records a member's yes at the counter, in the box's words, and reads it back", async () => {
+      it("the owner at the till records a member's yes at the counter, in the box's words, and reads it back", async () => {
+        const owner = await tillLog(s.staff);
         const member = await s.insert('customers', { name: 'Oda Berg', mobile: '+44 7911 123474' });
         const person = { table: 'customers' as const, row: String(member['id']), phone: null };
-        expect((await log.standing(person))?.state).toBe('not-asked');
-        expect(await log.record(person, { state: 'yes', how: 'in-person', wording: { text: 'Text me about my table or pickup. A reminder for your table, or word that your order is ready.', version: 'v1 en-US' } })).toBe(true);
-        expect(await log.standing(person)).toEqual({ state: 'yes', masked: expect.stringContaining('474'), liftBy: null });
+        expect((await owner.standing(person))?.state).toBe('not-asked');
+        expect(await owner.record(person, { state: 'yes', how: 'in-person', wording: { text: 'Text me about my table or pickup. A reminder for your table, or word that your order is ready.', version: 'v1 en-US' } })).toBe(true);
+        expect(await owner.standing(person)).toEqual({ state: 'yes', masked: expect.stringContaining('474'), liftBy: null });
+      }, 60_000);
+
+      /*
+       * ENGINE GAP: the till's own roles are screens-only, and Adminium's
+       * screens-only door (`apps/screens-only.ts`) lists no `/texts/*` route,
+       * so a cashier is refused "This account opens its app's own screens".
+       * The till then draws no box and offers no text receipt — safe, but the
+       * counter cannot record a yes. This fails until the door lets them in.
+       */
+      it.fails("a cashier reads where a member stands, as the till does", async () => {
+        const member = await s.insert('customers', { name: 'Ida Berg', mobile: '+44 7911 123476' });
+        expect(await log.ready()).toBe(false);
+        expect((await log.standing({ table: 'customers', row: String(member['id']), phone: null }))?.state).toBe('not-asked');
       }, 60_000);
 
       it('a member known only by their mobile is found by it, to be erased', async () => {

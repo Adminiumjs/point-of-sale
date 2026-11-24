@@ -297,6 +297,9 @@ describe.skipIf(why !== null)(`taking a card through Adminium${why === null ? ''
           expect(edits).toEqual({
             payments: ['approval_code', 'paid_with', 'payment_last4', 'payment_ref', 'provider', 'refunded_elsewhere'],
             refunds: ['refund_ref', 'refund_state'],
+            // Texts, in the same release: the booking's own box, and on the outbox the booking a text is about and Adminium's code.
+            reservations: ['texts_ok'],
+            messages: ['reservation_id', 'text_reason'],
           });
           // The manager gains the refund right: the operator allows it, as the install review asks.
           const refused = await staff.post('/api/v1/apps/pos/update', { planChecksum: plan.checksum, publicAccess: true });

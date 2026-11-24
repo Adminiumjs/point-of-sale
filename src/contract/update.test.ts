@@ -56,14 +56,32 @@ const TABLES = (manifest as unknown as { requiredSchema: { tables: { ref: string
  * service, what it was paid with, a card's approval code and last four, money
  * given back at the service) and on a refund it sends back (its reference and
  * where it stands), and `online` among the ways a payment and a refund go.
+ * The texts add a box on a booking, and on the outbox a link to the booking
+ * and a code column, with three kinds of message.
  * Every one is new and empty: no row that was there changes.
  */
 const NEW_TABLES: string[] = [];
 const NEW_COLUMNS: Record<string, string[]> = {
   payments: ['approval_code', 'paid_with', 'payment_last4', 'payment_ref', 'provider', 'refunded_elsewhere'],
   refunds: ['refund_ref', 'refund_state'],
+  // Texts (plan 80): the guest's own tick on a booking, and on the outbox the booking a text is about and Adminium's code for how it went.
+  reservations: ['texts_ok'],
+  messages: ['reservation_id', 'text_reason'],
 };
-const NEW_ENUM_VALUES: Record<string, Record<string, string[]>> = { payments: { method: ['online'] }, refunds: { method: ['online'] } };
+const NEW_ENUM_VALUES: Record<string, Record<string, string[]>> = {
+  payments: { method: ['online'] },
+  refunds: { method: ['online'] },
+  messages: { kind: ['pickup_ready', 'table_reminder', 'receipt_text'] },
+};
+/**
+ * The engines that keep a check listing an enum's values. Postgres and MySQL
+ * read no values on the outbox's `kind` that 0.3.0 made, so Adminium plans
+ * nothing to widen there; the write after the update proves each kind is taken.
+ */
+const enumValuesFor = (engine: Engine, ref: string): Record<string, string[]> => {
+  const all = NEW_ENUM_VALUES[ref] ?? {};
+  return engine === 'sqlite' || ref !== 'messages' ? all : {};
+};
 /** A column, an index or a check that names one of the new columns. */
 const isNew = (table: string, text: string): boolean => (NEW_COLUMNS[table.slice(PREFIX.length)] ?? []).some((column) => new RegExp(`\\b${column}\\b`).test(text));
 
@@ -261,7 +279,7 @@ describe.skipIf(why !== null)(`the update of a live ${FROM_VERSION} shop to ${TO
             const planned = byRef[ref]!;
             expect([ref, planned.action, planned.class, planned.table, planned.renameExistingTo, planned.blocked]).toEqual([ref, 'reuse', 'own-leftover', `${PREFIX}${ref}`, undefined, []]);
             expect([ref, planned.edits.filter((e) => e.kind === 'add-column').map((e) => e.column).sort()]).toEqual([ref, NEW_COLUMNS[ref] ?? []]);
-            expect([ref, Object.fromEntries(planned.edits.filter((e) => e.kind === 'enum-values').map((e) => [e.column, e.values]))]).toEqual([ref, NEW_ENUM_VALUES[ref] ?? {}]);
+            expect([ref, Object.fromEntries(planned.edits.filter((e) => e.kind === 'enum-values').map((e) => [e.column, e.values]))]).toEqual([ref, enumValuesFor(engine as Engine, ref)]);
             // The new reference is unique: its index comes with it, and nothing else.
             expect([ref, planned.edits.filter((e) => !['add-column', 'enum-values'].includes(e.kind) && !((NEW_COLUMNS[ref] ?? []).includes(e.column) && ['add-unique', 'add-index'].includes(e.kind)))]).toEqual([ref, []]);
           }
@@ -310,13 +328,21 @@ describe.skipIf(why !== null)(`the update of a live ${FROM_VERSION} shop to ${TO
             const old = <T,>(row: Record<string, T>) => Object.fromEntries(Object.entries(row).filter(([column]) => !fresh.includes(column)));
             expect([name, old(now.columns)]).toEqual([name, was.columns]);
             expect([name, Object.keys(now.columns).filter((column) => fresh.includes(column)).sort()]).toEqual([name, [...fresh].sort()]);
-            // A list's new value widens the method's check (it lists 'gift_card'); nothing else about the constraints moves.
-            const kept = (list: string[]) => list.filter((c) => !isNew(name, c) && !/gift_card/.test(c));
+            // A list's new value widens its check (the method's lists 'gift_card', the outbox kind's 'receipt'); nothing else about the constraints moves.
+            // SQLite writes the table out again for a widened check, in its own case: compared without it.
+            const kept = (list: string[]) => list.filter((c) => !isNew(name, c) && !/gift_card/.test(c) && !(name === `${PREFIX}messages` && /"kind"/i.test(c))).map((c) => c.toLowerCase());
             expect([name, kept(now.constraints)]).toEqual([name, kept(was.constraints)]);
             expect(now.rows.map(old), `the rows of ${name}`).toEqual(was.rows);
             for (const row of now.rows) for (const column of fresh) expect([name, column, row[column]]).toEqual([name, column, null]);
           }
         }, 120_000);
+
+        it('takes each text kind on the outbox after the update: a pickup, a table reminder, a text receipt', async () => {
+          for (const kind of ['pickup_ready', 'table_reminder', 'receipt_text']) {
+            const reply = await d.post('messages', { id: randomUUID(), kind, status: 'skipped', error: 'written by the contract' });
+            expect([kind, reply.status, JSON.stringify(reply.body).slice(0, 300)]).toEqual([kind, 201, expect.any(String)]);
+          }
+        }, 60_000);
 
         it('keeps what each ticket charged, to the cent, after every one is read again', async () => {
           const was = beforeHttp['tickets']!;
