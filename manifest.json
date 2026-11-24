@@ -17,7 +17,7 @@
     "hospitality"
   ],
   "compatibility": {
-    "minAdminiumVersion": "0.3.62",
+    "minAdminiumVersion": "0.3.76",
     "engines": [
       "sqlite",
       "postgres",
@@ -5219,6 +5219,21 @@
               "zh-CN": "入座时间",
               "zh-TW": "入座時間"
             }
+          },
+          {
+            "ref": "texts_ok",
+            "type": "bool",
+            "nullable": true,
+            "label": {
+              "en-US": "Texts about the booking",
+              "de-DE": "SMS zur Reservierung",
+              "fr-FR": "SMS pour la réservation",
+              "da-DK": "Sms om bookingen",
+              "cs-CZ": "SMS k rezervaci",
+              "ar-EG": "رسائل نصية عن الحجز",
+              "zh-CN": "订座短信",
+              "zh-TW": "訂位簡訊"
+            }
           }
         ],
         "label": {
@@ -6634,24 +6649,24 @@
       {
         "ref": "messages",
         "label": {
-          "en-US": "Emailed receipt",
-          "de-DE": "Beleg per E-Mail",
-          "fr-FR": "Reçu par e-mail",
-          "da-DK": "Kvittering på e-mail",
-          "cs-CZ": "Účtenka e-mailem",
-          "ar-EG": "إيصال بالبريد الإلكتروني",
-          "zh-CN": "电子邮件收据",
-          "zh-TW": "電子郵件收據"
+          "en-US": "Message",
+          "de-DE": "Nachricht",
+          "fr-FR": "Message",
+          "da-DK": "Besked",
+          "cs-CZ": "Zpráva",
+          "ar-EG": "رسالة",
+          "zh-CN": "消息",
+          "zh-TW": "訊息"
         },
         "labelPlural": {
-          "en-US": "Emailed receipts",
-          "de-DE": "Belege per E-Mail",
-          "fr-FR": "Reçus par e-mail",
-          "da-DK": "Kvitteringer på e-mail",
-          "cs-CZ": "Účtenky e-mailem",
-          "ar-EG": "الإيصالات بالبريد الإلكتروني",
-          "zh-CN": "电子邮件收据",
-          "zh-TW": "電子郵件收據"
+          "en-US": "Messages",
+          "de-DE": "Nachrichten",
+          "fr-FR": "Messages",
+          "da-DK": "Beskeder",
+          "cs-CZ": "Zprávy",
+          "ar-EG": "الرسائل",
+          "zh-CN": "消息",
+          "zh-TW": "訊息"
         },
         "columns": [
           {
@@ -6663,7 +6678,10 @@
             "ref": "kind",
             "type": "enum",
             "enum": [
-              "receipt"
+              "receipt",
+              "pickup_ready",
+              "table_reminder",
+              "receipt_text"
             ],
             "default": "receipt",
             "label": {
@@ -6688,6 +6706,36 @@
                     "ar-EG": "إيصال",
                     "zh-CN": "收据",
                     "zh-TW": "收據"
+                  },
+                  "pickup_ready": {
+                    "en-US": "Order ready (text)",
+                    "de-DE": "Bestellung fertig (SMS)",
+                    "fr-FR": "Commande prête (SMS)",
+                    "da-DK": "Bestilling klar (sms)",
+                    "cs-CZ": "Objednávka připravena (SMS)",
+                    "ar-EG": "الطلب جاهز (رسالة نصية)",
+                    "zh-CN": "取餐通知（短信）",
+                    "zh-TW": "取餐通知（簡訊）"
+                  },
+                  "table_reminder": {
+                    "en-US": "Table reminder (text)",
+                    "de-DE": "Tischerinnerung (SMS)",
+                    "fr-FR": "Rappel de table (SMS)",
+                    "da-DK": "Påmindelse om bord (sms)",
+                    "cs-CZ": "Připomínka stolu (SMS)",
+                    "ar-EG": "تذكير بالطاولة (رسالة نصية)",
+                    "zh-CN": "订座提醒（短信）",
+                    "zh-TW": "訂位提醒（簡訊）"
+                  },
+                  "receipt_text": {
+                    "en-US": "Receipt (text)",
+                    "de-DE": "Beleg (SMS)",
+                    "fr-FR": "Reçu (SMS)",
+                    "da-DK": "Kvittering (sms)",
+                    "cs-CZ": "Účtenka (SMS)",
+                    "ar-EG": "إيصال (رسالة نصية)",
+                    "zh-CN": "收据（短信）",
+                    "zh-TW": "收據（簡訊）"
                   }
                 }
               }
@@ -6771,7 +6819,6 @@
             "type": "text",
             "maxLength": 254,
             "nullable": true,
-            "semantic": "email",
             "label": {
               "en-US": "To",
               "de-DE": "An",
@@ -6783,9 +6830,6 @@
               "zh-TW": "收件人"
             },
             "rules": {
-              "validation": {
-                "format": "email"
-              },
               "personal": true
             }
           },
@@ -6880,6 +6924,22 @@
               "ar-EG": "سبب عدم الإرسال",
               "zh-CN": "未发送原因",
               "zh-TW": "未寄出原因"
+            }
+          },
+          {
+            "ref": "reservation_id",
+            "type": "fk",
+            "references": "reservations",
+            "nullable": true,
+            "label": {
+              "en-US": "Reservation",
+              "de-DE": "Reservierung",
+              "fr-FR": "Réservation",
+              "da-DK": "Reservation",
+              "cs-CZ": "Rezervace",
+              "ar-EG": "حجز",
+              "zh-CN": "预订",
+              "zh-TW": "訂位"
             }
           }
         ]
@@ -8595,26 +8655,25 @@
       "template": "page-crud",
       "title": {
         "key": "mft.pos.page.receipts",
-        "fallback": "Emailed receipts"
+        "fallback": "Messages"
       },
       "titles": {
-        "de-DE": "Belege per E-Mail",
-        "fr-FR": "Reçus par e-mail",
-        "da-DK": "Kvitteringer på e-mail",
-        "cs-CZ": "Účtenky e-mailem",
-        "ar-EG": "الإيصالات بالبريد الإلكتروني",
-        "zh-CN": "电子邮件收据",
-        "zh-TW": "電子郵件收據"
+        "de-DE": "Nachrichten",
+        "fr-FR": "Messages",
+        "da-DK": "Beskeder",
+        "cs-CZ": "Zprávy",
+        "ar-EG": "الرسائل",
+        "zh-CN": "消息",
+        "zh-TW": "訊息"
       },
       "nav": {
         "group": "records",
-        "icon": "mail",
+        "icon": "message-square",
         "order": 16
       },
       "bindings": {
         "rows": "messages"
-      },
-      "feature": "emailed-receipts"
+      }
     }
   ],
   "roles": [
@@ -9727,7 +9786,8 @@
         "mobile",
         "email",
         "occasion",
-        "guest_request"
+        "guest_request",
+        "texts_ok"
       ],
       "defaults": {
         "status": "confirmed",
@@ -9747,6 +9807,24 @@
           "phone": "phone"
         },
         "link": "manage?code={code}"
+      },
+      "textConsent": {
+        "column": "texts_ok",
+        "phone": "mobile",
+        "class": "service",
+        "wording": {
+          "version": 1,
+          "text": {
+            "en-US": "Text me about my table or pickup. A reminder for your table, or word that your order is ready.",
+            "de-DE": "SMS zu meinem Tisch oder meiner Abholung. Eine Erinnerung an Ihren Tisch oder eine Nachricht, wenn Ihre Bestellung bereit ist.",
+            "fr-FR": "M’envoyer des SMS pour ma table ou mon retrait. Un rappel pour votre table, ou un message quand votre commande est prête.",
+            "da-DK": "Send mig sms om mit bord eller min afhentning. En påmindelse om dit bord eller besked, når din bestilling er klar.",
+            "cs-CZ": "Posílejte mi SMS o mém stolu nebo vyzvednutí. Připomínka vašeho stolu nebo zpráva, že je vaše objednávka připravena.",
+            "ar-EG": "أرسلوا لي رسائل عن طاولتي أو طلبي. تذكير بموعد طاولتك، أو إشعار بأن طلبك جاهز.",
+            "zh-CN": "通过短信告知我订座或取餐信息。订座提醒，或餐点备好的通知。",
+            "zh-TW": "以簡訊通知我訂位或取餐資訊。訂位提醒，或餐點備妥的通知。"
+          }
+        }
       }
     },
     {
@@ -10038,13 +10116,21 @@
     },
     "links": {
       "ticket": "ticket_id",
-      "customer": "customer_id"
+      "customer": "customer_id",
+      "reservation": "reservation_id"
     },
     "recipient": {
       "via": "customer_id",
       "table": "customers",
       "email": "email",
-      "name": "name"
+      "name": "name",
+      "phone": "mobile",
+      "fallback": {
+        "via": "reservation_id",
+        "email": "email",
+        "name": "name",
+        "phone": "mobile"
+      }
     },
     "settings": {
       "table": "settings",
@@ -10052,11 +10138,27 @@
       "phone": "phone"
     },
     "kinds": {
-      "receipt": "pos-receipt"
+      "receipt": "pos-receipt",
+      "pickup_ready": "pos-pickup-ready-text",
+      "table_reminder": "pos-table-reminder-text",
+      "receipt_text": "pos-receipt-text"
     },
     "classes": {
-      "receipt": "service"
-    }
+      "receipt": "service",
+      "pickup_ready": "service",
+      "table_reminder": "service",
+      "receipt_text": "service"
+    },
+    "channels": {
+      "pickup_ready": "sms",
+      "table_reminder": "sms",
+      "receipt_text": "sms"
+    },
+    "waiting": [
+      "pickup_ready",
+      "table_reminder",
+      "receipt_text"
+    ]
   },
   "people": [
     {
@@ -10068,27 +10170,21 @@
       "customer": "visits",
       "copies": [
         {
-          "table": "reservations",
-          "column": "name",
-          "holds": "name"
-        },
-        {
-          "table": "reservations",
-          "column": "email",
-          "holds": "email"
-        },
-        {
-          "table": "reservations",
-          "column": "mobile",
-          "holds": "phone"
-        },
-        {
           "table": "tickets",
           "column": "receipt_to",
           "holds": "email",
           "via": "customer_id"
         }
-      ]
+      ],
+      "phone": "mobile"
+    },
+    {
+      "table": "reservations",
+      "kind": "people",
+      "email": "email",
+      "phone": "mobile",
+      "name": "name",
+      "firstName": "firstWordOfName"
     }
   ],
   "emailTemplates": [
@@ -10318,6 +10414,126 @@
       }
     }
   ],
+  "textTemplates": [
+    {
+      "key": "pos-pickup-ready-text",
+      "name": {
+        "en-US": "Order ready",
+        "de-DE": "Bestellung fertig",
+        "fr-FR": "Commande prête",
+        "da-DK": "Bestilling klar",
+        "cs-CZ": "Objednávka připravena",
+        "ar-EG": "الطلب جاهز",
+        "zh-CN": "取餐通知",
+        "zh-TW": "取餐通知"
+      },
+      "locales": {
+        "en-US": {
+          "body": "{{appName}}: your order {{ticket.number}} is ready to collect."
+        },
+        "de-DE": {
+          "body": "{{appName}}: Ihre Bestellung {{ticket.number}} ist abholbereit."
+        },
+        "fr-FR": {
+          "body": "{{appName}} : votre commande {{ticket.number}} vous attend au comptoir."
+        },
+        "da-DK": {
+          "body": "{{appName}}: Din bestilling {{ticket.number}} er klar til afhentning."
+        },
+        "cs-CZ": {
+          "body": "{{appName}}: Vaše objednávka {{ticket.number}} je připravena k vyzvednutí."
+        },
+        "ar-EG": {
+          "body": "{{appName}}: طلبك رقم {{ticket.number}} جاهز للاستلام."
+        },
+        "zh-CN": {
+          "body": "{{appName}}：您的订单 {{ticket.number}} 已备好，可以取餐了。"
+        },
+        "zh-TW": {
+          "body": "{{appName}}：您的訂單 {{ticket.number}} 已備妥，可以取餐了。"
+        }
+      }
+    },
+    {
+      "key": "pos-table-reminder-text",
+      "name": {
+        "en-US": "Table reminder",
+        "de-DE": "Tischerinnerung",
+        "fr-FR": "Rappel de table",
+        "da-DK": "Påmindelse om bord",
+        "cs-CZ": "Připomínka stolu",
+        "ar-EG": "تذكير بالطاولة",
+        "zh-CN": "订座提醒",
+        "zh-TW": "訂位提醒"
+      },
+      "locales": {
+        "en-US": {
+          "body": "{{appName}}: a reminder of your table for {{reservation.party_size}} at {{reservation.starts_at.time}}, {{reservation.starts_at.date}}."
+        },
+        "de-DE": {
+          "body": "{{appName}}: Erinnerung an Ihren Tisch für {{reservation.party_size}} um {{reservation.starts_at.time}}, {{reservation.starts_at.date}}."
+        },
+        "fr-FR": {
+          "body": "{{appName}} : rappel de votre table pour {{reservation.party_size}} à {{reservation.starts_at.time}}, {{reservation.starts_at.date}}."
+        },
+        "da-DK": {
+          "body": "{{appName}}: Påmindelse om dit bord til {{reservation.party_size}} kl. {{reservation.starts_at.time}}, {{reservation.starts_at.date}}."
+        },
+        "cs-CZ": {
+          "body": "{{appName}}: Připomínáme váš stůl pro {{reservation.party_size}} v {{reservation.starts_at.time}}, {{reservation.starts_at.date}}."
+        },
+        "ar-EG": {
+          "body": "{{appName}}: تذكير بطاولتك لعدد {{reservation.party_size}} في {{reservation.starts_at.time}}، {{reservation.starts_at.date}}."
+        },
+        "zh-CN": {
+          "body": "{{appName}}：提醒您，{{reservation.starts_at.date}} {{reservation.starts_at.time}} 已为您预留 {{reservation.party_size}} 人的座位。"
+        },
+        "zh-TW": {
+          "body": "{{appName}}：提醒您，{{reservation.starts_at.date}} {{reservation.starts_at.time}} 已為您保留 {{reservation.party_size}} 位的座位。"
+        }
+      }
+    },
+    {
+      "key": "pos-receipt-text",
+      "name": {
+        "en-US": "Text receipt",
+        "de-DE": "Beleg per SMS",
+        "fr-FR": "Reçu par SMS",
+        "da-DK": "Kvittering på sms",
+        "cs-CZ": "Účtenka SMS",
+        "ar-EG": "إيصال برسالة نصية",
+        "zh-CN": "短信收据",
+        "zh-TW": "簡訊收據"
+      },
+      "locales": {
+        "en-US": {
+          "body": "{{appName}}: your receipt for order {{ticket.number}}: {{ticket.charged}}, tip included. Thank you!"
+        },
+        "de-DE": {
+          "body": "{{appName}}: Ihr Beleg für Bestellung {{ticket.number}}: {{ticket.charged}}, inkl. Trinkgeld. Vielen Dank!"
+        },
+        "fr-FR": {
+          "body": "{{appName}} : merci ! Commande {{ticket.number}} réglée : {{ticket.charged}}, pourboire compris."
+        },
+        "da-DK": {
+          "body": "{{appName}}: Kvittering for bestilling {{ticket.number}}: {{ticket.charged}} inkl. drikkepenge. Tak!"
+        },
+        "cs-CZ": {
+          "body": "{{appName}}: Účtenka k objednávce {{ticket.number}}: {{ticket.charged}} vč. spropitného. Děkujeme!"
+        },
+        "ar-EG": {
+          "body": "{{appName}}: إيصال الطلب {{ticket.number}}: {{ticket.charged}} شاملًا البقشيش. شكرًا لك!"
+        },
+        "zh-CN": {
+          "body": "{{appName}}：订单 {{ticket.number}} 的收据：{{ticket.charged}}（含小费）。谢谢惠顾！"
+        },
+        "zh-TW": {
+          "body": "{{appName}}：訂單 {{ticket.number}} 的收據：{{ticket.charged}}（含小費）。謝謝惠顧！"
+        }
+      }
+    }
+  ],
+  "textReplies": "on",
   "sampleData": {
     "file": "seeds/pos.sample.json"
   },

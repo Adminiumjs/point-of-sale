@@ -129,7 +129,8 @@ CREATE TABLE pos_reservations (
   guest_request VARCHAR(280),
   staff_note VARCHAR(280),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  seated_at TIMESTAMPTZ
+  seated_at TIMESTAMPTZ,
+  texts_ok BOOLEAN
 );
 
 CREATE TABLE pos_customers (
@@ -368,7 +369,7 @@ CREATE TABLE pos_settings (
 
 CREATE TABLE pos_messages (
   id UUID PRIMARY KEY,
-  kind TEXT NOT NULL DEFAULT 'receipt' CHECK (kind IN ('receipt')),
+  kind TEXT NOT NULL DEFAULT 'receipt' CHECK (kind IN ('receipt', 'pickup_ready', 'table_reminder', 'receipt_text')),
   status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'sent', 'failed', 'skipped')),
   to_address VARCHAR(254),
   language VARCHAR(16),
@@ -376,7 +377,8 @@ CREATE TABLE pos_messages (
   customer_id INTEGER REFERENCES pos_customers (id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   sent_at TIMESTAMPTZ,
-  error TEXT
+  error TEXT,
+  reservation_id INTEGER REFERENCES pos_reservations (id)
 );
 
 CREATE INDEX idx_menu_items_category_id ON pos_menu_items (category_id);
@@ -419,3 +421,4 @@ CREATE INDEX idx_gift_card_ledger_ticket_id ON pos_gift_card_ledger (ticket_id);
 CREATE INDEX idx_gift_card_ledger_staff_id ON pos_gift_card_ledger (staff_id);
 CREATE INDEX idx_messages_ticket_id ON pos_messages (ticket_id);
 CREATE INDEX idx_messages_customer_id ON pos_messages (customer_id);
+CREATE INDEX idx_messages_reservation_id ON pos_messages (reservation_id);
