@@ -53,6 +53,9 @@ import { printOnly } from '../components/print';
 import { SESSION_STAFF_ID } from '../data/sessionOperator';
 import type { OutboxState } from './outbox';
 import { deviceKey, outbox, watchOutbox } from './writes';
+import { follow, maySendAgain, samePhone, textable, type TextOutcome } from './texts';
+import { textLog, type TextFacts } from '../data/textLog';
+import { DEMO_TEXTS_AGREED } from '../data/demo';
 import type {
   AppliedLine,
   BackTo,
@@ -359,6 +362,14 @@ export interface PosState {
   /** The sheet that makes the ticket on the register a pickup order. */
   pickupSheetOpen: boolean;
 
+  // texts (plan 80)
+  /**
+   * How each text the till asked for ended, by what it was about:
+   * `pickup:<ticket>`, `booking:<reservation>`, `receipt:<ticket>`. Kept for
+   * the session, so a card says what happened until it leaves the screen.
+   */
+  texts: Record<string, TextOutcome>;
+
   // actions
   toggleTheme: () => void;
   setTheme: (t: Theme) => void;
@@ -497,8 +508,8 @@ export interface PosState {
   setRefundConfirm: (open: boolean) => void;
   newOrder: () => void;
   printReceipt: () => void;
-  /** A texted receipt: the demo's only, until a text-message add-on exists. */
-  sendReceipt: (kind: 'text') => void;
+  /** Text the receipt of the sale that just closed to the guest's number on file, when they agreed. */
+  sendReceipt: (kind: 'text') => Promise<TextOutcome | null>;
   /**
    * Email the receipt of the sale that just closed to the guest's address:
    * one message in the outbox, which Adminium sends with the receipt drawn by
@@ -584,8 +595,18 @@ export interface PosState {
   markPickup: (order: { name: string; mobile: string; channel: PickupChannel }) => Promise<boolean>;
   /** Queued → making → ready → handed off. */
   advancePickup: (rid: string) => void;
-  /** Say it is ready: noted on the order (the message itself goes from the device). */
-  notifyPickup: (rid: string) => void;
+  /**
+   * Text them that it is ready: one row in the outbox, which Adminium sends to
+   * the customer's number if they agreed. Busy until it settles; the order is
+   * noted as told only when the text really went.
+   */
+  notifyPickup: (rid: string) => Promise<TextOutcome | null>;
+  /** Text a booking's guest a reminder of their table: the same row, the same honest result. */
+  messageBooking: (id: string) => Promise<TextOutcome | null>;
+  /** Whether the till can offer this number a text: it reads as one, is not mainland China, and the guest said yes. */
+  mayText: (phone: string | null | undefined) => boolean;
+  /** The number the sale's receipt would be texted to, when the till may offer it; null otherwise. */
+  receiptPhone: (sale: Pick<Sale, 'customerId' | 'reservationId'> | null) => string | null;
 }
 
 // Timers held module-side (mirrors the comp's this._ct / this._pt handles).
@@ -1395,6 +1416,7 @@ export const usePos = create<PosState>()((set, get) => {
     const sale: Sale = {
       ...(s.ticket.rid === undefined ? {} : { rid: s.ticket.rid }),
       ...(s.ticket.customerId === undefined ? {} : { customerId: s.ticket.customerId }),
+      ...(s.ticket.reservationId === undefined ? {} : { reservationId: s.ticket.reservationId }),
       number: s.ticket.number,
       table: s.ticket.table,
       items: s.ticket.items.map((x) => ({
@@ -1420,7 +1442,7 @@ export const usePos = create<PosState>()((set, get) => {
       ...(cardBalances.length === 0 ? {} : { cardBalances }),
       ...(newCards.length === 0 ? {} : { newCards }),
       ...(member === undefined ? {} : { member }),
-      ...(s.display.receipt === '' ? {} : { receipt: { via: s.display.receipt, to: s.display.receiptTo.trim() === '' ? null : s.display.receiptTo.trim() } }),
+      ...(s.display.receipt === '' ? {} : { receipt: { via: s.display.receipt, to: s.display.receipt !== 'email' || s.display.receiptTo.trim() === '' ? null : s.display.receiptTo.trim() } }),
     };
     get().showToast(t('toast.paymentComplete', { amount: money(sale.total) }), 'success');
     // Paid: the table is free again.
@@ -1785,6 +1807,7 @@ export const usePos = create<PosState>()((set, get) => {
 
     pickups: source.pickups(),
     pickupSheetOpen: false,
+    texts: {},
 
     display: { step: 'order', signed: false, receipt: '', receiptTo: '' },
     tipPad: null,
@@ -2863,7 +2886,18 @@ export const usePos = create<PosState>()((set, get) => {
     },
     // To whatever printer the tablet can reach; the print stylesheet sizes it for an 80 mm roll.
     printReceipt: () => printOnly('receipt'),
-    sendReceipt: () => get().showToast(t('toast.receiptSentText')),
+    sendReceipt: async () => {
+      const sale = get().lastSale;
+      if (sale === null || sale.rid === undefined) return null;
+      const phone = get().receiptPhone(sale);
+      if (phone === null) return null;
+      const rid = sale.rid;
+      return sendText(rid, `receipt:${rid}`, 'receipt_text', {
+        ticket_id: rid,
+        ...(sale.customerId === undefined ? {} : { customer_id: dbKey(sale.customerId) }),
+        ...(sale.reservationId === undefined ? {} : { reservation_id: dbKey(sale.reservationId) }),
+      }, { phone, agreed: true });
+    },
     emailReceipt: (raw) => {
       const s = get();
       if (!s.features['emailed-receipts']) return 'off';
@@ -3776,14 +3810,15 @@ export const usePos = create<PosState>()((set, get) => {
       if (!d.signed) return;
       const to = d.receiptTo.trim();
       // Email and text need somewhere to send; the rest need nothing.
-      if ((d.receipt === 'email' || d.receipt === 'text') && to === '') {
-        get().showToast(t(d.receipt === 'email' ? 'display.needEmail' : 'display.needPhone'), 'error');
+      // An email needs somewhere to send; a text goes to the number on file, the rest need nothing.
+      if (d.receipt === 'email' && to === '') {
+        get().showToast(t('display.needEmail'), 'error');
         return;
       }
       void saveTicket(ensureTicket(), {
         signed_at: new Date().toISOString(),
         receipt_via: d.receipt === '' ? null : d.receipt,
-        receipt_to: d.receipt === 'email' || d.receipt === 'text' ? to : null,
+        receipt_to: d.receipt === 'email' ? to : null,
       });
       set({ display: { step: 'order', signed: false, receipt: d.receipt, receiptTo: d.receiptTo } });
       get().showToast(t('display.toastDone'), 'success');
@@ -3848,6 +3883,7 @@ export const usePos = create<PosState>()((set, get) => {
             number,
             name: cleanName,
             mobile: cleanMobile === '' ? null : cleanMobile,
+            customerId,
             channel,
             stage: 'queued',
             placedAt: Date.now(),
@@ -3880,14 +3916,69 @@ export const usePos = create<PosState>()((set, get) => {
         get().showToast(t('pickup.toastHanded', { n: order.number }), 'success');
       }
     },
-    notifyPickup: (rid) => {
+    notifyPickup: async (rid) => {
       const order = get().pickups.find((p) => p.rid === rid);
-      if (order === undefined || order.stage !== 'ready') return;
-      set((st) => ({ pickups: st.pickups.map((p) => (p.rid === rid ? { ...p, notifiedAt: Date.now() } : p)) }));
-      void saveTicket(rid, { notified_at: new Date().toISOString() });
-      get().showToast(t('pickup.toastNotified', { name: order.name || String(order.number) }), 'success');
+      if (order === undefined || order.stage !== 'ready') return null;
+      // Whose number: the ticket's customer. The till sends nothing without one.
+      const customerId = order.customerId ?? (get().ticket.rid === rid ? get().ticket.customerId : get().held.find((h) => h.rid === rid)?.customerId);
+      const outcome = await sendText(rid, `pickup:${rid}`, 'pickup_ready', {
+        ticket_id: rid,
+        ...(customerId === undefined ? {} : { customer_id: dbKey(customerId) }),
+      }, { phone: order.mobile, agreed: get().mayText(order.mobile) }, customerId === undefined);
+      // Told only once it really went: the card says so, and the ticket keeps when.
+      if (outcome === 'sent') {
+        set((st) => ({ pickups: st.pickups.map((p) => (p.rid === rid ? { ...p, notifiedAt: Date.now() } : p)) }));
+        void saveTicket(rid, { notified_at: new Date().toISOString() });
+        get().showToast(t('pickup.toastNotified', { name: order.name || String(order.number) }), 'success');
+      }
+      return outcome;
+    },
+    messageBooking: async (id) => {
+      const r = get().reservations.find((x) => x.id === id);
+      if (r === undefined) return null;
+      return sendText(`resv:${id}`, `booking:${id}`, 'table_reminder', { reservation_id: dbKey(id) }, { phone: r.mobile, agreed: get().mayText(r.mobile) }, r.mobile === null || r.mobile.trim() === '');
+    },
+    mayText: (phone) => textable(phone, (number) => get().reservations.some((r) => r.textsOk === true && samePhone(r.mobile, number)) || (DEMO && DEMO_TEXTS_AGREED.some((one) => samePhone(one, number)))),
+    receiptPhone: (sale) => {
+      if (sale === null) return null;
+      const s = get();
+      const booking = sale.reservationId === undefined ? undefined : s.reservations.find((r) => r.id === sale.reservationId);
+      const member = sale.customerId === undefined ? undefined : s.members[sale.customerId];
+      // The member's own number when they have one on file, else the booking's: the one Adminium texts.
+      const phone = member !== undefined && sale.customerId !== undefined ? member.mobile : (booking?.mobile ?? null);
+      return s.mayText(phone) ? phone : null;
     },
   };
+
+  /**
+   * One text, start to end: the row in the outbox — queued behind what it is
+   * about, so a ticket still on its way is saved first, and offline it waits
+   * with them — then its result, read until it settles. A text already going,
+   * gone, or unknown is never asked for again from here.
+   */
+  async function sendText(queue: string, about: string, kind: 'pickup_ready' | 'table_reminder' | 'receipt_text', links: SinkRow, facts: TextFacts, nobody = false): Promise<TextOutcome | null> {
+    if (!maySendAgain(get().texts[about])) return null;
+    const mark = (outcome: TextOutcome) => set((st) => ({ texts: { ...st.texts, [about]: outcome } }));
+    // Nobody on file to text: said at once, with nothing written. A customer whose number this till has not read is Adminium's to find.
+    if (nobody) {
+      mark('no-number');
+      return 'no-number';
+    }
+    mark('sending');
+    const id = deviceKey();
+    let refusedWrite = false;
+    // No `language`: a text goes in the guest's language when Adminium knows it, else the business's — never the cashier's.
+    void outbox().insert(queue, 'messages', { id, kind, status: 'queued', ...links }, {
+      onRefused: (error) => {
+        refusedWrite = true;
+        refused(error);
+      },
+    });
+    textLog().queued(id, facts);
+    const outcome = await follow(async () => (refusedWrite ? { status: 'failed', error: null } : textLog().read(id)));
+    mark(outcome);
+    return outcome;
+  }
 
   // ---- charge helpers (need get/set closure) ----
   function applyCash() {

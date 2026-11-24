@@ -9,6 +9,8 @@ import { Icon } from '../components/Icon';
 import { TotalLabel } from '../components/Figures';
 import { CardPrints } from '../components/CardPrints';
 import { css } from '../components/css';
+import { TextResult } from '../components/TextResult';
+import { maySendAgain } from '../state/texts';
 import type { Sale } from '../data/types';
 import { splitWords } from './PayPanels';
 
@@ -19,6 +21,10 @@ export function Complete() {
   const { t, date, number } = useI18n();
   const [mailOpen, setMailOpen] = useState(false);
   const emailing = s.features['emailed-receipts'];
+  // A text receipt only to a number the guest agreed to texts for; otherwise there is no button at all.
+  const textPhone = s.receiptPhone(s.lastSale);
+  const texted = s.lastSale?.rid === undefined ? undefined : s.texts[`receipt:${s.lastSale.rid}`];
+  const texting = texted === 'sending';
   /*
    * The receipt of the sale that just closed. Only the demo makes one up for a
    * receipt opened with no sale behind it (its dock can open this screen
@@ -126,12 +132,14 @@ export function Complete() {
                 ))
               )}
               <ReceiptCards sale={sale} />
-              {/* What the guest asked for on the customer display (nothing sends it yet). */}
+              {/* What the guest asked for on the customer display: the till's buttons below send it. */}
               {sale.receipt !== undefined && sale.receipt.via !== 'none' && (
                 <div className="no-print" role="note" style={css('margin-top:9px;font-size:11.5px;color:var(--fg-muted);')}>
                   {sale.receipt.via === 'print'
                     ? t('complete.guestWantsPrint')
-                    : t(sale.receipt.via === 'email' ? 'complete.guestWantsEmail' : 'complete.guestWantsText', { to: sale.receipt.to ?? '' })}
+                    : sale.receipt.via === 'email'
+                      ? t('complete.guestWantsEmail', { to: sale.receipt.to ?? '' })
+                      : t('complete.guestWantsText')}
                 </div>
               )}
               {/* The member the sale was for: what it earned, and where that leaves them. */}
@@ -162,10 +170,10 @@ export function Complete() {
             {/*
               * Email only while Invoices & Receipts is attached: it draws the
               * receipt the email carries. Without it there is no button at all.
-              * A texted receipt has no add-on to send it yet, so it stays the
-              * demo's.
+              * Text only to a number the guest agreed to texts for (plan 80):
+              * the total and the shop's name, no link, sent by Adminium.
               */}
-            {(emailing || DEMO) && (
+            {(emailing || textPhone !== null) && (
               <div style={css('display:flex;gap:11px;')}>
                 {emailing && (
                   <button className="pos-press" aria-expanded={mailOpen} aria-controls="receipt-mail" onClick={() => setMailOpen((open) => !open)} style={css('flex:1;height:62px;border-radius:15px;border:1px solid ' + (mailOpen ? 'var(--accent)' : 'var(--border-strong)') + ';background:' + (mailOpen ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (mailOpen ? 'var(--accent)' : 'var(--fg)') + ';font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;')}>
@@ -173,14 +181,15 @@ export function Complete() {
                     {t('complete.email')}
                   </button>
                 )}
-                {DEMO && (
-                  <button className="pos-press" onClick={() => s.sendReceipt('text')} style={css('flex:1;height:62px;border-radius:15px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;')}>
+                {textPhone !== null && (texting || maySendAgain(texted)) && (
+                  <button className="pos-press" disabled={texting} aria-busy={texting} onClick={() => void s.sendReceipt('text')} style={css('flex:1;height:62px;border-radius:15px;border:1px solid ' + (sale.receipt?.via === 'text' ? 'var(--accent)' : 'var(--border-strong)') + ';background:var(--surface);color:var(--fg);font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;' + (texting ? 'cursor:progress;opacity:.7;' : 'cursor:pointer;'))}>
                     <Icon name="message-square" size={19} />
-                    {t('complete.text')}
+                    {t(texting ? 'texts.sending' : 'complete.text')}
                   </button>
                 )}
               </div>
             )}
+            <TextResult outcome={texted} />
             {emailing && mailOpen && <ReceiptMail initial={sale.receipt?.via === 'email' ? (sale.receipt.to ?? '') : ''} onDone={() => setMailOpen(false)} />}
             {emailing && (sale.emailedTo ?? []).length > 0 && (
               <div role="status" style={css('display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--fg-muted);')}>

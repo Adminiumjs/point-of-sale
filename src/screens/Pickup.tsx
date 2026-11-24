@@ -5,6 +5,8 @@ import { useT, type MessageKey } from '../i18n';
 import { Icon } from '../components/Icon';
 import { AuxHeader } from '../components/AuxHeader';
 import { css } from '../components/css';
+import { TextResult } from '../components/TextResult';
+import { maySendAgain } from '../state/texts';
 import type { LineItem, PickupChannel, PickupOrder } from '../data/types';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
@@ -29,9 +31,11 @@ const itemsOf = (items: LineItem[]): string[] => items.map((li) => (li.qty > 1 ?
  * Order-ahead pickup (COMP 735-766, logic 2053-2065): the orders taken for
  * collection — at the till or by phone (Online ordering's come later) —
  * in three lanes, each moved on with one button: Start, Mark ready, Hand off.
- * A ready order can be Notified: the device's own messages open on the
- * guest's number (as Reservations' Message does), and the order notes
- * when.
+ * A ready order can be Notified: a text that it is ready, sent by Adminium
+ * through the business's own provider to the customer's number, if they
+ * agreed (plan 80). The card is busy until it settles, then says what
+ * happened; the order is noted as told only when the text really went. The
+ * device's own messages never open.
  */
 export function Pickup() {
   const s = usePos();
@@ -88,7 +92,9 @@ function OrderCard({ order, items }: { order: PickupOrder; items: string[] }) {
   const act = order.stage === 'queued' ? { label: 'pickup.start', icon: 'play' } : order.stage === 'making' ? { label: 'pickup.markReady', icon: 'check' } : { label: 'pickup.handOff', icon: 'check-check' };
   const channel = CHANNEL[order.channel];
   const edge = ready ? 'var(--pos)' : order.stage === 'making' ? 'var(--warn)' : 'var(--border-strong)';
-  const notifyStyle = css('height:46px;padding:0 14px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:13.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;text-decoration:none;font-family:inherit;');
+  const sent = s.texts[`pickup:${order.rid}`];
+  const sending = sent === 'sending';
+  const notifyStyle = css('height:46px;padding:0 14px;border-radius:12px;border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:6px;font-family:inherit;' + (sending ? 'cursor:progress;opacity:.7;' : 'cursor:pointer;'));
   return (
     <article style={css('background:var(--surface);border:1px solid var(--border);border-inline-start:3px solid ' + edge + ';border-radius:16px;padding:15px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;')}>
       <div style={css('display:flex;align-items:center;gap:8px;')}>
@@ -107,29 +113,25 @@ function OrderCard({ order, items }: { order: PickupOrder; items: string[] }) {
           </div>
         ))}
       </div>
-      {order.notifiedAt !== null && (
+      {order.notifiedAt !== null && sent === undefined && (
         <div style={css('font-size:12px;font-weight:700;color:var(--pos);display:flex;align-items:center;gap:5px;')}>
           <Icon name="bell" size={13} />
           {t('pickup.notified')}
         </div>
       )}
+      <TextResult outcome={sent} />
       <div style={css('display:flex;gap:8px;margin-top:2px;')}>
         <button className="pos-press" onClick={() => s.advancePickup(order.rid)} style={css('flex:1;height:46px;border-radius:12px;border:none;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;color:' + (ready ? 'var(--pos-fg)' : 'var(--accent-fg)') + ';background:' + (ready ? 'var(--pos)' : 'var(--accent)') + ';')}>
           <Icon name={act.icon} size={16} />
           {t(act.label as MessageKey)}
         </button>
-        {ready &&
-          (order.mobile === null ? (
-            <button className="pos-press" onClick={() => s.notifyPickup(order.rid)} style={notifyStyle}>
-              <Icon name="bell" size={15} />
-              {t('pickup.notify')}
-            </button>
-          ) : (
-            <a href={`sms:${order.mobile.replace(/[^\d+]/g, '')}`} className="pos-press" onClick={() => s.notifyPickup(order.rid)} style={notifyStyle}>
-              <Icon name="bell" size={15} />
-              {t('pickup.notify')}
-            </a>
-          ))}
+        {/* Gone, going, or nobody can tell: never pressed again. A refusal may be tried again once the cause is fixed. */}
+        {ready && order.notifiedAt === null && (sending || maySendAgain(sent)) && (
+          <button className="pos-press" disabled={sending} aria-busy={sending} onClick={() => void s.notifyPickup(order.rid)} style={notifyStyle}>
+            <Icon name="bell" size={15} />
+            {t(sending ? 'texts.sending' : 'pickup.notify')}
+          </button>
+        )}
       </div>
     </article>
   );

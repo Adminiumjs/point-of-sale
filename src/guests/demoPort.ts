@@ -110,6 +110,7 @@ export function demoGuestsPort(opts: { now?: () => number } = {}): GuestsPort {
         occasion: b.occasion,
         request: b.request,
         note: null,
+        ...(b.textsOk === true ? { textsOk: true } : {}),
       };
       usePos.setState((s) => ({ reservations: [...s.reservations, r].sort((a, c) => a.startsAt - c.startsAt) }));
       return settle(asGuest(r));

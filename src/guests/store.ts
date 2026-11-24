@@ -14,6 +14,7 @@ import { create } from 'zustand';
 import type { BookingDay } from '../state/bookings';
 import { bookingDays } from '../state/bookings';
 import { venueDay, venueStamp, venueTime } from '../data/venueTime';
+import { isMainlandChina } from '../state/texts';
 import type { BalanceDoor } from './balance';
 import { GuestError, type GuestBooking, type GuestErrorKind, type GuestRules, type GuestVenue, type GuestsPort, type Slot } from './api';
 
@@ -56,6 +57,8 @@ export interface GuestsState {
   email: string;
   occasion: string;
   request: string;
+  /** The box for texts: unticked until the guest ticks it, and never needed to book. */
+  textsOk: boolean;
   saving: boolean;
   bookError: GuestNotice | null;
   booked: (GuestBooking & { email: string | null; mobile: string }) | null;
@@ -83,6 +86,7 @@ export interface GuestsState {
   pickTime: (time: string, fullMessage: string) => void;
   loadSlots: () => Promise<void>;
   setField: (field: 'name' | 'mobile' | 'email' | 'occasion' | 'request' | 'code' | 'findMobile', value: string) => void;
+  setTextsOk: (on: boolean) => void;
   bookNext: () => void;
   bookBack: () => void;
   submitBooking: () => Promise<void>;
@@ -119,6 +123,7 @@ const fresh = {
   email: '',
   occasion: '',
   request: '',
+  textsOk: false,
   saving: false,
   bookError: null,
   booked: null,
@@ -215,6 +220,7 @@ export const useGuests = create<GuestsState>()((set, get) => {
       }
     },
     setField: (field, value) => set({ [field]: value } as Partial<GuestsState>),
+    setTextsOk: (on) => set({ textsOk: on }),
     bookNext: () => {
       if (get().time === '') return;
       set({ bookStep: 'details', bookError: null });
@@ -235,6 +241,8 @@ export const useGuests = create<GuestsState>()((set, get) => {
           email,
           occasion: s.occasion === '' ? null : s.occasion,
           request: s.request.trim() === '' ? null : s.request.trim(),
+          // No texts go to mainland China: the box is off there, whatever it said before the number was typed.
+          textsOk: s.textsOk && !isMainlandChina(s.mobile),
         });
         set({ booked: { ...booking, email, mobile: s.mobile.trim() }, bookStep: 'done', saving: false });
       } catch (error) {

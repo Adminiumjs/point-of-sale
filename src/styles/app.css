@@ -118,6 +118,15 @@ a:hover {
     transform: rotate(360deg);
   }
 }
+/* A text on its way (plan 80): the small wheel beside "Sending…". */
+.pos-spin {
+  animation: pos-spin 0.9s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pos-spin {
+    animation: none;
+  }
+}
 @keyframes pos-pulse {
   0%,
   100% {

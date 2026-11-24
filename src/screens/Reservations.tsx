@@ -9,6 +9,8 @@ import { useI18n, useT, type MessageKey } from '../i18n';
 import { Icon } from '../components/Icon';
 import { AuxHeader, MONO } from '../components/AuxHeader';
 import { css } from '../components/css';
+import { TextResult } from '../components/TextResult';
+import { maySendAgain } from '../state/texts';
 
 const STATUS: Record<ReservationStatus, { label: MessageKey; bg: string; fg: string }> = {
   confirmed: { label: 'resv.statusConfirmed', bg: 'var(--accent-soft)', fg: 'var(--accent)' },
@@ -85,12 +87,16 @@ export function Reservations() {
           { l: t('resv.table'), v: tableOf(s.floor, current.tableId) ? tableName(tableOf(s.floor, current.tableId)!.label, 'restaurant') : t('resv.notAssigned'), ic: 'armchair' },
           { l: t('resv.phone'), v: current.mobile ?? '—', ic: 'phone' },
           { l: t('resv.email'), v: current.email ?? '—', ic: 'mail' },
+          // The booking form's box: the only yes to texts the till can see.
+          { l: t('resv.texts'), v: t(current.textsOk === true ? 'resv.textsYes' : 'resv.textsNo'), ic: 'message-square' },
           { l: t('resv.via'), v: t(current.channel === 'phone' ? 'resv.viaPhone' : current.channel === 'walk_in' ? 'resv.viaWalkIn' : 'resv.viaOnline'), ic: current.channel === 'phone' ? 'phone-call' : 'globe' },
           ...(current.occasion !== null && current.occasion !== '' ? [{ l: t('resv.occasion'), v: tOr('occasion.' + current.occasion, current.occasion), ic: 'party-popper' }] : []),
           ...(current.request !== null && current.request !== '' ? [{ l: t('resv.request'), v: current.request, ic: 'message-square-text' }] : []),
         ];
   const confirmed = current?.status === 'confirmed';
   const ended = current?.status === 'cancelled' || current?.status === 'no_show';
+  const texted = current === null ? undefined : s.texts[`booking:${current.id}`];
+  const texting = texted === 'sending';
 
   return (
     <div style={css('flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg);')}>
@@ -189,12 +195,12 @@ export function Reservations() {
                     {t('resv.tableAction')}
                   </button>
                 )}
-                {/* The till sends no text: "Message" opens the device's own messaging. */}
-                {current.mobile !== null && (
-                  <a className="pos-press" href={'sms:' + current.mobile.replace(/[^\d+]/g, '')} style={css(act('plain'))}>
+                {/* "Message" texts the guest a reminder of their table through Adminium, never from the device. */}
+                {(texting || maySendAgain(texted)) && (
+                  <button className="pos-press" disabled={texting} aria-busy={texting} onClick={() => void s.messageBooking(current.id)} style={css(act('plain') + (texting ? 'cursor:progress;opacity:.7;' : ''))}>
                     <Icon name="message-square" size={16} />
-                    {t('resv.message')}
-                  </a>
+                    {t(texting ? 'texts.sending' : 'resv.message')}
+                  </button>
                 )}
                 {confirmed && (
                   <button className="pos-press" onClick={() => s.setResvStatus(current.id, 'no_show')} style={css(act('warn'))}>
@@ -214,6 +220,9 @@ export function Reservations() {
                     {t('resv.reinstate')}
                   </button>
                 )}
+              </div>
+              <div style={css('margin-top:10px;')}>
+                <TextResult outcome={texted} />
               </div>
             </>
           )}

@@ -5,7 +5,7 @@ import { useT, type MessageKey } from '../i18n';
 import { Icon } from '../components/Icon';
 import { css } from '../components/css';
 import type { ReceiptVia } from '../data/types';
-import { DEMO } from '../surface';
+import { maskPhone } from '../state/texts';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
 
@@ -18,11 +18,11 @@ const RECEIPTS: { via: ReceiptVia; label: MessageKey; icon: string }[] = [
 
 /**
  * The receipt choices a guest is offered: by email only while the till can
- * send one (Invoices & Receipts attached), and by text only in the demo — a
- * hosted till has nothing that sends a text, so the choice was a promise that
- * ended as a reminder line on the cashier's screen.
+ * send one (Invoices & Receipts attached), and by text only when the guest
+ * agreed to texts for a number that can take one (plan 80). When it is not
+ * possible the choice is simply absent: no error, no explanation.
  */
-export const receiptChoices = (emailing: boolean, texting: boolean = DEMO) =>
+export const receiptChoices = (emailing: boolean, texting: boolean) =>
   RECEIPTS.filter((o) => (o.via !== 'email' || emailing) && (o.via !== 'text' || texting));
 
 const chip = (on: boolean) =>
@@ -174,7 +174,9 @@ function SignStep() {
   const s = usePos();
   const t = useT();
   const d = s.display;
-  const needsWhere = d.receipt === 'email' || d.receipt === 'text';
+  const needsWhere = d.receipt === 'email';
+  // The number on file the guest agreed to texts for: shown masked, never typed here.
+  const phone = s.receiptPhone({ ...(s.ticket.customerId === undefined ? {} : { customerId: s.ticket.customerId }), ...(s.ticket.reservationId === undefined ? {} : { reservationId: s.ticket.reservationId }) });
   return (
     <div style={css('flex:1;min-height:0;display:flex;flex-direction:column;background:var(--surface);animation:pos-slidein .28s cubic-bezier(.2,.8,.2,1);')}>
       <div style={css('flex-shrink:0;display:flex;align-items:center;gap:12px;padding:20px 26px;border-bottom:1px solid var(--border);')}>
@@ -200,7 +202,7 @@ function SignStep() {
         </button>
         <div id="display-receipt" style={css('font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-subtle);margin:24px 0 11px;')}>{t('display.receipt')}</div>
         <div role="radiogroup" aria-labelledby="display-receipt" style={css('display:flex;flex-wrap:wrap;gap:10px;')}>
-          {receiptChoices(s.features['emailed-receipts']).map((o) => {
+          {receiptChoices(s.features['emailed-receipts'], phone !== null).map((o) => {
             const on = d.receipt === o.via;
             return (
               <button key={o.via} role="radio" aria-checked={on} className="pos-press" onClick={() => s.displayReceipt(o.via)} style={css('flex:1;min-width:118px;display:flex;align-items:center;justify-content:center;gap:8px;height:56px;border-radius:14px;font-family:inherit;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border-strong)') + ';background:' + (on ? 'var(--accent-soft)' : 'var(--surface)') + ';color:' + (on ? 'var(--accent)' : 'var(--fg)') + ';font-size:15px;font-weight:800;cursor:pointer;')}>
@@ -210,14 +212,21 @@ function SignStep() {
             );
           })}
         </div>
+        {d.receipt === 'text' && phone !== null && (
+          <div style={css('margin-top:14px;font-size:14px;color:var(--fg-muted);display:flex;align-items:center;gap:8px;')}>
+            <Icon name="message-square" size={16} />
+            {/* The number stays left to right inside a right-to-left sentence. */}
+            <span>{t('display.textTo', { phone: '\u2068' + maskPhone(phone) + '\u2069' })}</span>
+          </div>
+        )}
         {needsWhere && (
           <div style={css('margin-top:14px;')}>
             <label htmlFor="display-receipt-to" style={css('display:block;font-size:12.5px;font-weight:800;color:var(--fg-muted);margin-bottom:6px;')}>
-              {t(d.receipt === 'email' ? 'display.emailLabel' : 'display.phoneLabel')}
+              {t('display.emailLabel')}
             </label>
             <input
               id="display-receipt-to"
-              type={d.receipt === 'email' ? 'email' : 'tel'}
+              type="email"
               value={d.receiptTo}
               onChange={(e) => s.displayReceiptTo(e.target.value)}
               autoComplete="off"

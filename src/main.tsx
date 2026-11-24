@@ -362,6 +362,9 @@ async function boot(): Promise<void> {
     if (transport !== null) {
       const tables = { ...WRITE_TABLES, ...(staffConfig?.tables ?? {}) };
       setSink(sessionSink(transport, tables));
+      // How a text the till asked for ended: its outbox row, read through the same session.
+      const { setTextLog, sessionTextLog } = await import('./data/textLog');
+      setTextLog(sessionTextLog(transport.port));
       /*
        * The doors that are never queued: a ticket's figures as Adminium decided
        * them, a dry run, a code, a gift card. An add-on's tables are reached by

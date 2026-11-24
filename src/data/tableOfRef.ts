@@ -35,6 +35,7 @@ export const TABLE_OF_REF = {
   loyaltyLedger: 'loyalty_ledger',
   giftCards: 'gift_cards',
   giftCardLedger: 'gift_card_ledger',
+  messages: 'messages',
 } as const;
 
 /** The map above, pointed at the tables an install actually made. */

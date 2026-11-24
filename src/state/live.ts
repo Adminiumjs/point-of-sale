@@ -159,6 +159,7 @@ function applyPickup(frame: LiveFrame, id: string): void {
     number: numberOf(row['number'], known?.number ?? Number(id)),
     name: known?.name ?? '',
     mobile: known?.mobile ?? null,
+    ...((text(row['customer_id']) ?? known?.customerId) === undefined || (text(row['customer_id']) ?? known?.customerId) === null ? {} : { customerId: (text(row['customer_id']) ?? known?.customerId)! }),
     channel: channel === 'phone' || channel === 'web' || channel === 'app' ? channel : 'till',
     stage,
     placedAt: known?.placedAt ?? stamp(row['opened_at']) ?? Date.now(),
@@ -330,6 +331,7 @@ function applyReservation(frame: LiveFrame, id: string, deps: ApplyDeps): void {
     occasion: row['occasion'] === undefined ? (known?.occasion ?? null) : text(row['occasion']),
     request: row['guest_request'] === undefined ? (known?.request ?? null) : text(row['guest_request']),
     note: row['staff_note'] === undefined ? (known?.note ?? null) : text(row['staff_note']),
+    ...((row['texts_ok'] === undefined ? known?.textsOk === true : row['texts_ok'] === true) ? { textsOk: true } : {}),
   };
   const list = known === undefined ? [...s.reservations, merged] : s.reservations.map((r) => (r.id === id ? merged : r));
   usePos.setState({ reservations: list.sort((a, b) => a.startsAt - b.startsAt) });

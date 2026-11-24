@@ -241,6 +241,7 @@ interface WireReservation {
   occasion: string | null;
   guest_request: string | null;
   staff_note: string | null;
+  texts_ok?: boolean | null;
 }
 
 /**
@@ -266,7 +267,7 @@ export const REQUIRED = {
   refundItems: ['id', 'refund_id', 'ticket_item_id', 'qty'],
   shifts: ['id', 'started_at', 'ended_at', 'opening_float'],
   timeClock: ['id', 'staff_id', 'clock_in', 'clock_out'],
-  reservations: ['id', 'code', 'name', 'mobile', 'email', 'party_size', 'starts_at', 'status', 'channel', 'table_id', 'occasion', 'guest_request', 'staff_note'],
+  reservations: ['id', 'code', 'name', 'mobile', 'email', 'party_size', 'starts_at', 'status', 'channel', 'table_id', 'occasion', 'guest_request', 'staff_note', 'texts_ok'],
   // Wave 2: loyalty. Read on demand (`loyalty.ts`), checked here so a database without them says so at boot.
   customers: ['id', 'member_no', 'name', 'mobile', 'email', 'joined_at', 'points', 'lifetime_points', 'visits'],
   rewards: ['id', 'name', 'points', 'menu_item_id', 'icon', 'active', 'position'],
@@ -274,6 +275,8 @@ export const REQUIRED = {
   // Wave 2: gift cards, read on demand (`giftCards.ts`).
   giftCards: ['id', 'code', 'status', 'balance', 'issued_at'],
   giftCardLedger: ['id', 'card_id', 'kind', 'amount', 'ticket_id', 'staff_id', 'at'],
+  // Plan 80: how a text the till asked for ended, read by its key (`textLog.ts`).
+  messages: ['id', 'kind', 'status', 'error'],
 };
 
 let lastSnapshotError: Error | null = null;
@@ -671,6 +674,7 @@ export async function loadSnapshot(client: SnapshotPort): Promise<Snapshot | nul
         number: numberOf(row.number, row.id),
         name: person?.name ?? '',
         mobile: person?.mobile ?? null,
+        ...(row.customer_id === null || row.customer_id === undefined ? {} : { customerId: key(row.customer_id) }),
         channel: row.channel ?? 'till',
         stage: (row.pickup_stage === 'making' || row.pickup_stage === 'ready' ? row.pickup_stage : 'queued'),
         placedAt: instant(row.opened_at),
@@ -801,6 +805,7 @@ function reservationOf(row: WireReservation): Reservation {
     occasion: row.occasion,
     request: row.guest_request,
     note: row.staff_note,
+    ...(row.texts_ok === true ? { textsOk: true } : {}),
   };
 }
 

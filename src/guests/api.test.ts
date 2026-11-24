@@ -104,6 +104,16 @@ describe('the public port', () => {
     expect(booked).toMatchObject({ id: '92', code: 'MR-7Q2K', partySize: 3, name: 'Ada', occasion: 'birthday' });
   });
 
+  it('sends the box for texts only when the guest ticked it', async () => {
+    const { client, calls } = fakeClient();
+    const port = await publicGuestsPort(client);
+    const at = Date.parse('2026-09-24T18:30:00Z');
+    await port.book({ startsAt: at, party: 2, name: 'Ada', mobile: '+1 415 555 0101', email: null, occasion: null, request: null, textsOk: true });
+    await port.book({ startsAt: at, party: 2, name: 'Ada', mobile: '+1 415 555 0101', email: null, occasion: null, request: null, textsOk: false });
+    const created = calls.filter((c) => c.op === 'create').map((c) => c.args[1] as Record<string, unknown>);
+    expect(created.map((body) => body['texts_ok'])).toEqual([true, undefined]);
+  });
+
   it('asks the availability ref for a day and a party', async () => {
     const { client, calls } = fakeClient();
     const port = await publicGuestsPort(client);

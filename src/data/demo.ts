@@ -290,6 +290,8 @@ export function seedPickups(): PickupOrder[] {
     number,
     name,
     mobile: '+1 415 555 01' + String(number).slice(-2),
+    // Each collector is a customer of the café's, as the till makes one: their number is on their row.
+    customerId: `c${String(number)}`,
     channel,
     stage,
     placedAt: at(placed),
@@ -304,6 +306,13 @@ export function seedPickups(): PickupOrder[] {
     order(1054, 'Tomas R.', 'phone', ['Breakfast Bowl', 'Fresh OJ'], 1, 'queued'),
   ];
 }
+
+/**
+ * The numbers the demo café holds a yes to texts for beyond its bookings' own
+ * boxes (Iris and Mara ticked theirs): Priya, whose pickup is ready. The demo
+ * sends nothing; its text log answers from these (`data/textLog.ts`).
+ */
+export const DEMO_TEXTS_AGREED: readonly string[] = ['+1 415 555 0151'];
 
 export function seedClock(): ClockEntry[] {
   return [
@@ -440,10 +449,10 @@ export function seedReservations(): Reservation[] {
     ...fields,
   });
   return [
-    r({ id: 'r1', code: 'MR-7Q2K', name: 'Iris Moreau', mobile: '+1 415 555 0123', email: 'iris.m@example.com', partySize: 2, startsAt: at(17, 0), status: 'seated', tableId: 'W1', note: 'Regular — likes the window' }),
+    r({ id: 'r1', code: 'MR-7Q2K', name: 'Iris Moreau', mobile: '+1 415 555 0123', email: 'iris.m@example.com', partySize: 2, startsAt: at(17, 0), status: 'seated', tableId: 'W1', note: 'Regular — likes the window', textsOk: true }),
     r({ id: 'r2', code: 'MR-3HFD', name: 'Tomás Alves', mobile: '+1 415 555 0111', partySize: 4, startsAt: at(17, 30), status: 'no_show', channel: 'phone' }),
     r({ id: 'r3', code: 'MR-9WXT', name: 'Priya Anand', mobile: '+1 415 555 0112', email: 'priya.a@example.com', partySize: 6, startsAt: at(18, 0), occasion: 'birthday', request: 'Bringing our own cake' }),
-    r({ id: 'r4', code: 'MR-4829', name: 'Mara Rossi', mobile: '+1 415 555 0166', email: 'mara.rossi@example.com', partySize: 2, startsAt: at(19, 0), occasion: 'anniversary', request: 'A quiet table, if possible' }),
+    r({ id: 'r4', code: 'MR-4829', name: 'Mara Rossi', mobile: '+1 415 555 0166', email: 'mara.rossi@example.com', partySize: 2, startsAt: at(19, 0), occasion: 'anniversary', request: 'A quiet table, if possible', textsOk: true }),
     r({ id: 'r5', code: 'MR-K2PM', name: 'Kenji Watanabe', mobile: '+1 415 555 0114', partySize: 3, startsAt: at(19, 30), channel: 'phone', request: 'Allergy: shellfish' }),
     r({ id: 'r6', code: 'MR-B7NQ', name: 'Lena Fischer', mobile: '+1 415 555 0104', email: 'lena.f@example.com', partySize: 2, startsAt: at(18, 0, 1), occasion: 'date' }),
     r({ id: 'r7', code: 'MR-D3VW', name: 'Nora Bennett', mobile: '+1 415 555 0150', partySize: 8, startsAt: at(19, 30, 1), channel: 'phone', occasion: 'business', request: 'Needs one long table' }),

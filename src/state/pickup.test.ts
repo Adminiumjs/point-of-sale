@@ -10,6 +10,8 @@ import { memorySink, type MemorySink } from '../data/sink';
 import { demoMembers } from '../data/loyalty';
 import { usePos } from './store';
 import { outbox, setSink } from './writes';
+import { memoryTextLog, setTextLog } from '../data/textLog';
+import { setTextPace } from './texts';
 
 const INITIAL = usePos.getState();
 const s = () => usePos.getState();
@@ -25,6 +27,8 @@ const ticketPatches = () => sink.calls.filter((c) => c.ref === 'tickets' && c.op
 beforeEach(() => {
   sink = memorySink({ firstNumber: 2001 });
   setSink(sink);
+  setTextLog(memoryTextLog({ after: 0 }));
+  setTextPace([0, 0, 0]);
   usePos.setState(INITIAL, true);
   usePos.setState({ ticket: { number: 1, table: null, seats: 2, openedAt: 0, items: [] }, held: [], kds: [], discount: null, pickups: [] });
 });
@@ -60,24 +64,25 @@ describe('taking an order for pickup', () => {
 });
 
 describe('the queue', () => {
-  it('moves an order on, stamping when it is ready and when they were told, and hands it off', async () => {
+  it('moves an order on, stamping when it is ready, and hands it off', async () => {
     s().tapTile('coldbrew');
     await s().markPickup({ name: 'Wei', mobile: '', channel: 'till' });
     const rid = s().pickups[0]!.rid;
     s().advancePickup(rid);
     expect(s().pickups[0]!.stage).toBe('making');
-    s().notifyPickup(rid); // not ready yet: nothing
+    expect(await s().notifyPickup(rid)).toBeNull(); // not ready yet: nothing
     s().advancePickup(rid);
     expect(s().pickups[0]).toMatchObject({ stage: 'ready', readyAt: expect.any(Number) });
-    s().notifyPickup(rid);
-    expect(s().pickups[0]!.notifiedAt).toEqual(expect.any(Number));
+    // Wei gave no number: nobody to text, and the order is not marked as told (texts.test.ts has the rest).
+    await settled();
+    expect(await s().notifyPickup(rid)).toBe('no-number');
+    expect(s().pickups[0]!.notifiedAt).toBeNull();
     s().advancePickup(rid);
     expect(s().pickups).toEqual([]);
     await settled();
-    expect(ticketPatches().slice(-4)).toEqual([
+    expect(ticketPatches().filter((p) => p !== undefined && !('customer_id' in p) && ('pickup_stage' in p || 'notified_at' in p))).toEqual([
       { pickup_stage: 'making' },
       { pickup_stage: 'ready', ready_at: expect.any(String) },
-      { notified_at: expect.any(String) },
       { pickup_stage: 'collected' },
     ]);
   });

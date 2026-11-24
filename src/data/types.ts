@@ -258,6 +258,8 @@ export interface Sale {
   rid?: string;
   /** The member the ticket was for, when there was one (`tickets.customer_id`). */
   customerId?: string;
+  /** The booking it was for, when there was one (`tickets.reservation_id`). */
+  reservationId?: string;
   number: number;
   table: string | null;
   items: SaleLine[];
@@ -422,6 +424,8 @@ export interface Reservation {
   occasion: string | null;
   request: string | null;
   note: string | null;
+  /** The guest ticked the booking form's box for texts (`texts_ok`). Never set by the till. */
+  textsOk?: boolean;
 }
 
 /** The venue's booking rules (the one-row `booking_rules`). */
@@ -522,6 +526,8 @@ export interface PickupOrder {
   /** Who collects it: the ticket's customer. */
   name: string;
   mobile: string | null;
+  /** The customer's row, which a text goes to (`tickets.customer_id`). */
+  customerId?: string;
   channel: PickupChannel;
   stage: Exclude<PickupStage, 'collected'>;
   /** Millisecond stamps. */

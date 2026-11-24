@@ -101,6 +101,49 @@ describe('book a table', () => {
   });
 });
 
+describe('the box for texts', () => {
+  const book = async (mobile: string, tick: boolean) => {
+    g().setDay(TOMORROW);
+    await answered();
+    g().pickTime('18:30', 'full');
+    g().bookNext();
+    g().setField('name', 'Wen Li');
+    g().setField('mobile', mobile);
+    if (tick) g().setTextsOk(true);
+    const saving = g().submitBooking();
+    await answered();
+    await saving;
+    return usePos.getState().reservations.find((r) => r.code === g().booked?.code);
+  };
+
+  it('starts unticked, and a booking goes without it, with no nudge', async () => {
+    expect(g().textsOk).toBe(false);
+    const r = await book('+1 415 555 0177', false);
+    expect(g().bookStep).toBe('done');
+    expect(g().bookError).toBeNull();
+    expect(r?.textsOk).toBeUndefined();
+  });
+
+  it('is the guest’s yes when they tick it, and a fresh booking starts unticked again', async () => {
+    expect((await book('+1 415 555 0177', true))?.textsOk).toBe(true);
+    g().bookReset();
+    expect(g().textsOk).toBe(false);
+  });
+
+  it('is off for a mainland China number, and the booking still goes', async () => {
+    const r = await book('+86 138 0013 8000', true);
+    expect(g().bookStep).toBe('done');
+    expect(r).toMatchObject({ mobile: '+86 138 0013 8000' });
+    expect(r?.textsOk).toBeUndefined();
+  });
+
+  it('never stops a booking for a number that cannot be read', async () => {
+    const r = await book('call me', true);
+    expect(g().bookStep).toBe('done');
+    expect(r).toMatchObject({ mobile: 'call me', textsOk: true });
+  });
+});
+
 describe('manage my booking', () => {
   const find = async (code: string, mobile: string) => {
     g().openManage(code);

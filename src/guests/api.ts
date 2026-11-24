@@ -60,6 +60,8 @@ export interface NewBooking {
   email: string | null;
   occasion: string | null;
   request: string | null;
+  /** The guest ticked the box for texts (plan 80): sent only when they did, never as a no. */
+  textsOk?: boolean;
 }
 
 export interface Slot {
@@ -254,6 +256,8 @@ export async function publicGuestsPort(client: PublicClient, tables: Readonly<Re
           ...(b.email === null ? {} : { email: b.email }),
           ...(b.occasion === null ? {} : { occasion: b.occasion }),
           ...(b.request === null ? {} : { guest_request: b.request }),
+          // A box left empty writes nothing: it takes back no earlier yes, and Adminium records a tick with its wording.
+          ...(b.textsOk === true ? { texts_ok: true } : {}),
         });
         return { ...bookingOf(row), name: b.name, occasion: b.occasion, request: b.request };
       }),
