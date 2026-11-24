@@ -433,12 +433,12 @@ describe.skipIf(why !== null)(`the contract with a built Adminium${why === null 
 
       it('keeps a guest’s tick for texts with the words they saw, and nothing for a box left empty', async () => {
         const told = (phone: string) => staff.post<{ data: { goes: { kind: string; count: number }[] } }>('/api/v1/privacy/phone/erase/preview', { phone });
-        const ticked = await guests.book({ startsAt: at('20:30'), party: 2, name: 'Wen Li', mobile: '+44 7700 900481', email: null, occasion: null, request: null, textsOk: true });
+        const ticked = await guests.book({ startsAt: at('20:30'), party: 2, name: 'Wen Li', mobile: '+44 7911 123481', email: null, occasion: null, request: null, textsOk: true });
         expect([true, 1, '1', 't']).toContain((await one('reservations', ticked.id))['texts_ok']);
-        expect(ok(await told('+44 7700 900481')).data.goes.find((item) => item.kind === 'text-records')?.count ?? 0).toBeGreaterThan(0);
-        const empty = await guests.book({ startsAt: at('20:30'), party: 2, name: 'Oda Berg', mobile: '+44 7700 900482', email: null, occasion: null, request: null });
+        expect(ok(await told('+44 7911 123481')).data.goes.find((item) => item.kind === 'consent')?.count ?? 0).toBeGreaterThan(0);
+        const empty = await guests.book({ startsAt: at('20:30'), party: 2, name: 'Oda Berg', mobile: '+44 7911 123482', email: null, occasion: null, request: null });
         expect([null, false, 0, '0', 'f']).toContain((await one('reservations', empty.id))['texts_ok'] ?? null);
-        expect(ok(await told('+44 7700 900482')).data.goes.find((item) => item.kind === 'text-records')).toBeUndefined();
+        expect(ok(await told('+44 7911 123482')).data.goes.find((item) => item.kind === 'consent')).toBeUndefined();
       }, 60_000);
 
       it('refuses a time with no room, and one outside the hours, in the words the page shows', async () => {

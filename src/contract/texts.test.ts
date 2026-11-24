@@ -56,7 +56,7 @@ describe.skipIf(why !== null)(`texts on a built Adminium${why === null ? '' : ` 
       });
 
       it('a pickup text the cashier asks for is read back as "texts aren’t set up"', async () => {
-        const customer = await s.insert('customers', { name: 'Wen Li', mobile: '+44 7700 900471' });
+        const customer = await s.insert('customers', { name: 'Wen Li', mobile: '+44 7911 123471' });
         const id = randomUUID();
         await s.as(cashier).insert('messages', { id, kind: 'pickup_ready', status: 'queued', customer_id: customer['id'] });
         expect(await follow(() => log.read(id))).toBe('not-set-up');
@@ -64,7 +64,7 @@ describe.skipIf(why !== null)(`texts on a built Adminium${why === null ? '' : ` 
       }, 120_000);
 
       it("a booking's reminder goes to the number on the booking, and reads back the same way", async () => {
-        const booking = await s.insert('reservations', { name: 'Nell Varga', mobile: '+44 7700 900472', party_size: 2, starts_at: new Date(Date.now() + 86_400_000).toISOString(), status: 'confirmed', channel: 'phone' });
+        const booking = await s.insert('reservations', { name: 'Nell Varga', mobile: '+44 7911 123472', party_size: 2, starts_at: new Date(Date.now() + 86_400_000).toISOString(), status: 'confirmed', channel: 'phone' });
         expect(booking['texts_ok'] ?? null).toBeNull();
         const id = randomUUID();
         await s.as(cashier).insert('messages', { id, kind: 'table_reminder', status: 'queued', reservation_id: booking['id'] });
@@ -73,12 +73,13 @@ describe.skipIf(why !== null)(`texts on a built Adminium${why === null ? '' : ` 
 
       it('the emailed receipt still takes an address in the same column', async () => {
         const id = randomUUID();
-        const row = await s.as(cashier).insert('messages', { id, kind: 'receipt', status: 'queued', to_address: 'guest@tillmail.net' });
-        expect(row['to_address']).toBe('guest@tillmail.net');
+        await s.as(cashier).insert('messages', { id, kind: 'receipt', status: 'queued', to_address: 'guest@tillmail.net' });
+        // Read as the owner: a cashier is shown the address masked.
+        expect((await s.one('messages', id))['to_address']).toBe('guest@tillmail.net');
       }, 60_000);
 
       it('a member known only by their mobile is found by it, to be erased', async () => {
-        const mobile = '+44 7700 900473';
+        const mobile = '+44 7911 123473';
         await s.insert('customers', { name: 'Ida Lund', mobile });
         const preview = ok(await s.staff.post<{ data: { goes: { kind: string; table?: string; count: number }[] } }>('/api/v1/privacy/phone/erase/preview', { phone: mobile })).data;
         const members = preview.goes.filter((item) => item.kind === 'people' && (item.table ?? '').endsWith('customers'));
