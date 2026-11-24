@@ -59,6 +59,8 @@ export interface GuestsState {
   request: string;
   /** The box for texts: unticked until the guest ticks it, and never needed to book. */
   textsOk: boolean;
+  /** Whether texts can go at all: the box is drawn only while they can. */
+  textsReady: boolean;
   saving: boolean;
   bookError: GuestNotice | null;
   booked: (GuestBooking & { email: string | null; mobile: string }) | null;
@@ -152,6 +154,7 @@ export const useGuests = create<GuestsState>()((set, get) => {
   return {
     view: 'book',
     port: null,
+    textsReady: false,
     venue: null,
     rules: null,
     loadFailed: false,
@@ -165,8 +168,8 @@ export const useGuests = create<GuestsState>()((set, get) => {
     start: async (port) => {
       set({ port, loadFailed: false });
       try {
-        const [venue, rules] = await Promise.all([port.venue(), port.rules()]);
-        set({ venue, rules, party: Math.min(2, Math.max(1, rules.maxParty)) });
+        const [venue, rules, textsReady] = await Promise.all([port.venue(), port.rules(), port.textsReady().catch(() => false)]);
+        set({ venue, rules, textsReady, party: Math.min(2, Math.max(1, rules.maxParty)) });
         await get().loadSlots();
       } catch {
         set({ loadFailed: true });
@@ -242,7 +245,7 @@ export const useGuests = create<GuestsState>()((set, get) => {
           occasion: s.occasion === '' ? null : s.occasion,
           request: s.request.trim() === '' ? null : s.request.trim(),
           // No texts go to mainland China: the box is off there, whatever it said before the number was typed.
-          textsOk: s.textsOk && !isMainlandChina(s.mobile),
+          textsOk: s.textsReady && s.textsOk && !isMainlandChina(s.mobile),
         });
         set({ booked: { ...booking, email, mobile: s.mobile.trim() }, bookStep: 'done', saving: false });
       } catch (error) {

@@ -1,11 +1,11 @@
-import { usePos } from '../state/store';
+import { useEffect } from 'react';
+import { receiptWho, usePos, whoKey } from '../state/store';
 import { discountAmt, lineName, lineTotal, modLabel, money, subtotal, tableName, tax, tipAmt, tipFor, total } from '../state/calc';
 import { source } from '../data/source';
 import { useT, type MessageKey } from '../i18n';
 import { Icon } from '../components/Icon';
 import { css } from '../components/css';
 import type { ReceiptVia } from '../data/types';
-import { maskPhone } from '../state/texts';
 
 const MONO = "font-family:'JetBrains Mono',monospace;";
 
@@ -175,8 +175,14 @@ function SignStep() {
   const t = useT();
   const d = s.display;
   const needsWhere = d.receipt === 'email';
-  // The number on file the guest agreed to texts for: shown masked, never typed here.
-  const phone = s.receiptPhone({ ...(s.ticket.customerId === undefined ? {} : { customerId: s.ticket.customerId }), ...(s.ticket.reservationId === undefined ? {} : { reservationId: s.ticket.reservationId }) });
+  // The number on file the guest agreed to texts for, as Adminium masks it: shown, never typed here.
+  const subject = { ...(s.ticket.customerId === undefined ? {} : { customerId: s.ticket.customerId }), ...(s.ticket.reservationId === undefined ? {} : { reservationId: s.ticket.reservationId }) };
+  const who = receiptWho(subject);
+  const phone = s.receiptPhone(subject);
+  const readStanding = s.readStanding;
+  useEffect(() => {
+    if (who !== null && s.textsReady === true) void readStanding(who);
+  }, [who === null ? '' : whoKey(who), s.textsReady, readStanding]);
   return (
     <div style={css('flex:1;min-height:0;display:flex;flex-direction:column;background:var(--surface);animation:pos-slidein .28s cubic-bezier(.2,.8,.2,1);')}>
       <div style={css('flex-shrink:0;display:flex;align-items:center;gap:12px;padding:20px 26px;border-bottom:1px solid var(--border);')}>
@@ -216,7 +222,7 @@ function SignStep() {
           <div style={css('margin-top:14px;font-size:14px;color:var(--fg-muted);display:flex;align-items:center;gap:8px;')}>
             <Icon name="message-square" size={16} />
             {/* The number stays left to right inside a right-to-left sentence. */}
-            <span>{t('display.textTo', { phone: '\u2068' + maskPhone(phone) + '\u2069' })}</span>
+            <span>{t('display.textTo', { phone: '\u2068' + phone + '\u2069' })}</span>
           </div>
         )}
         {needsWhere && (

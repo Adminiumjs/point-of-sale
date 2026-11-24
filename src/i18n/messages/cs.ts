@@ -490,8 +490,9 @@ export const cs: Translated<typeof enUS> = {
   'resv.tableAction': 'Stůl',
   'resv.message': 'Zpráva',
   'resv.texts': 'SMS',
-  'resv.textsYes': 'Souhlas při rezervaci',
+  'resv.textsYes': 'Souhlasí',
   'resv.textsNo': 'Bez souhlasu',
+  'resv.textsStopped': 'Požádal o ukončení',
   'resv.noShow': 'Nedostavili se',
   'resv.cancel': 'Zrušit',
   'resv.reinstate': 'Obnovit rezervaci',
@@ -780,6 +781,7 @@ export const cs: Translated<typeof enUS> = {
   'texts.badNumber': 'Neodesláno: na toto číslo nelze poslat SMS',
   'texts.noCountry': 'Neodesláno: do této země SMS neposíláme',
   'texts.notSent': 'Neodesláno',
+  'texts.boxAsk': 'Nejdřív se zeptejte hosta. Zaškrtněte jen, pokud souhlasil.',
 
   // ---- wave 2: customer display ----
   'nav.display': 'Zákaznický displej',

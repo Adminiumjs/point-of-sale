@@ -69,6 +69,12 @@ describe("the shop's texts", () => {
   it('go to the member’s mobile, else the booking’s, and a member may be known by their mobile alone', () => {
     expect(m.outbox.recipient).toMatchObject({ via: 'customer_id', table: 'customers', phone: 'mobile', fallback: { via: 'reservation_id', phone: 'mobile' } });
     expect(m.outbox.links['reservation']).toBe('reservation_id');
+    // A text about a booking goes to the number typed on it, and is judged for that number.
+    expect(m.outbox.recipient['textPhone']).toEqual({ via: 'reservation_id', column: 'mobile' });
+    // Adminium's code beside its sentence: what the till reads.
+    expect((m.outbox['columns'] as Record<string, string>)['textReason']).toBe('text_reason');
+    expect(column('messages', 'text_reason')).toMatchObject({ type: 'text', nullable: true, maxLength: expect.any(Number) });
+    expect(Number(column('messages', 'text_reason')?.['maxLength'])).toBeGreaterThanOrEqual(40);
     expect(column('messages', 'reservation_id')).toMatchObject({ type: 'fk', references: 'reservations', nullable: true });
     expect(m.people.find((p) => p.table === 'customers')?.phone).toBe('mobile');
     expect(column('customers', 'email')?.nullable).toBe(true);

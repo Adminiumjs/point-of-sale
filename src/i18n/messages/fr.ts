@@ -490,8 +490,9 @@ export const fr: Translated<typeof enUS> = {
   'resv.tableAction': 'Table',
   'resv.message': 'Message',
   'resv.texts': 'SMS',
-  'resv.textsYes': 'Accepté à la réservation',
+  'resv.textsYes': 'Accepté',
   'resv.textsNo': 'Pas d’accord',
+  'resv.textsStopped': 'A demandé l’arrêt',
   'resv.noShow': 'Absent',
   'resv.cancel': 'Annuler',
   'resv.reinstate': 'Rétablir la réservation',
@@ -780,6 +781,7 @@ export const fr: Translated<typeof enUS> = {
   'texts.badNumber': 'Non envoyé : ce numéro ne peut pas recevoir de SMS',
   'texts.noCountry': 'Non envoyé : pas de SMS vers ce pays',
   'texts.notSent': 'Non envoyé',
+  'texts.boxAsk': 'Demandez d’abord au client. Cochez seulement s’il a dit oui.',
 
   // ---- wave 2: customer display ----
   'nav.display': 'Écran client',

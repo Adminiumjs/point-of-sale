@@ -378,7 +378,8 @@ CREATE TABLE pos_messages (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   sent_at TIMESTAMPTZ,
   error TEXT,
-  reservation_id INTEGER REFERENCES pos_reservations (id)
+  reservation_id INTEGER REFERENCES pos_reservations (id),
+  text_reason VARCHAR(64)
 );
 
 CREATE INDEX idx_menu_items_category_id ON pos_menu_items (category_id);

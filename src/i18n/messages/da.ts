@@ -489,8 +489,9 @@ export const da: Translated<typeof enUS> = {
   'resv.tableAction': 'Bord',
   'resv.message': 'Besked',
   'resv.texts': 'Sms',
-  'resv.textsYes': 'Sagde ja ved booking',
+  'resv.textsYes': 'Sagt ja',
   'resv.textsNo': 'Ikke sagt ja',
+  'resv.textsStopped': 'Har bedt om stop',
   'resv.noShow': 'Udeblevet',
   'resv.cancel': 'Annullér',
   'resv.reinstate': 'Genopret reservation',
@@ -779,6 +780,7 @@ export const da: Translated<typeof enUS> = {
   'texts.badNumber': 'Ikke sendt: nummeret kan ikke modtage sms',
   'texts.noCountry': 'Ikke sendt: ingen sms til dette land',
   'texts.notSent': 'Ikke sendt',
+  'texts.boxAsk': 'Spørg gæsten først. Sæt kun kryds, hvis de sagde ja.',
 
   // ---- wave 2: customer display ----
   'nav.display': 'Kundeskærm',

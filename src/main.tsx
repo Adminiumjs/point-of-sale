@@ -130,7 +130,12 @@ async function bootGuests(): Promise<void> {
   const { publicGuestsPort } = await import('./guests/api');
   let port: Awaited<ReturnType<typeof publicGuestsPort>>;
   try {
-    port = await publicGuestsPort(client, config.tables ?? {});
+    // Whether texts can go at all, from the page's own key (a client older than 0.3.76 has no `texts.ready()`).
+    const textsReady = async () => {
+      const reply = await fetch(`${config.baseUrl.replace(/\/$/, '')}/api/v1/public/texts`, { headers: { authorization: `Bearer ${config.publishableKey}` } });
+      return reply.ok && ((await reply.json()) as { data?: { ready?: boolean } }).data?.ready === true;
+    };
+    port = await publicGuestsPort(client, config.tables ?? {}, { textsReady });
   } catch (error) {
     showStartupFailure(error instanceof Error ? error.message : String(error), codeOf(error instanceof Error ? error : null));
     return;
@@ -364,7 +369,9 @@ async function boot(): Promise<void> {
       setSink(sessionSink(transport, tables));
       // How a text the till asked for ended: its outbox row, read through the same session.
       const { setTextLog, sessionTextLog } = await import('./data/textLog');
-      setTextLog(sessionTextLog(transport.port));
+      setTextLog(sessionTextLog(transport, tables));
+      // Whether texts can go at all: no box for texts is drawn while they cannot.
+      void usePos.getState().loadTextsReady();
       /*
        * The doors that are never queued: a ticket's figures as Adminium decided
        * them, a dry run, a code, a gift card. An add-on's tables are reached by
@@ -433,6 +440,8 @@ async function boot(): Promise<void> {
       import('./state/store'),
     ]);
     onGuestsNavigate((view) => usePos.getState().go(view));
+    // The demo café has texts set up (its log answers from memory and sends nothing).
+    void usePos.getState().loadTextsReady();
     void useGuests.getState().start(demoGuestsPort());
     // Codes, offers, staff discounts, gift cards and stock: the demo's own shop answers, from memory. No add-on is called.
     const { openDemoShop } = await import('./data/demoShop');

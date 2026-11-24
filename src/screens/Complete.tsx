@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { usePos, curStaffOf } from '../state/store';
+import { receiptWho, usePos, curStaffOf, whoKey } from '../state/store';
 import { source } from '../data/source';
 import { demoSale, money, tableName } from '../state/calc';
 import { useI18n } from '../i18n';
@@ -23,6 +23,12 @@ export function Complete() {
   const emailing = s.features['emailed-receipts'];
   // A text receipt only to a number the guest agreed to texts for; otherwise there is no button at all.
   const textPhone = s.receiptPhone(s.lastSale);
+  const who = receiptWho(s.lastSale);
+  const readStanding = s.readStanding;
+  // Asked of Adminium, not guessed: texts set up, and this guest's yes on file.
+  useEffect(() => {
+    if (who !== null && s.textsReady === true) void readStanding(who);
+  }, [who === null ? '' : whoKey(who), s.textsReady, readStanding]);
   const texted = s.lastSale?.rid === undefined ? undefined : s.texts[`receipt:${s.lastSale.rid}`];
   const texting = texted === 'sending';
   /*

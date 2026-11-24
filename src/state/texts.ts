@@ -20,14 +20,12 @@
  *   no-country   no texts go to that country (mainland China)
  *   not-sent     any other refusal
  *
- * The sentences are Adminium's own (`apps/server/src/outbox/text-words.ts`),
- * fixed words that hold no number; the till reads them, it never shows them.
+ * Adminium writes a code beside its sentence (`outbox.columns.textReason`,
+ * `messages.text_reason`); the till reads the code, never the English words.
  *
  * It also holds what the till can tell before asking: whether a number reads
- * as one, whether it is a mainland China number (no texts go there), and
- * whether the guest ticked the booking form's box for that number — the only
- * yes the till can see. Adminium is the judge; the till only decides what to
- * offer.
+ * as one, and whether it is a mainland China number (no texts go there).
+ * Whether a person said yes is Adminium's to say (`GET /texts/consent`).
  */
 
 export type TextOutcome =
@@ -47,35 +45,40 @@ export type TextOutcome =
 export interface TextRow {
   status: string;
   error: string | null;
+  /** Adminium's code for the text (`outbox.columns.textReason`): `queued`, `sent`, `no-consent`, … */
+  reason?: string | null;
 }
 
-/** Adminium's sentences (`outbox/text-words.ts`), by the result each one is. */
-const SENTENCES: readonly (readonly [string, TextOutcome])[] = [
-  ['No mobile number on file', 'no-number'],
-  ['Not sent: this person has not agreed to texts', 'not-agreed'],
-  ['Not sent: this person has not confirmed their yes', 'not-agreed'],
-  ['Not sent: this person replied STOP', 'opted-out'],
-  ['Not sent: this person opted out at the provider', 'opted-out'],
-  ['Not sent: the daily text limit is reached', 'limit'],
-  ['Unknown: check with the provider before resending', 'unknown'],
-  ['An earlier send is still open: check it before resending', 'unknown'],
-  ['No text provider is connected', 'not-set-up'],
-  ['No sender is set for texts', 'not-set-up'],
-  ['Texts are switched off on this server', 'not-set-up'],
-  ['The text is switched off, or has no words', 'not-set-up'],
-  ['Not sent: the mobile number cannot be read', 'bad-number'],
-  ['Not sent: the provider says the number is invalid', 'bad-number'],
-  ['Not sent: this number cannot receive a text', 'bad-number'],
-  ['Not sent: this number is not a mobile', 'bad-number'],
-  ['Not sent: no texts go to this country', 'no-country'],
-];
+/** Adminium's codes, by the result each one is; any other refusal reads `not-sent`. */
+const CODES: Readonly<Record<string, TextOutcome>> = {
+  queued: 'sending',
+  waiting: 'sending',
+  sent: 'sent',
+  unknown: 'unknown',
+  'earlier-send-open': 'unknown',
+  'no-number': 'no-number',
+  'no-consent': 'not-agreed',
+  'unconfirmed-consent': 'not-agreed',
+  stopped: 'opted-out',
+  'opted-out': 'opted-out',
+  'daily-limit': 'limit',
+  'not-set-up': 'not-set-up',
+  'no-words': 'not-set-up',
+  'unreadable-phone': 'bad-number',
+  'bad-number': 'bad-number',
+  'invalid-number': 'bad-number',
+  'cannot-receive-text': 'bad-number',
+  'not-mobile': 'bad-number',
+  'country-blocked': 'no-country',
+  'country-blocked-cn': 'no-country',
+};
 
-/** The result a row says. A `sent` row with a sentence has not settled as sent: Adminium cannot tell, so neither can the till. */
+/** The result a row says, read from its code. A row with none yet says it by its status alone. */
 export function outcomeOf(row: TextRow | null): TextOutcome {
   if (row === null || row.status === 'queued' || row.status === 'held') return 'sending';
-  const error = (row.error ?? '').trim();
-  if (row.status === 'sent') return error === '' ? 'sent' : (SENTENCES.find(([words]) => error === words)?.[1] ?? 'unknown');
-  return SENTENCES.find(([words]) => error === words)?.[1] ?? 'not-sent';
+  const code = (row.reason ?? '').trim();
+  if (code !== '') return CODES[code] ?? 'not-sent';
+  return row.status === 'sent' ? 'sending' : 'not-sent';
 }
 
 /** A result that ends the attempt: anything but `sending`. */
@@ -118,10 +121,15 @@ export function maskPhone(raw: string): string {
   return digits.length < 4 ? '•••' : '••• ' + digits.slice(-4);
 }
 
-/** Whether the till may offer a text to this number: one that reads, not mainland China, and a yes it has seen. */
-export function textable(raw: string | null | undefined, agreed: (phone: string) => boolean): raw is string {
-  return raw !== null && raw !== undefined && raw.trim() !== '' && readablePhone(raw) && !isMainlandChina(raw) && agreed(raw);
-}
+/** The version of the words beside every box for texts (the booking form's and the till's): raise it when they change. */
+export const TEXT_WORDING_VERSION = 1;
+
+/** The words a box for texts records: its label and the line under it, as one sentence pair. */
+export const wordingOf = (label: string, sub: string, tag: string): string => (tag.startsWith('zh') ? `${label}。${sub}` : `${label}. ${sub}`);
+
+/** Whether the till shows a box for this number: one that can be read, outside mainland China. */
+export const boxFor = (raw: string): 'box' | 'china' | 'unreadable' | 'none' =>
+  raw.trim() === '' ? 'none' : isMainlandChina(raw) ? 'china' : readablePhone(raw) ? 'box' : 'unreadable';
 
 // ---- following one row until it settles ----
 

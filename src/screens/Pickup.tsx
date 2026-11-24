@@ -6,6 +6,7 @@ import { Icon } from '../components/Icon';
 import { AuxHeader } from '../components/AuxHeader';
 import { css } from '../components/css';
 import { TextResult } from '../components/TextResult';
+import { TillTextsBox } from '../components/TillTextsBox';
 import { maySendAgain } from '../state/texts';
 import type { LineItem, PickupChannel, PickupOrder } from '../data/types';
 
@@ -145,6 +146,7 @@ export function PickupSheet() {
   const [name, setName] = useState(member?.name ?? '');
   const [mobile, setMobile] = useState(member?.mobile ?? '');
   const [channel, setChannel] = useState<PickupChannel>('till');
+  const [textsOk, setTextsOk] = useState(false);
   const [saving, setSaving] = useState(false);
   const can = name.trim() !== '' && !saving;
   const close = () => s.setPickupSheet(false);
@@ -175,7 +177,7 @@ export function PickupSheet() {
             e.preventDefault();
             if (!can) return;
             setSaving(true);
-            void s.markPickup({ name, mobile, channel }).finally(() => setSaving(false));
+            void s.markPickup({ name, mobile, channel, textsOk }).finally(() => setSaving(false));
           }}
           style={css('display:flex;flex-direction:column;gap:13px;')}
         >
@@ -187,6 +189,7 @@ export function PickupSheet() {
             <label htmlFor="pickup-mobile" style={css(label)}>{t('pickup.mobile')}</label>
             <input id="pickup-mobile" type="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder={t('pickup.mobileHint')} autoComplete="off" style={css(input)} />
           </div>
+          <TillTextsBox id="pickup-texts" mobile={mobile} checked={textsOk} onChange={setTextsOk} />
           <div>
             <div id="pickup-channel" style={css(label)}>{t('pickup.how')}</div>
             <div role="radiogroup" aria-labelledby="pickup-channel" style={css('display:flex;gap:7px;')}>

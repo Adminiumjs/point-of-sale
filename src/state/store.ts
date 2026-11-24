@@ -53,9 +53,8 @@ import { printOnly } from '../components/print';
 import { SESSION_STAFF_ID } from '../data/sessionOperator';
 import type { OutboxState } from './outbox';
 import { deviceKey, outbox, watchOutbox } from './writes';
-import { follow, maySendAgain, samePhone, textable, type TextOutcome } from './texts';
-import { textLog, type TextFacts } from '../data/textLog';
-import { DEMO_TEXTS_AGREED } from '../data/demo';
+import { boxFor, follow, maySendAgain, samePhone, TEXT_WORDING_VERSION, wordingOf, type TextOutcome } from './texts';
+import { textLog, type TextAnswer, type TextFacts, type TextPerson, type TextStanding } from '../data/textLog';
 import type {
   AppliedLine,
   BackTo,
@@ -369,6 +368,10 @@ export interface PosState {
    * the session, so a card says what happened until it leaves the screen.
    */
   texts: Record<string, TextOutcome>;
+  /** Whether texts can go at all, as Adminium last said; null until asked. No box is drawn while it is not true. */
+  textsReady: boolean | null;
+  /** Where people stand on the shop's texts, as Adminium last said, by `whoKey`; null when it could not say. */
+  textStandings: Record<string, TextStanding | null>;
 
   // actions
   toggleTheme: () => void;
@@ -564,7 +567,8 @@ export interface PosState {
   /** Spend the chosen member's points on a reward: its item joins the ticket, free. */
   redeemReward: (rewardId: string) => void;
   setEnrollOpen: (open: boolean) => void;
-  enroll: (person: { name: string; mobile: string; email: string }) => Promise<boolean>;
+  /** A new member; `textsOk`: they said yes to texts at the counter, recorded by Adminium in the box's words. */
+  enroll: (person: { name: string; mobile: string; email: string; textsOk?: boolean }) => Promise<boolean>;
 
   openGiftCards: () => void;
   /** Look a card up by its code; false when there is none. */
@@ -592,7 +596,8 @@ export interface PosState {
 
   setPickupSheet: (open: boolean) => void;
   /** Make the ticket on the register an order someone will collect. */
-  markPickup: (order: { name: string; mobile: string; channel: PickupChannel }) => Promise<boolean>;
+  /** `textsOk`: they said yes to texts (in person, or on the phone for a phone order), recorded by Adminium. */
+  markPickup: (order: { name: string; mobile: string; channel: PickupChannel; textsOk?: boolean }) => Promise<boolean>;
   /** Queued → making → ready → handed off. */
   advancePickup: (rid: string) => void;
   /**
@@ -603,11 +608,33 @@ export interface PosState {
   notifyPickup: (rid: string) => Promise<TextOutcome | null>;
   /** Text a booking's guest a reminder of their table: the same row, the same honest result. */
   messageBooking: (id: string) => Promise<TextOutcome | null>;
-  /** Whether the till can offer this number a text: it reads as one, is not mainland China, and the guest said yes. */
-  mayText: (phone: string | null | undefined) => boolean;
-  /** The number the sale's receipt would be texted to, when the till may offer it; null otherwise. */
+  /** Ask Adminium whether texts can go at all (a provider, a sender, not switched off). */
+  loadTextsReady: () => Promise<boolean>;
+  /** Ask Adminium where a member (`customer`) or a booking's guest (`booking`) stands; kept in `textStandings`. */
+  readStanding: (who: TextWho) => Promise<TextStanding | null>;
+  /**
+   * The guest's yes (or no) given at the counter, in the words the till's box
+   * showed: recorded by Adminium, named to the staff member signed in.
+   */
+  recordTextAnswer: (who: TextWho, answer: { state: 'yes' | 'no'; how: TextAnswer['how'] }) => Promise<boolean>;
+  /**
+   * Where the sale's receipt would be texted, masked (`••• 0166`), when the
+   * till may offer it: texts are set up and Adminium says the member (else the
+   * booking's guest) agreed. Null otherwise, and null until it has asked.
+   */
   receiptPhone: (sale: Pick<Sale, 'customerId' | 'reservationId'> | null) => string | null;
 }
+
+/** Whose texts: a member, or a booking's guest, by the till's key. */
+export interface TextWho {
+  kind: 'customer' | 'booking';
+  id: string;
+}
+/** The key `textStandings` keeps one under. */
+export const whoKey = (who: TextWho): string => `${who.kind}:${who.id}`;
+/** The person a sale's text receipt is about: the member when there is one (their own number), else the booking. */
+export const receiptWho = (sale: Pick<Sale, 'customerId' | 'reservationId'> | null): TextWho | null =>
+  sale === null ? null : sale.customerId !== undefined ? { kind: 'customer', id: sale.customerId } : sale.reservationId !== undefined ? { kind: 'booking', id: sale.reservationId } : null;
 
 // Timers held module-side (mirrors the comp's this._ct / this._pt handles).
 let ptTimer: ReturnType<typeof setTimeout>;
@@ -1808,6 +1835,8 @@ export const usePos = create<PosState>()((set, get) => {
     pickups: source.pickups(),
     pickupSheetOpen: false,
     texts: {},
+    textsReady: null,
+    textStandings: {},
 
     display: { step: 'order', signed: false, receipt: '', receiptTo: '' },
     tipPad: null,
@@ -2889,14 +2918,13 @@ export const usePos = create<PosState>()((set, get) => {
     sendReceipt: async () => {
       const sale = get().lastSale;
       if (sale === null || sale.rid === undefined) return null;
-      const phone = get().receiptPhone(sale);
-      if (phone === null) return null;
+      if (get().receiptPhone(sale) === null) return null;
       const rid = sale.rid;
+      // The member's own number when the sale was theirs; else the booking's (`outbox.recipient.textPhone`).
       return sendText(rid, `receipt:${rid}`, 'receipt_text', {
         ticket_id: rid,
-        ...(sale.customerId === undefined ? {} : { customer_id: dbKey(sale.customerId) }),
-        ...(sale.reservationId === undefined ? {} : { reservation_id: dbKey(sale.reservationId) }),
-      }, { phone, agreed: true });
+        ...(sale.customerId !== undefined ? { customer_id: dbKey(sale.customerId) } : sale.reservationId !== undefined ? { reservation_id: dbKey(sale.reservationId) } : {}),
+      }, { phone: phoneOf(receiptWho(sale)!) });
     },
     emailReceipt: (raw) => {
       const s = get();
@@ -3552,7 +3580,7 @@ export const usePos = create<PosState>()((set, get) => {
       get().showToast(t('loyalty.toastRedeemed', { name: reward.name }), 'success');
     },
     setEnrollOpen: (open) => set({ enrollOpen: open }),
-    enroll: async ({ name, mobile, email }) => {
+    enroll: async ({ name, mobile, email, textsOk = false }) => {
       const cleanName = name.trim();
       const cleanMobile = mobile.trim();
       const cleanEmail = email.trim();
@@ -3563,8 +3591,10 @@ export const usePos = create<PosState>()((set, get) => {
         .catch(() => [] as Member[]);
       const digits = cleanMobile.replace(/\D+/g, '');
       const known = [...already, ...Object.values(get().members)].find((m) => (m.mobile ?? '').replace(/\D+/g, '') === digits);
+      const yes = textsOk && boxFor(cleanMobile) !== 'china';
       if (known !== undefined) {
         set((st) => ({ members: { ...st.members, [known.id]: st.members[known.id] ?? known }, enrollOpen: false, loyaltyResults: [known.id] }));
+        if (yes) void get().recordTextAnswer({ kind: 'customer', id: known.id }, { state: 'yes', how: 'in-person' });
         get().loyaltyPick(known.id);
         get().showToast(t('loyalty.toastAlready', { name: known.name }));
         return true;
@@ -3611,6 +3641,8 @@ export const usePos = create<PosState>()((set, get) => {
           ticket: st.ticket.customerId === rid ? { ...st.ticket, customerId: id } : st.ticket,
         };
       });
+      // Their yes, once their row is there: Adminium keeps it for that row's number, in the words the box showed.
+      if (yes) void get().recordTextAnswer({ kind: 'customer', id }, { state: 'yes', how: 'in-person' });
       get().showToast(t('loyalty.toastEnrolled', { name: cleanName }), 'success');
       return true;
     },
@@ -3832,9 +3864,12 @@ export const usePos = create<PosState>()((set, get) => {
       }
       set({ pickupSheetOpen: open });
     },
-    markPickup: async ({ name, mobile, channel }) => {
+    markPickup: async ({ name, mobile, channel, textsOk = false }) => {
       const cleanName = name.trim();
       const cleanMobile = mobile.trim();
+      // Their yes, taken at the till or on the phone: recorded once the customer's row is there.
+      const yes = textsOk && boxFor(cleanMobile) !== 'none' && boxFor(cleanMobile) !== 'china';
+      const how = channel === 'phone' ? ('phone' as const) : ('in-person' as const);
       if (cleanName === '') return false;
       const s = get();
       // Who collects it is the ticket's customer: the member on it, else the one this number is, else someone new.
@@ -3864,11 +3899,16 @@ export const usePos = create<PosState>()((set, get) => {
               return {
                 members: { ...members, [id]: { ...(was ?? person), id } },
                 ticket: st.ticket.customerId === rid ? { ...st.ticket, customerId: id } : st.ticket,
+                pickups: st.pickups.map((p) => (p.customerId === rid ? { ...p, customerId: id } : p)),
               };
             });
+            if (yes) void get().recordTextAnswer({ kind: 'customer', id }, { state: 'yes', how });
           },
           onRefused: refused,
         });
+      } else if (yes && samePhone(get().members[customerId]?.mobile, cleanMobile)) {
+        // A customer already on file, for the number on their row: the yes is for that number only.
+        void get().recordTextAnswer({ kind: 'customer', id: customerId }, { state: 'yes', how });
       }
       const now = get();
       const ticketRid = ensureTicket();
@@ -3924,7 +3964,7 @@ export const usePos = create<PosState>()((set, get) => {
       const outcome = await sendText(rid, `pickup:${rid}`, 'pickup_ready', {
         ticket_id: rid,
         ...(customerId === undefined ? {} : { customer_id: dbKey(customerId) }),
-      }, { phone: order.mobile, agreed: get().mayText(order.mobile) }, customerId === undefined);
+      }, { phone: order.mobile }, customerId === undefined);
       // Told only once it really went: the card says so, and the ticket keeps when.
       if (outcome === 'sent') {
         set((st) => ({ pickups: st.pickups.map((p) => (p.rid === rid ? { ...p, notifiedAt: Date.now() } : p)) }));
@@ -3936,19 +3976,45 @@ export const usePos = create<PosState>()((set, get) => {
     messageBooking: async (id) => {
       const r = get().reservations.find((x) => x.id === id);
       if (r === undefined) return null;
-      return sendText(`resv:${id}`, `booking:${id}`, 'table_reminder', { reservation_id: dbKey(id) }, { phone: r.mobile, agreed: get().mayText(r.mobile) }, r.mobile === null || r.mobile.trim() === '');
+      // The number typed on the booking (`outbox.recipient.textPhone`), judged for that number.
+      return sendText(`resv:${id}`, `booking:${id}`, 'table_reminder', { reservation_id: dbKey(id) }, { phone: r.mobile }, r.mobile === null || r.mobile.trim() === '');
     },
-    mayText: (phone) => textable(phone, (number) => get().reservations.some((r) => r.textsOk === true && samePhone(r.mobile, number)) || (DEMO && DEMO_TEXTS_AGREED.some((one) => samePhone(one, number)))),
+    loadTextsReady: async () => {
+      const ready = await textLog().ready().catch(() => false);
+      set({ textsReady: ready });
+      return ready;
+    },
+    readStanding: async (who) => {
+      const standing = await textLog().standing(personOf(who)).catch(() => null);
+      set((st) => ({ textStandings: { ...st.textStandings, [whoKey(who)]: standing } }));
+      return standing;
+    },
+    recordTextAnswer: async (who, answer) => {
+      const tag = locale();
+      const done = await textLog()
+        .record(personOf(who), { ...answer, wording: { text: wordingOf(t('guest.textsLabel'), t('guest.textsSub'), tag), version: `v${String(TEXT_WORDING_VERSION)} ${tag}` } })
+        .catch(() => false);
+      if (done) void get().readStanding(who);
+      return done;
+    },
     receiptPhone: (sale) => {
-      if (sale === null) return null;
       const s = get();
-      const booking = sale.reservationId === undefined ? undefined : s.reservations.find((r) => r.id === sale.reservationId);
-      const member = sale.customerId === undefined ? undefined : s.members[sale.customerId];
-      // The member's own number when they have one on file, else the booking's: the one Adminium texts.
-      const phone = member !== undefined && sale.customerId !== undefined ? member.mobile : (booking?.mobile ?? null);
-      return s.mayText(phone) ? phone : null;
+      const who = receiptWho(sale);
+      if (who === null || s.textsReady !== true) return null;
+      const standing = s.textStandings[whoKey(who)];
+      return standing?.state === 'yes' ? (standing.masked ?? '') : null;
     },
   };
+
+  /** The row Adminium reads a person's standing from, with the number the till holds for them (the demo decides on it). */
+  function personOf(who: TextWho): TextPerson {
+    return { table: who.kind === 'customer' ? 'customers' : 'reservations', row: String(outbox().resolve(who.id) ?? who.id), phone: phoneOf(who) };
+  }
+  function phoneOf(who: TextWho): string | null {
+    const s = get();
+    if (who.kind === 'customer') return s.members[who.id]?.mobile ?? s.pickups.find((p) => p.customerId === who.id)?.mobile ?? null;
+    return s.reservations.find((r) => r.id === who.id)?.mobile ?? null;
+  }
 
   /**
    * One text, start to end: the row in the outbox — queued behind what it is

@@ -105,6 +105,8 @@ export interface GuestsPort {
   find(code: string, mobile: string): Promise<GuestBooking>;
   change(id: string, to: { startsAt: number; party: number }): Promise<GuestBooking>;
   cancel(id: string): Promise<GuestBooking>;
+  /** Whether texts can go at all (`client.texts.ready()`): no box for texts is drawn while they cannot. */
+  textsReady(): Promise<boolean>;
 }
 
 /** The refs the pages use, by the tables' short names. */
@@ -205,7 +207,14 @@ export function guestErrorOf(error: unknown, claimed = false): GuestError {
 }
 
 /** The public API, through the app's browser key. */
-export async function publicGuestsPort(client: PublicClient, tables: Readonly<Record<string, string>> = {}): Promise<GuestsPort> {
+export async function publicGuestsPort(
+  client: PublicClient,
+  tables: Readonly<Record<string, string>> = {},
+  opts: { textsReady?: () => Promise<boolean> } = {},
+): Promise<GuestsPort> {
+  // The client's own read from 0.3.76 (`client.texts.ready()`); an older client is handed one by the page.
+  const texts = (client as PublicClient & { texts?: { ready: () => Promise<boolean> } }).texts;
+  const textsReady = texts !== undefined ? () => texts.ready() : (opts.textsReady ?? (async () => false));
   const config = await client.config();
   const refs = guestRefs(config, tables);
   const zone = config.timezone;
@@ -271,6 +280,7 @@ export async function publicGuestsPort(client: PublicClient, tables: Readonly<Re
         await client.update(refs.claimed, id, { starts_at: new Date(to.startsAt).toISOString(), party_size: to.party });
         return readBooking(id);
       }, true),
+    textsReady: () => textsReady().catch(() => false),
     cancel: (id) =>
       guard(async () => {
         await client.update(refs.claimed, id, { status: 'cancelled' });

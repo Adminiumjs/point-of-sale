@@ -34,7 +34,7 @@ async function tillLog(caller: Caller): Promise<TextLog> {
     staff: { csrfToken: config.csrfToken, timezone: config.timezone, currency: config.currency },
     fetchImpl: caller.fetchAs(),
   } as never);
-  return sessionTextLog(transport.port);
+  return sessionTextLog(transport, config.tables ?? {});
 }
 
 describe.skipIf(why !== null)(`texts on a built Adminium${why === null ? '' : ` — skipped: ${why}`}`, () => {
@@ -60,7 +60,8 @@ describe.skipIf(why !== null)(`texts on a built Adminium${why === null ? '' : ` 
         const id = randomUUID();
         await s.as(cashier).insert('messages', { id, kind: 'pickup_ready', status: 'queued', customer_id: customer['id'] });
         expect(await follow(() => log.read(id))).toBe('not-set-up');
-        expect(await s.one('messages', id)).toMatchObject({ status: 'skipped', error: 'No text provider is connected' });
+        // The till reads the code Adminium wrote beside its sentence, not the sentence.
+        expect(await s.one('messages', id)).toMatchObject({ status: 'skipped', text_reason: 'not-set-up' });
       }, 120_000);
 
       it("a booking's reminder goes to the number on the booking, and reads back the same way", async () => {
@@ -76,6 +77,18 @@ describe.skipIf(why !== null)(`texts on a built Adminium${why === null ? '' : ` 
         await s.as(cashier).insert('messages', { id, kind: 'receipt', status: 'queued', to_address: 'guest@tillmail.net' });
         // Read as the owner: a cashier is shown the address masked.
         expect((await s.one('messages', id))['to_address']).toBe('guest@tillmail.net');
+      }, 60_000);
+
+      it('says texts are not set up, so the till draws no box and offers no text receipt', async () => {
+        expect(await log.ready()).toBe(false);
+      }, 60_000);
+
+      it("a cashier records a member's yes at the counter, in the box's words, and reads it back", async () => {
+        const member = await s.insert('customers', { name: 'Oda Berg', mobile: '+44 7911 123474' });
+        const person = { table: 'customers' as const, row: String(member['id']), phone: null };
+        expect((await log.standing(person))?.state).toBe('not-asked');
+        expect(await log.record(person, { state: 'yes', how: 'in-person', wording: { text: 'Text me about my table or pickup. A reminder for your table, or word that your order is ready.', version: 'v1 en-US' } })).toBe(true);
+        expect(await log.standing(person)).toEqual({ state: 'yes', masked: expect.stringContaining('474'), liftBy: null });
       }, 60_000);
 
       it('a member known only by their mobile is found by it, to be erased', async () => {

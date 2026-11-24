@@ -90,7 +90,7 @@ function Details() {
             {s.textsOk && !mainland && s.mobile.trim() !== '' && !readablePhone(s.mobile) ? t('guest.textsCheckNumber') : ''}
           </div>
         </div>
-        <TextsBox mainland={mainland} />
+        {s.textsReady && <TextsBox mainland={mainland} />}
         <div>
           <label htmlFor="guest-email" style={css(fieldLabel)}>
             {t('guest.email')} <span style={css('font-weight:600;color:var(--fg-muted);')}>{t('guest.optional')}</span>

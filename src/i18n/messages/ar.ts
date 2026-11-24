@@ -492,8 +492,9 @@ export const ar: Translated<typeof enUS> = {
   'resv.tableAction': 'الطاولة',
   'resv.message': 'رسالة',
   'resv.texts': 'الرسائل النصية',
-  'resv.textsYes': 'وافق عند الحجز',
+  'resv.textsYes': 'وافق',
   'resv.textsNo': 'لم يوافق',
+  'resv.textsStopped': 'طلب الإيقاف',
   'resv.noShow': 'لم يحضر',
   'resv.cancel': 'إلغاء',
   'resv.reinstate': 'استعادة الحجز',
@@ -782,6 +783,7 @@ export const ar: Translated<typeof enUS> = {
   'texts.badNumber': 'لم تُرسل: لا يمكن لهذا الرقم استقبال رسالة',
   'texts.noCountry': 'لم تُرسل: لا رسائل إلى هذا البلد',
   'texts.notSent': 'لم تُرسل',
+  'texts.boxAsk': 'اسأل الضيف أولًا. ضع علامة فقط إذا وافق.',
 
   // ---- wave 2: customer display ----
   'nav.display': 'شاشة العميل',

@@ -4,6 +4,7 @@ import { useI18n, useT, type MessageKey } from '../i18n';
 import { Icon } from '../components/Icon';
 import { AuxHeader } from '../components/AuxHeader';
 import { css } from '../components/css';
+import { TillTextsBox } from '../components/TillTextsBox';
 import { initialsOf, nextTier, pointsLeft, tierOf, type Tier } from '../state/points';
 import type { Member, PointsEntry } from '../data/types';
 
@@ -282,6 +283,7 @@ function EnrollSheet({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
+  const [textsOk, setTextsOk] = useState(false);
   const [saving, setSaving] = useState(false);
   const can = name.trim() !== '' && mobile.replace(/\D+/g, '').length >= 6 && !saving;
   const input = 'width:100%;height:50px;padding:0 15px;border-radius:13px;border:1.5px solid var(--border-strong);background:var(--surface);color:var(--fg);font-size:15px;font-weight:600;font-family:inherit;outline:none;box-sizing:border-box;';
@@ -289,7 +291,7 @@ function EnrollSheet({ onClose }: { onClose: () => void }) {
   const submit = async () => {
     if (!can) return;
     setSaving(true);
-    const ok = await enroll({ name, mobile, email });
+    const ok = await enroll({ name, mobile, email, textsOk });
     setSaving(false);
     if (ok) onClose();
   };
@@ -331,6 +333,7 @@ function EnrollSheet({ onClose }: { onClose: () => void }) {
             <label htmlFor="enroll-mobile" style={css(label)}>{t('loyalty.mobile')}</label>
             <input id="enroll-mobile" type="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} autoComplete="off" style={css(input)} />
           </div>
+          <TillTextsBox id="enroll-texts" mobile={mobile} checked={textsOk} onChange={setTextsOk} />
           <div>
             <label htmlFor="enroll-email" style={css(label)}>{t('loyalty.email')}</label>
             <input id="enroll-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('loyalty.emailHint')} autoComplete="off" style={css(input)} />

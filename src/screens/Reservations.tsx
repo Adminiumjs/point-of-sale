@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { usePos } from '../state/store';
+import { usePos, whoKey } from '../state/store';
 import { source } from '../data/source';
 import { tableName } from '../state/calc';
 import { bookingDays, dayIndexOf, daySlots, liveOn, slotFull, slotStamp, tablesFor, type BookingDay } from '../state/bookings';
@@ -72,6 +72,11 @@ export function Reservations() {
   const current = list.find((r) => r.id === s.resvSel) ?? list[0] ?? null;
   const live = liveOn(s.reservations, days, dayIdx, tz);
   const covers = live.reduce((sum, r) => sum + r.partySize, 0);
+  const standing = current === null ? undefined : s.textStandings[whoKey({ kind: 'booking', id: current.id })];
+  const readStanding = s.readStanding;
+  useEffect(() => {
+    if (current !== null && s.textsReady === true) void readStanding({ kind: 'booking', id: current.id });
+  }, [current?.id, current?.textsOk, s.textsReady, readStanding]);
   const [tableOpen, setTableOpen] = useState(false);
   const [note, setNote] = useState(current?.note ?? '');
   useEffect(() => setNote(current?.note ?? ''), [current?.id, current?.note]);
@@ -87,8 +92,10 @@ export function Reservations() {
           { l: t('resv.table'), v: tableOf(s.floor, current.tableId) ? tableName(tableOf(s.floor, current.tableId)!.label, 'restaurant') : t('resv.notAssigned'), ic: 'armchair' },
           { l: t('resv.phone'), v: current.mobile ?? '—', ic: 'phone' },
           { l: t('resv.email'), v: current.email ?? '—', ic: 'mail' },
-          // The booking form's box: the only yes to texts the till can see.
-          { l: t('resv.texts'), v: t(current.textsOk === true ? 'resv.textsYes' : 'resv.textsNo'), ic: 'message-square' },
+          // Where the guest stands on texts, as Adminium says it (their own box, a yes at the counter, a STOP).
+          ...(standing === undefined || standing === null || s.textsReady !== true
+            ? []
+            : [{ l: t('resv.texts'), v: t(standing.state === 'yes' ? 'resv.textsYes' : standing.state === 'stopped' ? 'resv.textsStopped' : 'resv.textsNo'), ic: 'message-square' }]),
           { l: t('resv.via'), v: t(current.channel === 'phone' ? 'resv.viaPhone' : current.channel === 'walk_in' ? 'resv.viaWalkIn' : 'resv.viaOnline'), ic: current.channel === 'phone' ? 'phone-call' : 'globe' },
           ...(current.occasion !== null && current.occasion !== '' ? [{ l: t('resv.occasion'), v: tOr('occasion.' + current.occasion, current.occasion), ic: 'party-popper' }] : []),
           ...(current.request !== null && current.request !== '' ? [{ l: t('resv.request'), v: current.request, ic: 'message-square-text' }] : []),

@@ -1,9 +1,11 @@
 /**
  * TEXTS (plan 80): the till asks Adminium for a text by writing one outbox
- * row, and says what came of it — never more than that. A pickup is noted as
- * told only once the text went; a text that went, is going, or may have gone
- * is never asked for again; a receipt is offered only to a number the guest
- * agreed to texts for. No screen opens the device's own messages.
+ * row, and says what came of it — read from the row's code, never its words.
+ * A pickup is noted as told only once the text went; a text that went, is
+ * going, or may have gone is never asked for again. Whether a guest agreed is
+ * Adminium's to say (`GET /texts/consent`), and a yes given at the counter is
+ * recorded by Adminium in the box's words (`POST /texts/consent`). No screen
+ * opens the device's own messages.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,11 +13,12 @@ import { fileURLToPath } from 'node:url';
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import manifest from '../../manifest.json';
 import { memorySink, type MemorySink } from '../data/sink';
-import { memoryTextLog, setTextLog, type TextLog } from '../data/textLog';
+import { memoryTextLog, setTextLog, type TextAnswer, type TextLog, type TextPerson } from '../data/textLog';
 import type { PickupOrder, Reservation, Sale } from '../data/types';
 import { usePos } from './store';
-import { compactPhone, follow, isMainlandChina, maskPhone, maySendAgain, outcomeOf, readablePhone, samePhone, setTextPace, textable } from './texts';
+import { boxFor, compactPhone, follow, isMainlandChina, maskPhone, maySendAgain, outcomeOf, readablePhone, samePhone, setTextPace } from './texts';
 import { outbox, setSink } from './writes';
 
 const INITIAL = usePos.getState();
@@ -29,11 +32,12 @@ const settled = async () => {
 };
 const messages = () => sink.calls.filter((c) => c.ref === 'messages' && c.op === 'insert').map((c) => c.values);
 
+const MARA = '+1 415 555 0166';
 const booking = (fields: Partial<Reservation> = {}): Reservation => ({
   id: '41',
   code: 'MR-AB12',
   name: 'Mara Rossi',
-  mobile: '+1 415 555 0166',
+  mobile: MARA,
   email: null,
   partySize: 2,
   startsAt: Date.parse('2026-11-24T19:00:00Z'),
@@ -59,6 +63,15 @@ const order = (fields: Partial<PickupOrder> = {}): PickupOrder => ({
   items: ['Latte'],
   ...fields,
 });
+/** A log that answers every row the same way, and records what the till asked. */
+const fixed = (row: { status: string; reason: string | null }, extra: Partial<TextLog> = {}): TextLog => ({
+  ready: async () => true,
+  standing: async () => null,
+  record: async () => true,
+  queued() {},
+  read: async () => ({ ...row, error: null }),
+  ...extra,
+});
 
 beforeEach(() => {
   sink = memorySink({ firstNumber: 3001 });
@@ -66,32 +79,34 @@ beforeEach(() => {
   setTextLog(memoryTextLog({ after: 0 }));
   setTextPace([0, 0, 0]);
   usePos.setState(INITIAL, true);
-  usePos.setState({ pickups: [], reservations: [], texts: {}, members: {} });
+  usePos.setState({ pickups: [], reservations: [], texts: {}, members: {}, textsReady: null, textStandings: {} });
 });
 
 describe('what a row says', () => {
-  it('reads each of Adminium’s sentences as the result staff see', () => {
+  it('reads Adminium’s code beside the sentence, never the sentence', () => {
     const cases: [string, string | null, string][] = [
-      ['queued', null, 'sending'],
-      ['sent', null, 'sent'],
-      ['skipped', 'No mobile number on file', 'no-number'],
-      ['skipped', 'Not sent: this person has not agreed to texts', 'not-agreed'],
-      ['skipped', 'Not sent: this person has not confirmed their yes', 'not-agreed'],
-      ['skipped', 'Not sent: this person replied STOP', 'opted-out'],
-      ['failed', 'Not sent: this person opted out at the provider', 'opted-out'],
-      ['skipped', 'Not sent: the daily text limit is reached', 'limit'],
-      ['sent', 'Unknown: check with the provider before resending', 'unknown'],
-      ['sent', 'An earlier send is still open: check it before resending', 'unknown'],
-      ['skipped', 'No text provider is connected', 'not-set-up'],
-      ['skipped', 'Not sent: the mobile number cannot be read', 'bad-number'],
-      ['skipped', 'Not sent: no texts go to this country', 'no-country'],
-      ['failed', 'Not delivered: the provider reports it failed', 'not-sent'],
-      ['failed', null, 'not-sent'],
+      ['queued', 'queued', 'sending'],
+      ['sent', 'waiting', 'sending'],
+      ['sent', 'sent', 'sent'],
+      ['skipped', 'no-number', 'no-number'],
+      ['skipped', 'no-consent', 'not-agreed'],
+      ['skipped', 'unconfirmed-consent', 'not-agreed'],
+      ['skipped', 'stopped', 'opted-out'],
+      ['failed', 'opted-out', 'opted-out'],
+      ['skipped', 'daily-limit', 'limit'],
+      ['sent', 'unknown', 'unknown'],
+      ['sent', 'earlier-send-open', 'unknown'],
+      ['skipped', 'not-set-up', 'not-set-up'],
+      ['skipped', 'unreadable-phone', 'bad-number'],
+      ['skipped', 'country-blocked-cn', 'no-country'],
+      ['failed', 'provider-failed', 'not-sent'],
+      ['skipped', 'sample', 'not-sent'],
     ];
-    for (const [status, error, outcome] of cases) expect([status, error, outcomeOf({ status, error })]).toEqual([status, error, outcome]);
+    for (const [status, reason, outcome] of cases) expect([status, reason, outcomeOf({ status, error: 'whatever the words say', reason })]).toEqual([status, reason, outcome]);
     expect(outcomeOf(null)).toBe('sending');
-    // A row that reads `sent` with any other sentence has not settled as sent: nobody can tell.
-    expect(outcomeOf({ status: 'sent', error: 'Waiting for the sending hours: goes at 2026-11-25 08:00 UTC' })).toBe('unknown');
+    // No code yet: a claimed row is still going, any other is not sent.
+    expect(outcomeOf({ status: 'sent', error: null, reason: null })).toBe('sending');
+    expect(outcomeOf({ status: 'failed', error: 'No mobile number on file', reason: null })).toBe('not-sent');
   });
 
   it('may be asked for again only after a refusal', () => {
@@ -99,11 +114,11 @@ describe('what a row says', () => {
   });
 
   it('follows the row until it settles, reads a sent one twice, and calls a silent one unknown', async () => {
-    const answers = [null, { status: 'queued', error: null }, { status: 'sent', error: null }, { status: 'failed', error: 'Not delivered: the provider reports it failed' }];
+    const answers = [null, { status: 'queued', error: null, reason: 'queued' }, { status: 'sent', error: null, reason: 'sent' }, { status: 'failed', error: null, reason: 'provider-failed' }];
     setTextPace([0, 0, 0, 0]);
     expect(await follow(async () => answers.shift() ?? null)).toBe('not-sent');
     setTextPace([0, 0]);
-    expect(await follow(async () => ({ status: 'queued', error: null }))).toBe('unknown');
+    expect(await follow(async () => ({ status: 'queued', error: null, reason: 'queued' }))).toBe('unknown');
     expect(await follow(async () => Promise.reject(new Error('offline')))).toBe('unknown');
   });
 });
@@ -120,26 +135,19 @@ describe('what the till can tell of a number', () => {
     expect(['12', 'call me', '+1 415 555 0166 ext 2', '1234567890123456'].map(readablePhone)).toEqual([false, false, false, false]);
   });
 
-  it('matches two writings of one number, and masks it for the guest’s screen', () => {
+  it('matches two writings of one number, masks it, and says which box a number gets', () => {
     expect(samePhone('+1 415 555 0166', '(415) 555-0166')).toBe(true);
     expect(samePhone('+1 415 555 0166', '+1 415 555 0167')).toBe(false);
     expect(samePhone(null, '+1 415 555 0166')).toBe(false);
     expect(maskPhone('+1 415 555 0166')).toBe('••• 0166');
-  });
-
-  it('offers a text only to a number that reads, outside mainland China, with a yes', () => {
-    const yes = () => true;
-    expect(textable('+1 415 555 0166', yes)).toBe(true);
-    expect(textable('+1 415 555 0166', () => false)).toBe(false);
-    expect(textable('+86 138 0013 8000', yes)).toBe(false);
-    expect(textable('call me', yes)).toBe(false);
-    expect(textable(null, yes)).toBe(false);
+    expect(['', '+1 415 555 0166', '+86 138 0013 8000', 'call me'].map(boxFor)).toEqual(['none', 'box', 'china', 'unreadable']);
   });
 });
 
 describe('telling a pickup it is ready', () => {
   it('writes one text row about the ticket, to the customer, in no cashier’s language, and notes it only once it went', async () => {
-    usePos.setState({ pickups: [order()], reservations: [booking({ textsOk: true })] });
+    setTextLog(memoryTextLog({ after: 0, agreed: [MARA] }));
+    usePos.setState({ pickups: [order()] });
     const going = s().notifyPickup('88');
     expect(s().texts['pickup:88']).toBe('sending');
     expect(s().pickups[0]!.notifiedAt).toBeNull();
@@ -170,8 +178,7 @@ describe('telling a pickup it is ready', () => {
   });
 
   it('is never pressed twice while one is going, and never again when nobody can tell', async () => {
-    const unknown: TextLog = { queued() {}, read: async () => ({ status: 'sent', error: 'Unknown: check with the provider before resending' }) };
-    setTextLog(unknown);
+    setTextLog(fixed({ status: 'sent', reason: 'unknown' }));
     usePos.setState({ pickups: [order()] });
     const first = s().notifyPickup('88');
     expect(await s().notifyPickup('88')).toBeNull();
@@ -182,12 +189,13 @@ describe('telling a pickup it is ready', () => {
     expect(s().pickups[0]!.notifiedAt).toBeNull();
   });
 
-  it('reads the daily limit and a STOP as Adminium wrote them', async () => {
-    for (const [error, outcome] of [
-      ['Not sent: the daily text limit is reached', 'limit'],
-      ['Not sent: this person replied STOP', 'opted-out'],
+  it('reads the daily limit, a STOP and texts not set up by their codes', async () => {
+    for (const [reason, outcome] of [
+      ['daily-limit', 'limit'],
+      ['stopped', 'opted-out'],
+      ['not-set-up', 'not-set-up'],
     ] as const) {
-      setTextLog({ queued() {}, read: async () => ({ status: 'skipped', error }) });
+      setTextLog(fixed({ status: 'skipped', reason }));
       usePos.setState({ pickups: [order()], texts: {} });
       expect(await s().notifyPickup('88')).toBe(outcome);
     }
@@ -195,8 +203,9 @@ describe('telling a pickup it is ready', () => {
 });
 
 describe("reminding a booking's guest of their table", () => {
-  it('writes the reminder about the booking, to the number on it, and says what came of it', async () => {
-    usePos.setState({ reservations: [booking({ textsOk: true })] });
+  it('writes the reminder about the booking, which Adminium sends to the number on it, and says what came of it', async () => {
+    setTextLog(memoryTextLog({ after: 0, agreed: [MARA] }));
+    usePos.setState({ reservations: [booking()] });
     expect(await s().messageBooking('41')).toBe('sent');
     await settled();
     expect(messages()).toEqual([{ id: expect.any(String), kind: 'table_reminder', status: 'queued', reservation_id: 41 }]);
@@ -211,33 +220,99 @@ describe("reminding a booking's guest of their table", () => {
   });
 });
 
+describe('a yes given at the counter', () => {
+  const recorder = () => {
+    const asked: { person: TextPerson; answer: TextAnswer }[] = [];
+    const log: TextLog = { ...fixed({ status: 'sent', reason: 'sent' }), record: async (person, answer) => (asked.push({ person, answer }), true) };
+    setTextLog(log);
+    return asked;
+  };
+
+  it('on a pickup order is recorded for the new customer’s row, in the box’s words and version, by phone for a phone order', async () => {
+    const asked = recorder();
+    s().tapTile('coldbrew');
+    await s().markPickup({ name: 'Wen Li', mobile: '+44 7911 123471', channel: 'phone', textsOk: true });
+    await settled();
+    await Promise.resolve();
+    const box = (manifest as { publicAccess: { textConsent?: { wording: { version: number; text: Record<string, string> } } }[] }).publicAccess.find((e) => e.textConsent !== undefined)!.textConsent!;
+    expect(asked).toEqual([
+      {
+        person: { table: 'customers', row: expect.not.stringMatching(/^tmp:/), phone: '+44 7911 123471' },
+        answer: { state: 'yes', how: 'phone', wording: { text: box.wording.text['en-US'], version: `v${String(box.wording.version)} en-US` } },
+      },
+    ]);
+  });
+
+  it('is never recorded for a box left empty, nor for a mainland China number', async () => {
+    const asked = recorder();
+    s().tapTile('coldbrew');
+    await s().markPickup({ name: 'Ida', mobile: '+44 7911 123472', channel: 'till' });
+    s().tapTile('croissant');
+    await s().markPickup({ name: 'Li', mobile: '+86 138 0013 8000', channel: 'till', textsOk: true });
+    await settled();
+    expect(asked).toEqual([]);
+  });
+
+  it('when a member enrols, in person, for their row', async () => {
+    const asked = recorder();
+    expect(await s().enroll({ name: 'Oda Berg', mobile: '+44 7911 123473', email: '', textsOk: true })).toBe(true);
+    await settled();
+    expect(asked.map((one) => [one.person.table, one.answer.state, one.answer.how])).toEqual([['customers', 'yes', 'in-person']]);
+  });
+});
+
 describe('a text receipt', () => {
   const sale = (fields: Partial<Sale> = {}): Sale => ({ rid: '90', number: 1090, table: null, items: [], subtotal: 4, discount: 0, discountLabel: '', tax: 0.33, tip: 0, total: 4.33, splits: [], change: 0, at: 0, staff: 'Sam', ...fields });
 
-  it('is offered only to a number the guest agreed to texts for', () => {
-    usePos.setState({ reservations: [booking({ textsOk: true })] });
-    expect(s().receiptPhone(sale({ reservationId: '41' }))).toBe('+1 415 555 0166');
-    usePos.setState({ reservations: [booking()] });
+  it('is offered only once Adminium says texts are set up and this guest agreed, with its masked number', async () => {
+    setTextLog(memoryTextLog({ after: 0, agreed: [MARA] }));
+    usePos.setState({ reservations: [booking(), booking({ id: '42', mobile: '+1 415 555 0177' })] });
     expect(s().receiptPhone(sale({ reservationId: '41' }))).toBeNull();
-    // A mainland China number: never offered, even with a yes.
-    usePos.setState({ reservations: [booking({ textsOk: true, mobile: '+86 138 0013 8000' })] });
-    expect(s().receiptPhone(sale({ reservationId: '41' }))).toBeNull();
+    await s().loadTextsReady();
+    expect(s().receiptPhone(sale({ reservationId: '41' }))).toBeNull(); // not asked yet
+    await s().readStanding({ kind: 'booking', id: '41' });
+    await s().readStanding({ kind: 'booking', id: '42' });
+    expect(s().receiptPhone(sale({ reservationId: '41' }))).toBe('••• 0166');
+    expect(s().receiptPhone(sale({ reservationId: '42' }))).toBeNull();
     expect(s().receiptPhone(sale())).toBeNull();
   });
 
-  it("goes to the member's own number when the sale was theirs, linked to the ticket", async () => {
+  it('is never offered while texts are not set up', async () => {
+    setTextLog(memoryTextLog({ after: 0, agreed: [MARA], ready: false }));
+    usePos.setState({ reservations: [booking()] });
+    await s().loadTextsReady();
+    await s().readStanding({ kind: 'booking', id: '41' });
+    expect(s().receiptPhone(sale({ reservationId: '41' }))).toBeNull();
+  });
+
+  it("goes to the member's own number when the sale was theirs, linked to the ticket and the member only", async () => {
+    setTextLog(memoryTextLog({ after: 0, agreed: [MARA] }));
     usePos.setState({
-      reservations: [booking({ id: '42', textsOk: true })],
       members: { '7': { id: '7', memberNo: '1007', name: 'Mara Rossi', mobile: '(415) 555-0166', email: null, joinedAt: 0, points: 0, lifetime: 0, visits: 1 } },
-      lastSale: sale({ customerId: '7' }),
+      lastSale: sale({ customerId: '7', reservationId: '41' }),
+      reservations: [booking()],
     });
+    await s().loadTextsReady();
+    await s().readStanding({ kind: 'customer', id: '7' });
     expect(await s().sendReceipt('text')).toBe('sent');
     await settled();
     expect(messages()).toEqual([{ id: expect.any(String), kind: 'receipt_text', status: 'queued', ticket_id: '90', customer_id: 7 }]);
   });
 
+  it("goes to the booking's number for a sale with no member", async () => {
+    setTextLog(memoryTextLog({ after: 0, agreed: [MARA] }));
+    usePos.setState({ lastSale: sale({ reservationId: '41' }), reservations: [booking()] });
+    await s().loadTextsReady();
+    await s().readStanding({ kind: 'booking', id: '41' });
+    expect(await s().sendReceipt('text')).toBe('sent');
+    await settled();
+    expect(messages()).toEqual([{ id: expect.any(String), kind: 'receipt_text', status: 'queued', ticket_id: '90', reservation_id: 41 }]);
+  });
+
   it('is not sent, and nothing written, when it was not offered', async () => {
     usePos.setState({ lastSale: sale({ reservationId: '41' }), reservations: [booking()] });
+    await s().loadTextsReady();
+    await s().readStanding({ kind: 'booking', id: '41' });
     expect(await s().sendReceipt('text')).toBeNull();
     await settled();
     expect(messages()).toEqual([]);

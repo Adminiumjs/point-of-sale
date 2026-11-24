@@ -487,8 +487,9 @@ export const zhCn: Translated<typeof enUS> = {
   'resv.tableAction': '桌位',
   'resv.message': '发消息',
   'resv.texts': '短信',
-  'resv.textsYes': '订座时已同意',
+  'resv.textsYes': '已同意',
   'resv.textsNo': '未同意',
+  'resv.textsStopped': '已要求退订',
   'resv.noShow': '未到店',
   'resv.cancel': '取消',
   'resv.reinstate': '恢复预订',
@@ -777,6 +778,7 @@ export const zhCn: Translated<typeof enUS> = {
   'texts.badNumber': '未发送：该号码无法接收短信',
   'texts.noCountry': '未发送：不向该国家或地区发送短信',
   'texts.notSent': '未发送',
+  'texts.boxAsk': '请先询问顾客，仅在对方同意时勾选。',
 
   // ---- wave 2: customer display ----
   'nav.display': '顾客屏',

@@ -485,8 +485,9 @@ export const zhTw: Translated<typeof enUS> = {
   'resv.tableAction': '桌位',
   'resv.message': '傳訊息',
   'resv.texts': '簡訊',
-  'resv.textsYes': '訂位時已同意',
+  'resv.textsYes': '已同意',
   'resv.textsNo': '未同意',
+  'resv.textsStopped': '已要求退訂',
   'resv.noShow': '未到店',
   'resv.cancel': '取消',
   'resv.reinstate': '恢復訂位',
@@ -775,6 +776,7 @@ export const zhTw: Translated<typeof enUS> = {
   'texts.badNumber': '未傳送：此號碼無法接收簡訊',
   'texts.noCountry': '未傳送：不向此國家或地區傳送簡訊',
   'texts.notSent': '未傳送',
+  'texts.boxAsk': '請先詢問顧客，僅在對方同意時勾選。',
 
   // ---- wave 2: customer display ----
   'nav.display': '顧客顯示器',

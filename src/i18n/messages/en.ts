@@ -492,8 +492,9 @@ export const enUS = {
   'resv.tableAction': 'Table',
   'resv.message': 'Message',
   'resv.texts': 'Texts',
-  'resv.textsYes': 'Agreed when booking',
+  'resv.textsYes': 'Agreed',
   'resv.textsNo': 'Not agreed',
+  'resv.textsStopped': 'Asked to stop',
   'resv.noShow': 'No-show',
   'resv.cancel': 'Cancel',
   'resv.reinstate': 'Reinstate booking',
@@ -784,6 +785,7 @@ export const enUS = {
   'texts.badNumber': 'Not sent: the number can’t take a text',
   'texts.noCountry': 'Not sent: no texts to this country',
   'texts.notSent': 'Not sent',
+  'texts.boxAsk': 'Ask the guest first. Tick only if they said yes.',
 
   // ---- wave 2: customer display ----
   'nav.display': 'Customer display',

@@ -6941,6 +6941,22 @@
               "zh-CN": "预订",
               "zh-TW": "訂位"
             }
+          },
+          {
+            "ref": "text_reason",
+            "type": "text",
+            "maxLength": 64,
+            "nullable": true,
+            "label": {
+              "en-US": "Text result",
+              "de-DE": "SMS-Ergebnis",
+              "fr-FR": "Résultat du SMS",
+              "da-DK": "Sms-resultat",
+              "cs-CZ": "Výsledek SMS",
+              "ar-EG": "نتيجة الرسالة النصية",
+              "zh-CN": "短信结果",
+              "zh-TW": "簡訊結果"
+            }
           }
         ]
       }
@@ -10112,7 +10128,8 @@
       "to": "to_address",
       "language": "language",
       "sentAt": "sent_at",
-      "error": "error"
+      "error": "error",
+      "textReason": "text_reason"
     },
     "links": {
       "ticket": "ticket_id",
@@ -10130,6 +10147,10 @@
         "email": "email",
         "name": "name",
         "phone": "mobile"
+      },
+      "textPhone": {
+        "via": "reservation_id",
+        "column": "mobile"
       }
     },
     "settings": {

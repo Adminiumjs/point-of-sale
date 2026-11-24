@@ -15,6 +15,7 @@
 import { BOOKING_RULES, BRAND, BRAND_INITIAL, VENUE_ADDRESS, VENUE_PHONE } from '../data/demo';
 import type { Reservation } from '../data/types';
 import { venueStamp } from '../data/venueTime';
+import { textLog } from '../data/textLog';
 import { daySlots, seatsAt } from '../state/bookings';
 import { usePos } from '../state/store';
 import { GuestError, type GuestBooking, type GuestsPort } from './api';
@@ -88,6 +89,8 @@ export function demoGuestsPort(opts: { now?: () => number } = {}): GuestsPort {
   return {
     timeZone: () => undefined,
     venue: async () => ({ ...DEMO_VENUE }),
+    // The demo café has texts set up; its text log sends nothing.
+    textsReady: async () => true,
     rules: async () => ({ ...BOOKING_RULES, occasions: [...BOOKING_RULES.occasions] }),
     availability: async (day, party) =>
       daySlots(BOOKING_RULES).map((time) => {
@@ -113,6 +116,9 @@ export function demoGuestsPort(opts: { now?: () => number } = {}): GuestsPort {
         ...(b.textsOk === true ? { textsOk: true } : {}),
       };
       usePos.setState((s) => ({ reservations: [...s.reservations, r].sort((a, c) => a.startsAt - c.startsAt) }));
+      // The guest's own tick, kept by the demo's text log as Adminium keeps a form's yes.
+      const log = textLog();
+      if (b.textsOk === true && 'formYes' in log && typeof log.formYes === 'function') (log.formYes as (phone: string) => void)(b.mobile);
       return settle(asGuest(r));
     },
     find: async (typedCode, mobile) => {

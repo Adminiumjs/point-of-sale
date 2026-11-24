@@ -492,8 +492,9 @@ export const de: Translated<typeof enUS> = {
   'resv.tableAction': 'Tisch',
   'resv.message': 'Nachricht',
   'resv.texts': 'SMS',
-  'resv.textsYes': 'Bei der Buchung zugestimmt',
+  'resv.textsYes': 'Zugestimmt',
   'resv.textsNo': 'Keine Zustimmung',
+  'resv.textsStopped': 'Hat abbestellt',
   'resv.noShow': 'Nicht erschienen',
   'resv.cancel': 'Stornieren',
   'resv.reinstate': 'Reservierung wiederherstellen',
@@ -782,6 +783,7 @@ export const de: Translated<typeof enUS> = {
   'texts.badNumber': 'Nicht gesendet: Nummer kann keine SMS empfangen',
   'texts.noCountry': 'Nicht gesendet: keine SMS in dieses Land',
   'texts.notSent': 'Nicht gesendet',
+  'texts.boxAsk': 'Fragen Sie zuerst den Gast. Nur ankreuzen, wenn er zugestimmt hat.',
 
   // ---- wave 2: customer display ----
   'nav.display': 'Kundendisplay',
