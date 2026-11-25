@@ -250,11 +250,13 @@ describe.skipIf(why !== null)(`taking a card through Adminium${why === null ? ''
         expect(link.url).toMatch(/^https?:\/\/[^/]+\/pay\//);
         // Asked again, the link already open.
         expect((await cash.pay.payLink(t['id'] as RowId)).id).toBe(link.id);
-        // Closing a link is not a screens-only role's yet (Adminium keeps the revoke route from it): the manager closes it.
-        expect((await refusal(cash.pay.closeLink(link.id))).status).toBe(403);
-        await mgr.pay.closeLink(link.id);
+        // The cashier who opened it closes it (Adminium lets the till's screens-only roles revoke a link since 0.3.7x).
+        await cash.pay.closeLink(link.id);
         const again = await cash.pay.payLink(t['id'] as RowId);
         expect(again.id).not.toBe(link.id);
+        // The manager closes one too.
+        await mgr.pay.closeLink(again.id);
+        expect((await cash.pay.payLink(t['id'] as RowId)).id).not.toBe(again.id);
       }, 60_000);
     });
 
