@@ -50,8 +50,8 @@ const SAMPLE: Record<string, string> = {
 const filled = (body: string) => body.replace(/\{\{([^}]+)\}\}/g, (_whole, name: string) => SAMPLE[name.trim()] ?? `<${name}>`);
 
 describe("the shop's texts", () => {
-  it('need Adminium 0.3.76, and the manifest is valid there', () => {
-    expect(m.compatibility.minAdminiumVersion).toBe('0.3.76');
+  it('need Adminium 0.3.77 (texts from 0.3.76; a widened outbox kind on Postgres and MySQL, and the till’s own roles on /texts, from 0.3.77)', () => {
+    expect(m.compatibility.minAdminiumVersion).toBe('0.3.77');
     expect(validateManifest(m as never)).toMatchObject({ ok: true });
   });
 

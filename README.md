@@ -19,8 +19,8 @@ The demo also shows what the till does with **Offers & gift cards** and **Invent
 - **Floor** — zones, live table states, seat/auto-hold flow.
 - **Kitchen display** — three-column bump flow with an all-day aggregate.
 - Held-tickets tray, move / merge, discount & comps.
-- **Customer display** — the guest's view of their order: the items, the money, the tip (the same buttons as Payment, custom amount on a keypad — and Payment keeps the guest's choice), then a signature and how they want their receipt. The choice is kept on the ticket and shown on the receipt screen; an address the guest typed there fills in the receipt screen's Email form. Email is offered only while the till can send one; Text only when the guest agreed to texts for the number on file (see [Texts](#texts-from-adminium-0376)).
-- **Pickup** — mark a ticket for pickup (at the till or by phone, with the name and number to call), and work the queue in three lanes: Start, Mark ready, Hand off; Notify texts the guest that it is ready, through Adminium, and the card says what came of it (see [Texts](#texts-from-adminium-0376)). A paid order waits until it is collected.
+- **Customer display** — the guest's view of their order: the items, the money, the tip (the same buttons as Payment, custom amount on a keypad — and Payment keeps the guest's choice), then a signature and how they want their receipt. The choice is kept on the ticket and shown on the receipt screen; an address the guest typed there fills in the receipt screen's Email form. Email is offered only while the till can send one; Text only when the guest agreed to texts for the number on file (see [Texts](#texts-from-adminium-0377)).
+- **Pickup** — mark a ticket for pickup (at the till or by phone, with the name and number to call), and work the queue in three lanes: Start, Mark ready, Hand off; Notify texts the guest that it is ready, through Adminium, and the card says what came of it (see [Texts](#texts-from-adminium-0377)). A paid order waits until it is collected.
 - **Gift cards** — look a card up by its code (or scan it), put money on it through the ticket — untaxed, and credited once the ticket is paid — pay a ticket from it, issue a new one, and see its history. A refund of a sale paid by gift card can go back onto the card.
 - **Loyalty & rewards** — find a member by phone, member number or name (or scan their code), enroll someone new, put them on the ticket, and spend their points on a reward that joins the ticket free. Points are earned when the ticket is paid — one per whole unit spent on goods — and a tier follows every point ever earned (Silver, Gold from 1,000, Platinum from 2,500).
 
@@ -176,9 +176,20 @@ A reader needs the internet: a till that is offline, or a reader that stops answ
 
 **Close shift** splits card takings into **Card reader** and **Standalone terminal** once a reader took any; a pay link counts with QR and wallets.
 
-0.3.3 needs Adminium **0.3.62**: that release lets a till's screens-only cashier use the reader and the pay link, and gives a payment Adminium writes into the till's `payments` its key on SQLite and MySQL (an earlier Adminium wrote a reader's payment there without one). Update Adminium first, then the app.
+Taking cards through Adminium came with Adminium **0.3.62**: that release lets a till's screens-only cashier use the reader and the pay link, and gives a payment Adminium writes into the till's `payments` its key on SQLite and MySQL (an earlier Adminium wrote a reader's payment there without one). 0.3.3 as a whole needs **0.3.77** (see [Updating to 0.3.3](#updating-to-033)).
 
 What 0.3.3 adds to the tables (every column new and empty; no row changes): on `payments`, `payment_ref` (unique: Adminium's reference), `provider`, `paid_with`, `approval_code`, `payment_last4` (a payment card's, never the gift card's `card_last4`), `refunded_elsewhere`, and the method `online`; on `refunds`, `refund_ref`, `refund_state` and the method `online`. Only Adminium writes a payment's reference and the refund stamps, and a payment Adminium took is changed only by a refund. The update gives the **POS manager** role the right to refund the till's online payments: allow it at the update.
+
+### Updating to 0.3.3
+
+0.3.3 needs Adminium **0.3.77** or later. **Update Adminium first, then the app**: an older Adminium refuses the upload and says which version it needs. 0.3.77 is the first that reads the till's texts words, lets the till's own roles (POS cashier, POS manager) ask whether texts can go and record a yes at the counter, and widens the outbox's list of message kinds on Postgres and MySQL when the app updates.
+
+What the update does:
+
+- **Taking cards through Adminium** (see above): the payments and refunds columns, and the refund right for the **POS manager** role — allow it at the update.
+- **Texts** (see [Texts](#texts-from-adminium-0377)): on `reservations`, `texts_ok`; on `messages`, `reservation_id`, `text_reason`, and three new kinds (`pickup_ready`, `table_reminder`, `receipt_text`). The page that listed the emailed receipts is now **Messages**, shown with or without Invoices & Receipts.
+- **Who the shop's people are:** a member is now known by their mobile too (an erasure finds them by it), and a booking's guest is a person of their own, by address or mobile — no longer a copy of a member.
+- Every new column comes empty and no row that was there changes. Nobody is asked anything and nobody is texted by the update: a text needs the shop to connect Twilio or Telnyx in **Studio → Texts**, and the guest's own yes.
 
 ### Moving from 0.3.0
 
@@ -205,7 +216,7 @@ The shop asks nobody for a yes to news, and the update adds nobody to the do-not
    - **a shop that never sold a card of its own has nothing to run.** With Offers connected and not one card in the till's own table, the cards are Offers' from the first minute: the tile that sells them is on the register, the gift card tab is at Pay, and nobody is shown the banner. It appears only once there is a card to bring in.
 5. **A refund of a ticket paid before the update** comes out at the figure 0.2.x would have given. With Offers connected, a ticket that already holds an old refund cannot be refunded a second time from the till; do that one from the dashboard.
 
-## Texts (from Adminium 0.3.76)
+## Texts (from Adminium 0.3.77)
 
 The till can text a guest through the business's **own** Twilio or Telnyx account, connected in Adminium's **Studio → Texts**. Adminium is never a party to them; the provider bills the business. The till never sends a text itself and never opens the device's messages: it writes one row in the app's outbox (`messages`) and Adminium checks the number, the guest's yes, the do-not-text list and the daily limit, adds the opt-out line that works for the sender ("Reply STOP to opt out.", or the shop's phone from a sender name), sends it, and writes how it ended on the row.
 
@@ -229,7 +240,7 @@ All three are texts a guest is waiting for, so they may go at any hour. Each sta
 
 **The demo** sends nothing. Its café answers from memory, in Adminium's words and codes: Iris and Mara ticked the box when they booked, and Priya (pickup #1051) said yes too, so their texts read *Text sent*; anyone else's read *Not sent: they haven't agreed* — until someone ticks the box for them at the till.
 
-What the texts add to the tables (every column new and empty; no row changes): on `reservations`, `texts_ok` (the guest's tick); on `messages`, `reservation_id`, `text_reason` (Adminium's code for each text) and the kinds `pickup_ready`, `table_reminder` and `receipt_text`. A text about a booking goes to the number typed on it (`outbox.recipient.textPhone`). The outbox's address column no longer insists on an e-mail format, because a text's row holds the number it went to. Needs Adminium **0.3.76**: update Adminium first, then the app.
+What the texts add to the tables (every column new and empty; no row changes): on `reservations`, `texts_ok` (the guest's tick); on `messages`, `reservation_id`, `text_reason` (Adminium's code for each text) and the kinds `pickup_ready`, `table_reminder` and `receipt_text`. A text about a booking goes to the number typed on it (`outbox.recipient.textPhone`). The outbox's address column no longer insists on an e-mail format, because a text's row holds the number it went to. Needs Adminium **0.3.77**: update Adminium first, then the app.
 
 ## Connecting to Adminium
 

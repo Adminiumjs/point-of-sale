@@ -114,6 +114,13 @@ describe('the public port', () => {
     expect(created.map((body) => body['texts_ok'])).toEqual([true, undefined]);
   });
 
+  it('draws the box for texts only while Adminium says texts can go', async () => {
+    const on = await publicGuestsPort(fakeClient({ texts: { ready: async () => true, standing: async () => { throw new Error('unused'); } } } as never).client);
+    const off = await publicGuestsPort(fakeClient({ texts: { ready: async () => false, standing: async () => { throw new Error('unused'); } } } as never).client);
+    const failing = await publicGuestsPort(fakeClient({ texts: { ready: async () => { throw new Error('offline'); }, standing: async () => { throw new Error('unused'); } } } as never).client);
+    expect([await on.textsReady(), await off.textsReady(), await failing.textsReady()]).toEqual([true, false, false]);
+  });
+
   it('asks the availability ref for a day and a party', async () => {
     const { client, calls } = fakeClient();
     const port = await publicGuestsPort(client);

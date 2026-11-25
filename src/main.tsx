@@ -130,12 +130,7 @@ async function bootGuests(): Promise<void> {
   const { publicGuestsPort } = await import('./guests/api');
   let port: Awaited<ReturnType<typeof publicGuestsPort>>;
   try {
-    // Whether texts can go at all, from the page's own key (a client older than 0.3.76 has no `texts.ready()`).
-    const textsReady = async () => {
-      const reply = await fetch(`${config.baseUrl.replace(/\/$/, '')}/api/v1/public/texts`, { headers: { authorization: `Bearer ${config.publishableKey}` } });
-      return reply.ok && ((await reply.json()) as { data?: { ready?: boolean } }).data?.ready === true;
-    };
-    port = await publicGuestsPort(client, config.tables ?? {}, { textsReady });
+    port = await publicGuestsPort(client, config.tables ?? {});
   } catch (error) {
     showStartupFailure(error instanceof Error ? error.message : String(error), codeOf(error instanceof Error ? error : null));
     return;

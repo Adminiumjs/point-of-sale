@@ -92,17 +92,14 @@ describe.skipIf(why !== null)(`texts on a built Adminium${why === null ? '' : ` 
         expect(await owner.standing(person)).toEqual({ state: 'yes', masked: expect.stringContaining('474'), liftBy: null });
       }, 60_000);
 
-      /*
-       * ENGINE GAP: the till's own roles are screens-only, and Adminium's
-       * screens-only door (`apps/screens-only.ts`) lists no `/texts/*` route,
-       * so a cashier is refused "This account opens its app's own screens".
-       * The till then draws no box and offers no text receipt — safe, but the
-       * counter cannot record a yes. This fails until the door lets them in.
-       */
-      it.fails("a cashier reads where a member stands, as the till does", async () => {
+      // The till's own roles are screens-only; from Adminium 0.3.77 their door lets them ask and record, each under its own right.
+      it("a cashier reads whether texts can go, records a member's yes at the counter, and reads it back, as the till does", async () => {
         const member = await s.insert('customers', { name: 'Ida Berg', mobile: '+44 7911 123476' });
+        const person = { table: 'customers' as const, row: String(member['id']), phone: null };
         expect(await log.ready()).toBe(false);
-        expect((await log.standing({ table: 'customers', row: String(member['id']), phone: null }))?.state).toBe('not-asked');
+        expect((await log.standing(person))?.state).toBe('not-asked');
+        expect(await log.record(person, { state: 'yes', how: 'in-person', wording: { text: 'Text me about my table or pickup. A reminder for your table, or word that your order is ready.', version: 'v1 en-US' } })).toBe(true);
+        expect((await log.standing(person))?.state).toBe('yes');
       }, 60_000);
 
       it('a member known only by their mobile is found by it, to be erased', async () => {

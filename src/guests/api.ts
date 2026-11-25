@@ -207,14 +207,7 @@ export function guestErrorOf(error: unknown, claimed = false): GuestError {
 }
 
 /** The public API, through the app's browser key. */
-export async function publicGuestsPort(
-  client: PublicClient,
-  tables: Readonly<Record<string, string>> = {},
-  opts: { textsReady?: () => Promise<boolean> } = {},
-): Promise<GuestsPort> {
-  // The client's own read from 0.3.76 (`client.texts.ready()`); an older client is handed one by the page.
-  const texts = (client as PublicClient & { texts?: { ready: () => Promise<boolean> } }).texts;
-  const textsReady = texts !== undefined ? () => texts.ready() : (opts.textsReady ?? (async () => false));
+export async function publicGuestsPort(client: PublicClient, tables: Readonly<Record<string, string>> = {}): Promise<GuestsPort> {
   const config = await client.config();
   const refs = guestRefs(config, tables);
   const zone = config.timezone;
@@ -280,7 +273,14 @@ export async function publicGuestsPort(
         await client.update(refs.claimed, id, { starts_at: new Date(to.startsAt).toISOString(), party_size: to.party });
         return readBooking(id);
       }, true),
-    textsReady: () => textsReady().catch(() => false),
+    // Whether texts can go at all: the page draws its box only while they can.
+    textsReady: async () => {
+      try {
+        return await client.texts.ready();
+      } catch {
+        return false;
+      }
+    },
     cancel: (id) =>
       guard(async () => {
         await client.update(refs.claimed, id, { status: 'cancelled' });

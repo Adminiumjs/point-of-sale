@@ -56,7 +56,7 @@ describe("the shop's people", () => {
   });
 
   it('ask for the Adminium that reads them, and come as a patch', () => {
-    expect(m.compatibility.minAdminiumVersion).toBe('0.3.76');
+    expect(m.compatibility.minAdminiumVersion).toBe('0.3.77');
     expect(m.version).toBe('0.3.3');
     expect(valid(m)).toMatchObject({ ok: true });
   });
