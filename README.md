@@ -176,13 +176,13 @@ A reader needs the internet: a till that is offline, or a reader that stops answ
 
 **Close shift** splits card takings into **Card reader** and **Standalone terminal** once a reader took any; a pay link counts with QR and wallets.
 
-Taking cards through Adminium came with Adminium **0.3.62**: that release lets a till's screens-only cashier use the reader and the pay link, and gives a payment Adminium writes into the till's `payments` its key on SQLite and MySQL (an earlier Adminium wrote a reader's payment there without one). 0.3.3 as a whole needs **0.3.77** (see [Updating to 0.3.3](#updating-to-033)).
+Taking cards through Adminium came with Adminium **0.3.62**: that release lets a till's screens-only cashier use the reader and the pay link, and gives a payment Adminium writes into the till's `payments` its key on SQLite and MySQL (an earlier Adminium wrote a reader's payment there without one). 0.3.3 as a whole needs **0.3.78** (see [Updating to 0.3.3](#updating-to-033)).
 
 What 0.3.3 adds to the tables (every column new and empty; no row changes): on `payments`, `payment_ref` (unique: Adminium's reference), `provider`, `paid_with`, `approval_code`, `payment_last4` (a payment card's, never the gift card's `card_last4`), `refunded_elsewhere`, and the method `online`; on `refunds`, `refund_ref`, `refund_state` and the method `online`. Only Adminium writes a payment's reference and the refund stamps, and a payment Adminium took is changed only by a refund. The update gives the **POS manager** role the right to refund the till's online payments: allow it at the update.
 
 ### Updating to 0.3.3
 
-0.3.3 needs Adminium **0.3.77** or later. **Update Adminium first, then the app**: an older Adminium refuses the upload and says which version it needs. 0.3.77 is the first that reads the till's texts words, lets the till's own roles (POS cashier, POS manager) ask whether texts can go and record a yes at the counter, and widens the outbox's list of message kinds on Postgres and MySQL when the app updates.
+0.3.3 needs Adminium **0.3.78** or later. **Update Adminium first, then the app**: an older Adminium refuses the upload and says which version it needs. 0.3.78 reads the till's texts words, lets the till's own roles (POS cashier, POS manager) ask whether texts can go and record a yes at the counter, widens the outbox's list of message kinds on Postgres and MySQL when the app updates, and keeps Offers & gift cards' entries on the till's customer key, so the gift card balance page works with Offers 1.0.34 and later.
 
 What the update does:
 
@@ -240,7 +240,7 @@ All three are texts a guest is waiting for, so they may go at any hour. Each sta
 
 **The demo** sends nothing. Its café answers from memory, in Adminium's words and codes: Iris and Mara ticked the box when they booked, and Priya (pickup #1051) said yes too, so their texts read *Text sent*; anyone else's read *Not sent: they haven't agreed* — until someone ticks the box for them at the till.
 
-What the texts add to the tables (every column new and empty; no row changes): on `reservations`, `texts_ok` (the guest's tick); on `messages`, `reservation_id`, `text_reason` (Adminium's code for each text) and the kinds `pickup_ready`, `table_reminder` and `receipt_text`. A text about a booking goes to the number typed on it (`outbox.recipient.textPhone`). The outbox's address column no longer insists on an e-mail format, because a text's row holds the number it went to. Needs Adminium **0.3.77**: update Adminium first, then the app.
+What the texts add to the tables (every column new and empty; no row changes): on `reservations`, `texts_ok` (the guest's tick); on `messages`, `reservation_id`, `text_reason` (Adminium's code for each text) and the kinds `pickup_ready`, `table_reminder` and `receipt_text`. A text about a booking goes to the number typed on it (`outbox.recipient.textPhone`). The outbox's address column no longer insists on an e-mail format, because a text's row holds the number it went to. Needs Adminium **0.3.78**: update Adminium first, then the app.
 
 ## Connecting to Adminium
 

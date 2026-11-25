@@ -50,8 +50,8 @@ const SAMPLE: Record<string, string> = {
 const filled = (body: string) => body.replace(/\{\{([^}]+)\}\}/g, (_whole, name: string) => SAMPLE[name.trim()] ?? `<${name}>`);
 
 describe("the shop's texts", () => {
-  it('need Adminium 0.3.77 (texts from 0.3.76; a widened outbox kind on Postgres and MySQL, and the till’s own roles on /texts, from 0.3.77)', () => {
-    expect(m.compatibility.minAdminiumVersion).toBe('0.3.77');
+  it('need Adminium 0.3.78 (texts from 0.3.76; the till’s own roles on /texts and a widened outbox kind from 0.3.77; Offers’ entries on the till’s key from 0.3.78)', () => {
+    expect(m.compatibility.minAdminiumVersion).toBe('0.3.78');
     expect(validateManifest(m as never)).toMatchObject({ ok: true });
   });
 
