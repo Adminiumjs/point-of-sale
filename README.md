@@ -189,6 +189,7 @@ What the update does:
 - **Taking cards through Adminium** (see above): the payments and refunds columns, and the refund right for the **POS manager** role — allow it at the update.
 - **Texts** (see [Texts](#texts-from-adminium-0377)): on `reservations`, `texts_ok`; on `messages`, `reservation_id`, `text_reason`, and three new kinds (`pickup_ready`, `table_reminder`, `receipt_text`). The page that listed the emailed receipts is now **Messages**, shown with or without Invoices & Receipts.
 - **Who the shop's people are:** a member is now known by their mobile too (an erasure finds them by it), and a booking's guest is a person of their own, by address or mobile — no longer a copy of a member.
+- **A member's mobile is personal data.** Adminium masks it for anyone without the right to read personal data on members, and an erasure takes it. The update gives **POS cashier** and **POS manager** that right (`read_pii` on `customers`), so the till's search by phone goes on working; **a custom role of your own that reads members without it now sees the mobile masked and cannot search by phone** — give it the right if it needs to.
 - Every new column comes empty and no row that was there changes. Nobody is asked anything and nobody is texted by the update: a text needs the shop to connect Twilio or Telnyx in **Studio → Texts**, and the guest's own yes.
 
 ### Moving from 0.3.0
